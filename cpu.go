@@ -1,13 +1,18 @@
-package main
+package cpu
 
 import "fmt"
 
  const (
         reg8  = iota
         reg16
+        reg16_combo
         regc
+        reghld
+        reghli
+        regldh
         memreg
         memnn
+        memn
         nn
         n
         invalid
@@ -46,9 +51,16 @@ func get_ld_type(arg string) (int) {
     var arg_type int
     
     switch  {
-           
+        case arg == "(HLD)":
+            arg_type = reghld
+        case arg == "(HLI)":
+            arg_type = reghld
+         case arg == "(LDH)":
+            arg_type = regldh
         case arg == "(nn)":
             arg_type = memnn
+        case arg == "(n)":
+            arg_type = memn
         case len(arg) == 4:
             arg_type = memreg       
         case arg == "n":
@@ -59,6 +71,9 @@ func get_ld_type(arg string) (int) {
             arg_type = nn
         case (arg == "PC" || arg == "SP"):
             arg_type = reg16
+
+        case len(arg) == 2:
+            arg_type = reg16_combo
         case arg == "(C)":
             arg_type = regc
         default:
@@ -70,7 +85,7 @@ func get_ld_type(arg string) (int) {
 }
 
 func (c *CPU)do_instr (desc string ,ticks uint16,args uint16) {
-    fmt.Println(desc)
+    fmt.Println(desc,ticks,args,c.reg16["PC"])
     c.tick(ticks)
     c.reg16["PC"]+=args
 }
@@ -83,27 +98,113 @@ func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
     switch (a_type) {
         case reg8: 
             val_right8 = c.reg8[reg_right]
-        case memreg: 
-            //parse reg_right
-            var reg_high uint8 = reg_right[1]
-            var reg_low uint8 = reg_right[2]
+            val_right16= uint16(val_right8)
 
-            val_right16=c.mem[((reg_high <<8) | reg_low)]
+        case reg16_combo:
+            var reg_high uint8 =  c.reg8[string(reg_right[0])]
+            var reg_low uint8 =   c.reg8[string(reg_right[1])]            
+            val_right16 = uint16((reg_high<<8) | reg_low)
+      
+        case reg16:
+                        
+            val_right16 = c.reg16[reg_right]
+        case memreg: 
+            reg_high := c.reg8[string(reg_right[1])]
+            reg_low  := c.reg8[string(reg_right[2])]
+            addr := (uint16(reg_high) <<8) | uint16(reg_low)
+
+            val_right16=c.mem[addr]
+            fmt.Println(reg_right,reg_high,reg_low,addr)
             val_right8=uint8(val_right16)
             
+        case reghld :
+            //parse reg_right
+            reg_high := c.reg8[string(reg_right[1])]
+            reg_low  := c.reg8[string(reg_right[2])]
+            addr := (uint16(reg_high) <<8) | uint16(reg_low)
+           
+            val_right16=c.mem[addr]
+            val_right8=uint8(val_right16)
+            c.mem[addr]--
+
+       
+       case reghli :
+            //parse reg_right
+            reg_high := c.reg8[string(reg_right[1])]
+            reg_low  := c.reg8[string(reg_right[2])]
+            addr := (uint16(reg_high) <<8) | uint16(reg_low)
+           
+            val_right16=c.mem[addr]
+            val_right8=uint8(val_right16)
+            c.mem[addr]++
+    
         case memnn:
-            val_right16 = c.mem[((c.reg16["PC"]+2)<<8) | c.mem[(c.reg16["PC"]+1)]]
+            addr := uint16(c.mem[c.reg16["PC"]+2] &0xff <<8)  | uint16(c.mem[c.reg16["PC"]+1]&0xff)
+
+            val_right16 = c.mem[addr]
+
             val_right8 = uint8(val_right16)            
         
+        case nn:
+            addr :=uint16(c.mem[c.reg16["PC"]+2] &0xff <<8)  | uint16(c.mem[c.reg16["PC"]+1]&0xff)
+            val_right16 = c.mem[addr]
+            val_right8 = uint8(val_right16)           
+
         case n:
             val_right16 = c.mem[(c.reg16["PC"]+1)]
             val_right8 = uint8(val_right16)
-                        
+
+       case memn:
+            val_right16 = c.mem[0xff00|(c.reg16["PC"]+1)]
+            val_right8 = uint8(val_right16)
+       
+                         
         case regc:
             val_right16 = c.mem[uint16(0xff00 |c.reg16["C"])]
             val_right8 = uint8(val_right16)
+    
+        
         }
         return val_right8,val_right16
+
+}
+
+func gen_push_pop(left string ,reg_right string) (Action)  {
+    type_right:=get_ld_type(reg_right)
+       
+    desc := left +","+reg_right
+
+    var lambda Action = nil
+    var val_right8 uint8
+    var val_right16 uint16
+    undefined :=  func(c *CPU) {fmt.Println("Undefined PUSH/POP op" +left+ ","+reg_right)}   
+
+    if left == "PUSH" {
+       
+            lambda = func(c *CPU)  {
+                    val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                    c.mem[c.reg16["SP"]] = val_right16
+                    c.do_instr(desc,20,2)
+                    c.reg16["SP"]-=2
+            }
+    } else if left == "POP" {
+             lambda = func(c *CPU)  {
+  
+                    c.reg8[string(reg_right[0])] = uint8(0xff00 &c.mem[c.reg16["SP"]])
+                    c.reg8[string(reg_right[1])] = uint8(0x00ff &c.mem[c.reg16["SP"]])
+                    c.do_instr(desc,20,2)
+                    c.reg16["SP"]+=2
+            }
+    }
+    
+    if lambda != nil {
+        //fmt.Println("Created "+left+" "+reg_right)
+        return lambda
+    }else{
+        lambda = undefined
+        fmt.Println("UNDEFINED PUSH/POP " +left+ " " +reg_right)
+    }
+    return lambda
 
 }
 
@@ -128,12 +229,15 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
         ticks+=12
         args+=2
 
-    }  else if type_right == memreg {
+    }  else if type_right == memreg  || type_right == reghld || type_right == regc{
         ticks+=4
 
     } else if type_right == n {
         ticks+=4
         args+=1
+    } else if type_right == nn {
+        ticks+=8
+        args+=2
     }
 
     if type_left == reg8  {
@@ -143,15 +247,26 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
                 c.reg8[reg_left] = val_right8
                 c.do_instr(desc,(ticks),(args))
         }
+    } else if type_left == reg16  {
+        ticks+=8
+        lambda = func(c *CPU)  {
+                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                c.reg16[reg_left] = val_right16
+                c.do_instr(desc,(ticks),(args))
+        }
+    
+
     } else if type_left == memreg {
         //parse reg_right
-        var reg_high uint8 = reg_left[1]
-        var reg_low uint8 = reg_left[2]
+        var reg_high string = string(reg_left[1])
+        var reg_low string =  string(reg_left[2])
         ticks+=8
         lambda =  func(c *CPU)  {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.mem[((reg_high <<8) | reg_low)] = val_right16
-                c.do_instr(desc,ticks,args)
+                addr := (uint16(c.reg8[reg_high]) <<8) | uint16(c.reg8[reg_low])        
+                c.mem[addr] = val_right16
+	 
+		c.do_instr(desc,ticks,args)
         } 
        
     } else if type_left == memnn {
@@ -162,18 +277,64 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
                                          val_right16
                 c.do_instr(desc,ticks,args)
         }
+    }else if type_left == memn {
+        ticks+=12
+        lambda = func(c *CPU) {
+                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                c.mem[0xff00 |c.mem[(c.reg16["PC"]+1)]] =
+                                         val_right16
+                c.do_instr(desc,ticks,args)
+        }
+
+
     } else if type_left == regc {
         ticks+=8
         lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
                 c.mem[uint16(0xff00 |c.reg16["C"])] = val_right16
                 c.do_instr(desc,ticks,args)
-         }
+        }
+    } else if type_left == reghld { 
+        ticks+=8
+        var reg_high string = string(reg_left[1])
+        var reg_low string =  string(reg_left[2])
+      
+       lambda = func(c *CPU) {
+                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])] = val_right16
+                c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])]--
+                c.do_instr(desc,ticks,args)
+        }
+    } else if type_left == reghli { 
+        ticks+=8
+        var reg_high string = string(reg_left[1])
+        var reg_low string =  string(reg_left[2])
+      
+       lambda = func(c *CPU) {
+                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])] = val_right16
+                c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])]++
+                c.do_instr(desc,ticks,args)
+        }
+
+
+     } else if type_left == reg16_combo { 
+        ticks+=8
+        var reg_high string = string(reg_left[0])
+        var reg_low string =  string(reg_left[1])
+      
+       lambda = func(c *CPU) {
+                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                c.reg8[reg_high] = uint8(val_right16 & 0xff00)
+                c.reg8[reg_low] = uint8(val_right16 &0x00ff)
+            
+                c.do_instr(desc,ticks,args)
+        }
     }
 
-
    if lambda != nil {
-        fmt.Println("Created LD "+reg_left+","+reg_right)
+        //fmt.Println("Created LD "+reg_left+","+reg_right)
+    	return lambda
     }else{
         lambda = undefined
         fmt.Println("UNDEFINED LD "+reg_left+","+reg_right)
@@ -225,6 +386,7 @@ func BuildCpu() *CPU{
     c.ops[0xF2] = gen_ld("A","(C)")
     
     
+    c.ops[0x06] = gen_ld("B","n")
     c.ops[0x40] = gen_ld("B","B")
     c.ops[0x41] = gen_ld("B","C")
     c.ops[0x42] = gen_ld("B","D")    
@@ -242,7 +404,7 @@ func BuildCpu() *CPU{
     c.ops[0x4D] = gen_ld("C","L")
     c.ops[0x4E] = gen_ld("C","(HL)")    
     c.ops[0x4F] =  gen_ld("C","A")    
-
+    c.ops[0x0E] =  gen_ld("C","n")    
     c.ops[0x50] = gen_ld("D","B")
     c.ops[0x51] = gen_ld("D","C")
     c.ops[0x52] = gen_ld("D","D")
@@ -251,7 +413,8 @@ func BuildCpu() *CPU{
     c.ops[0x55] = gen_ld("D","L")
     c.ops[0x56] = gen_ld("D","(HL)")    
     c.ops[0x57] = gen_ld("D","A")    
-
+    c.ops[0x16] =  gen_ld("D","E")    
+    
     c.ops[0x58] = gen_ld("E","B")
     c.ops[0x59] = gen_ld("E","C")
     c.ops[0x5A] = gen_ld("E","D")
@@ -260,7 +423,8 @@ func BuildCpu() *CPU{
     c.ops[0x5D] = gen_ld("E","L")
     c.ops[0x5E] = gen_ld("E","(HL)")
     c.ops[0x5F] = gen_ld("E","A")        
-
+    c.ops[0x1E] = gen_ld("E","n")        
+    
     c.ops[0x60] = gen_ld("H","B")
     c.ops[0x61] = gen_ld("H","C")
     c.ops[0x62] = gen_ld("H","D")
@@ -269,6 +433,7 @@ func BuildCpu() *CPU{
     c.ops[0x65] = gen_ld("H","L")
     c.ops[0x66] = gen_ld("H","(HL)")
     c.ops[0x67] = gen_ld("H","A")
+    c.ops[0x26] = gen_ld("H","n")        
     
     c.ops[0x68] = gen_ld("L","B")
     c.ops[0x69] = gen_ld("L","C")
@@ -278,7 +443,8 @@ func BuildCpu() *CPU{
     c.ops[0x6D] = gen_ld("L","L")
     c.ops[0x6E] = gen_ld("L","(HL)")
     c.ops[0x6F] = gen_ld("L","A")
-
+    c.ops[0x2E] = gen_ld("L","n")   
+ 
     c.ops[0x70] = gen_ld("(HL)","B")
     c.ops[0x71] = gen_ld("(HL)","C")
     c.ops[0x72] = gen_ld("(HL)","D")
@@ -292,9 +458,30 @@ func BuildCpu() *CPU{
     c.ops[0x12] = gen_ld("(DE)","A")
     c.ops[0xEA] = gen_ld("(nn)","A")
     c.ops[0xE2] = gen_ld("(C)","A")
+    c.ops[0x3A] = gen_ld("A","(HLD)")
+    c.ops[0x32] = gen_ld("(HLD)","A")
+    c.ops[0x2A] = gen_ld("A","(HLI)")
+    c.ops[0x22] = gen_ld("(HLI)","A")
+    c.ops[0xE0] = gen_ld("(n)","A")
+    c.ops[0xF0] = gen_ld("A","(n)")
 
-
+    c.ops[0x01] = gen_ld("BC","nn")
+    c.ops[0x11] = gen_ld("DE","nn")
+    c.ops[0x21] = gen_ld("HL","nn")
+    c.ops[0x31] = gen_ld("SP","nn")
+    c.ops[0xf9] = gen_ld("SP","HL")
+    c.ops[0x08] = gen_ld("(nn)","SP") //wrong cycle count on this one
+    c.ops[0xf5] = gen_push_pop("PUSH","AF") 
+    c.ops[0xC5] = gen_push_pop("PUSH","BC") 
+    c.ops[0xD5] = gen_push_pop("PUSH","DE") 
+    c.ops[0xE5] = gen_push_pop("PUSH","HL") 
     
+    c.ops[0xF1] = gen_push_pop("POP","AF") 
+    c.ops[0xC1] = gen_push_pop("POP","BC") 
+    c.ops[0xD1] = gen_push_pop("POP","DE") 
+    c.ops[0xE1] = gen_push_pop("POP","HL") 
+
+
     return c
 }
 
@@ -308,9 +495,11 @@ func main() {
     c.reg8["B"] = 3 
     for k := range c.ops {
         c.ops[k](c)
+
+
     }
     c.reg8["B"] = 3
     fmt.Println(c.reg8) 
-    
+    fmt.Println(c.reg16)
     c.exec()
 }
