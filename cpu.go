@@ -1,6 +1,8 @@
 package cpu
 
-import "fmt"
+import (
+        "fmt"
+        )
 
  const (
         reg8  = iota
@@ -23,7 +25,7 @@ type Action func(*CPU)
 type OpMap map[uint16] Action 
 type RegMap8 map[string] uint8
 type RegMap16 map[string] uint16
-type Memory [0x10000]uint16
+type Memory [0x10000]uint8
 
 
 type CPU struct {
@@ -31,7 +33,7 @@ type CPU struct {
     reg8 RegMap8
     reg16 RegMap16
     mem Memory
-
+    mmu MMU
 }
 
 func (c *CPU)exec() () {
@@ -40,7 +42,7 @@ func (c *CPU)exec() () {
 }
 
 func (c *CPU)tick(val uint16) () {
-    fmt.Println("tick",val);
+    //fmt.Println("tick",val);
 }
 
 
@@ -85,9 +87,10 @@ func get_ld_type(arg string) (int) {
 }
 
 func (c *CPU)do_instr (desc string ,ticks uint16,args uint16) {
-    fmt.Println(desc,ticks,args,c.reg16["PC"])
+
     c.tick(ticks)
     c.reg16["PC"]+=args
+    fmt.Println(desc,ticks,args,c.reg16["PC"])
 }
 
 func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
@@ -113,8 +116,7 @@ func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
             reg_low  := c.reg8[string(reg_right[2])]
             addr := (uint16(reg_high) <<8) | uint16(reg_low)
 
-            val_right16=c.mem[addr]
-            fmt.Println(reg_right,reg_high,reg_low,addr)
+            val_right16=c.mmu.read_w(addr)
             val_right8=uint8(val_right16)
             
         case reghld :
@@ -123,7 +125,7 @@ func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
             reg_low  := c.reg8[string(reg_right[2])]
             addr := (uint16(reg_high) <<8) | uint16(reg_low)
            
-            val_right16=c.mem[addr]
+            val_right16=c.mmu.read_w(addr)
             val_right8=uint8(val_right16)
             c.mem[addr]--
 
@@ -134,35 +136,38 @@ func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
             reg_low  := c.reg8[string(reg_right[2])]
             addr := (uint16(reg_high) <<8) | uint16(reg_low)
            
-            val_right16=c.mem[addr]
+            val_right16=c.mmu.read_w(addr)
             val_right8=uint8(val_right16)
             c.mem[addr]++
     
         case memnn:
-            addr := uint16(c.mem[c.reg16["PC"]+2] &0xff <<8)  | uint16(c.mem[c.reg16["PC"]+1]&0xff)
+            //addr := uint16(c.mem[c.reg16["PC"]+2] &0xff <<8) | uint16(c.mem[c.reg16["PC"]+1]&0xff)
+            addr :=  uint16(c.mmu.read_b(c.reg16["PC"]+2)) <<8 | uint16(c.mmu.read_b(c.reg16["PC"]+1))
+            val_right16 = c.mmu.read_w(addr)
 
-            val_right16 = c.mem[addr]
-
-            val_right8 = uint8(val_right16)            
-        
+            val_right8 = uint8(val_right16 &0xff)            
+            
         case nn:
-            addr :=uint16(c.mem[c.reg16["PC"]+2] &0xff <<8)  | uint16(c.mem[c.reg16["PC"]+1]&0xff)
-            val_right16 = c.mem[addr]
-            val_right8 = uint8(val_right16)           
-
+            //addr :=uint16(c.mem[c.reg16["PC"]+2] &0xff <<8)  | uint16(c.mem[c.reg16["PC"]+1]&0xff)
+            val_right16 =  uint16(c.mmu.read_b(c.reg16["PC"]+2)) <<8 | uint16(c.mmu.read_b(c.reg16["PC"]+1))
+            val_right8 = uint8(val_right16)
         case n:
-            val_right16 = c.mem[(c.reg16["PC"]+1)]
+            val_right16 = uint16(c.mmu.read_b(c.reg16["PC"]+1))
             val_right8 = uint8(val_right16)
 
        case memn:
-            val_right16 = c.mem[0xff00|(c.reg16["PC"]+1)]
+            addr :=uint16(0xff00| uint16(c.mmu.read_b(c.reg16["PC"]+1)))
+
+            val_right16 = c.mmu.read_w(addr)
             val_right8 = uint8(val_right16)
-       
+           
                          
         case regc:
-            val_right16 = c.mem[uint16(0xff00 |c.reg16["C"])]
+            addr :=uint16(0xff00 |uint16(c.reg8["C"]))
+            val_right16 = c.mmu.read_w(addr)
+            
             val_right8 = uint8(val_right16)
-    
+            
         
         }
         return val_right8,val_right16
@@ -183,15 +188,15 @@ func gen_push_pop(left string ,reg_right string) (Action)  {
        
             lambda = func(c *CPU)  {
                     val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                    c.mem[c.reg16["SP"]] = val_right16
+                    c.mmu.write_w(c.reg16["SP"],val_right16)
                     c.do_instr(desc,20,2)
                     c.reg16["SP"]-=2
             }
     } else if left == "POP" {
              lambda = func(c *CPU)  {
   
-                    c.reg8[string(reg_right[0])] = uint8(0xff00 &c.mem[c.reg16["SP"]])
-                    c.reg8[string(reg_right[1])] = uint8(0x00ff &c.mem[c.reg16["SP"]])
+                    c.reg8[string(reg_right[0])] = uint8(0xff00 & c.mmu.read_w(c.reg16["SP"]))
+                    c.reg8[string(reg_right[1])] = uint8(0x00ff & c.mmu.read_w(c.reg16["SP"]))
                     c.do_instr(desc,20,2)
                     c.reg16["SP"]+=2
             }
@@ -235,7 +240,7 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
     } else if type_right == n {
         ticks+=4
         args+=1
-    } else if type_right == nn {
+    } else if type_right == nn || type_right == memn{
         ticks+=8
         args+=2
     }
@@ -264,7 +269,7 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
         lambda =  func(c *CPU)  {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
                 addr := (uint16(c.reg8[reg_high]) <<8) | uint16(c.reg8[reg_low])        
-                c.mem[addr] = val_right16
+                c.mmu.write_w(addr,val_right16)
 	 
 		c.do_instr(desc,ticks,args)
         } 
@@ -273,16 +278,19 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
         ticks+=16
         lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.mem[(c.mem[(c.reg16["PC"]+2)]<<8) | c.mem[(c.reg16["PC"]+1)]] =
-                                         val_right16
+                addr_high := uint16(c.mmu.read_b(c.reg16["PC"]+2)<<8)
+                addr_low := uint16 (c.mmu.read_b(c.reg16["PC"]+1))
+
+                c.mmu.write_w(addr_high | addr_low, val_right16)
                 c.do_instr(desc,ticks,args)
         }
     }else if type_left == memn {
         ticks+=12
         lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.mem[0xff00 |c.mem[(c.reg16["PC"]+1)]] =
-                                         val_right16
+                addr :=0xff00|uint16(c.mmu.read_b(c.reg16["PC"]+1))
+
+                c.mmu.write_b(addr,val_right8)
                 c.do_instr(desc,ticks,args)
         }
 
@@ -291,7 +299,9 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
         ticks+=8
         lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.mem[uint16(0xff00 |c.reg16["C"])] = val_right16
+    
+                c.mmu.write_w(uint16(0xff00 |uint16(c.reg8["C"])),val_right16)
+
                 c.do_instr(desc,ticks,args)
         }
     } else if type_left == reghld { 
@@ -301,19 +311,19 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
       
        lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])] = val_right16
-                c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])]--
+                c.mmu.write_w(uint16( c.reg8[reg_high] <<8) | uint16(c.reg8[reg_low]),val_right16)
+                //c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])]--
                 c.do_instr(desc,ticks,args)
         }
     } else if type_left == reghli { 
         ticks+=8
-        var reg_high string = string(reg_left[1])
-        var reg_low string =  string(reg_left[2])
+        //var reg_high string = string(reg_left[1])
+        //var reg_low string =  string(reg_left[2])
       
        lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])] = val_right16
-                c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])]++
+                //c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])] = val_right16
+                //c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])]++
                 c.do_instr(desc,ticks,args)
         }
 
@@ -324,8 +334,10 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
         var reg_low string =  string(reg_left[1])
       
        lambda = func(c *CPU) {
+                
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.reg8[reg_high] = uint8(val_right16 & 0xff00)
+                
+                c.reg8[reg_high] = uint8(val_right16 & 0xff00>>8)
                 c.reg8[reg_low] = uint8(val_right16 &0x00ff)
             
                 c.do_instr(desc,ticks,args)
