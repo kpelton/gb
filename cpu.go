@@ -106,7 +106,7 @@ func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
         case reg16_combo:
             var reg_high uint8 =  c.reg8[string(reg_right[0])]
             var reg_low uint8 =   c.reg8[string(reg_right[1])]            
-            val_right16 = uint16((reg_high<<8) | reg_low)
+            val_right16 = uint16(reg_high)<<8 | uint16(reg_low)
       
         case reg16:
                         
@@ -124,10 +124,16 @@ func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
             reg_high := c.reg8[string(reg_right[1])]
             reg_low  := c.reg8[string(reg_right[2])]
             addr := (uint16(reg_high) <<8) | uint16(reg_low)
-           
+            
             val_right16=c.mmu.read_w(addr)
             val_right8=uint8(val_right16)
-            c.mem[addr]--
+
+            if (uint16(c.reg8[string(reg_right[1])]) <<8 | uint16(reg_low)) > 255 {
+                c.reg8[string(reg_right[1])]--
+            } else {
+                c.reg8[string(reg_right[2])]--
+            } 
+
 
        
        case reghli :
@@ -135,10 +141,17 @@ func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
             reg_high := c.reg8[string(reg_right[1])]
             reg_low  := c.reg8[string(reg_right[2])]
             addr := (uint16(reg_high) <<8) | uint16(reg_low)
-           
+            
             val_right16=c.mmu.read_w(addr)
             val_right8=uint8(val_right16)
-            c.mem[addr]++
+
+            if (uint16(c.reg8[string(reg_right[1])]) <<8 | uint16(reg_low)) > 255 {
+                c.reg8[string(reg_right[1])]++
+            } else {
+                c.reg8[string(reg_right[2])]++
+            } 
+           
+
     
         case memnn:
             //addr := uint16(c.mem[c.reg16["PC"]+2] &0xff <<8) | uint16(c.mem[c.reg16["PC"]+1]&0xff)
@@ -174,6 +187,149 @@ func (c *CPU) addr_type(a_type int,reg_right string) (uint8,uint16) {
 
 }
 
+func (c *CPU) fz( i uint8, as uint8)() {
+    c.reg8["FL"]=0
+   
+    if i == 0 {
+       
+        c.reg8["FL"]|=0x80
+    }
+ 
+    if as == 1 {
+        c.reg8["FL"]|=0x40
+    }
+  
+}
+func gen_alu(op_type string,reg_left string, reg_right string,ticks uint16, args uint16 ) (Action) {
+    type_right:=get_ld_type(reg_right)
+
+    desc := op_type+" "+reg_left +","+reg_right
+
+    var lambda Action = nil
+    undefined :=  func(c *CPU) {fmt.Println("Undefined ALU op" +reg_left+ ","+reg_right)}   
+    var val_right8 uint8
+    var val_right16 uint16
+
+    switch (op_type) {
+        case "ADD":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                prev:= c.reg8["A"]
+                                c.reg8["A"] +=val_right8
+                                c.fz(c.reg8["A"],0)
+
+                                if prev > c.reg8["A"] {
+                                    c.reg8["FL"] |= 0x10
+                                }
+                            
+                                c.do_instr(desc,ticks,args)
+                            }
+    
+        case "SUB":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                prev:= c.reg8["A"]
+                                c.reg8["A"] -=val_right8
+                                c.fz(c.reg8["A"],1)
+
+                                if prev < c.reg8["A"] {
+                                    c.reg8["FL"] |= 0x10
+                                }
+
+                                c.do_instr(desc,ticks,args)
+                            }
+        case "CP":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                i:= c.reg8["A"] - val_right8
+                                c.fz(i,1)
+
+                                if i > c.reg8["A"] {
+                                    c.reg8["FL"] |= 0x10
+                                }
+
+                                c.do_instr(desc,ticks,args)
+                            }
+
+
+
+    
+
+        case "SBC":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                prev:= c.reg8["A"]
+                                c.reg8["A"] -=val_right8
+                                //subtract carray flag
+                                c.reg8["A"] -=0x10 &c.reg8["FL"] 
+                                c.fz(c.reg8["A"],1)
+
+                                if prev < c.reg8["A"] {
+                                    c.reg8["FL"] |= 0x10
+                                }
+
+                                c.do_instr(desc,ticks,args)
+                            }
+        case "AND":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                c.reg8["A"] &=val_right8
+                                c.fz(c.reg8["A"],1)
+                                c.do_instr(desc,ticks,args)
+                            }
+
+        case "OR":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                c.reg8["A"] |=val_right8
+                                c.fz(c.reg8["A"],0)
+                                c.do_instr(desc,ticks,args)
+                            }
+
+        case "XOR":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                c.reg8["A"] ^=val_right8
+                                c.fz(c.reg8["A"],0)
+                                c.do_instr(desc,ticks,args)
+                            }
+
+
+       case "INC":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                c.reg8[reg_left]++
+                                c.fz(c.reg8[reg_left],0)
+                                c.do_instr(desc,ticks,args)
+                                 }
+      case "DEC":
+            lambda = func(c *CPU)  {
+                                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                                c.reg8[reg_left]--
+                                c.fz(c.reg8[reg_left],0)
+                                c.do_instr(desc,ticks,args)
+                                 }
+
+
+
+    }
+
+
+
+
+    if lambda != nil {
+        //fmt.Println("Created "+left+" "+reg_right)
+        return lambda
+    }else{
+        lambda = undefined
+        fmt.Println("UNDEFINED PUSH/POP " +reg_left+ " " +reg_right)
+    }
+    return lambda
+
+
+
+}
+
 func gen_push_pop(left string ,reg_right string) (Action)  {
     type_right:=get_ld_type(reg_right)
        
@@ -189,15 +345,16 @@ func gen_push_pop(left string ,reg_right string) (Action)  {
             lambda = func(c *CPU)  {
                     val_right8,val_right16 = c.addr_type(type_right,reg_right)
                     c.mmu.write_w(c.reg16["SP"],val_right16)
-                    c.do_instr(desc,20,2)
                     c.reg16["SP"]-=2
+                    c.do_instr(desc,20,1)
+                   
             }
     } else if left == "POP" {
              lambda = func(c *CPU)  {
   
                     c.reg8[string(reg_right[0])] = uint8(0xff00 & c.mmu.read_w(c.reg16["SP"]))
                     c.reg8[string(reg_right[1])] = uint8(0x00ff & c.mmu.read_w(c.reg16["SP"]))
-                    c.do_instr(desc,20,2)
+                    c.do_instr(desc,20,1)
                     c.reg16["SP"]+=2
             }
     }
@@ -213,7 +370,7 @@ func gen_push_pop(left string ,reg_right string) (Action)  {
 
 }
 
-func gen_ld(reg_left string, reg_right string) (Action)  {
+func gen_ld(reg_left string, reg_right string,ticks uint16,args uint16) (Action)  {
     
     type_left:=get_ld_type(reg_left)
     type_right:=get_ld_type(reg_right)
@@ -227,45 +384,20 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
     var val_right16 uint16;
     var val_right8 uint8;
  
-    var ticks uint16 = 0 
-    var args uint16 =1
-   
-    if  type_right == memnn {
-        ticks+=12
-        args+=2
 
-    }  else if type_right == memreg  || type_right == reghld || type_right == regc{
-        ticks+=4
 
-    } else if type_right == n {
-        ticks+=4
-        args+=1
-    } else if type_right == nn || type_right == memn{
-        ticks+=8
-        args+=2
-    }
 
     if type_left == reg8  {
-        ticks+=4
         lambda = func(c *CPU)  {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
                 c.reg8[reg_left] = val_right8
                 c.do_instr(desc,(ticks),(args))
         }
-    } else if type_left == reg16  {
-        ticks+=8
-        lambda = func(c *CPU)  {
-                val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.reg16[reg_left] = val_right16
-                c.do_instr(desc,(ticks),(args))
-        }
-    
 
     } else if type_left == memreg {
         //parse reg_right
         var reg_high string = string(reg_left[1])
         var reg_low string =  string(reg_left[2])
-        ticks+=8
         lambda =  func(c *CPU)  {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
                 addr := (uint16(c.reg8[reg_high]) <<8) | uint16(c.reg8[reg_low])        
@@ -275,28 +407,25 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
         } 
        
     } else if type_left == memnn {
-        ticks+=16
         lambda = func(c *CPU) {
+                
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                addr_high := uint16(c.mmu.read_b(c.reg16["PC"]+2)<<8)
-                addr_low := uint16 (c.mmu.read_b(c.reg16["PC"]+1))
-
-                c.mmu.write_w(addr_high | addr_low, val_right16)
+                addr :=  uint16(c.mmu.read_b(c.reg16["PC"]+2)) <<8 | uint16(c.mmu.read_b(c.reg16["PC"]+1))
+                
+                c.mmu.write_w(addr, val_right16)
                 c.do_instr(desc,ticks,args)
         }
     }else if type_left == memn {
-        ticks+=12
         lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
                 addr :=0xff00|uint16(c.mmu.read_b(c.reg16["PC"]+1))
-
+            
                 c.mmu.write_b(addr,val_right8)
                 c.do_instr(desc,ticks,args)
         }
 
 
     } else if type_left == regc {
-        ticks+=8
         lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
     
@@ -304,32 +433,45 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
 
                 c.do_instr(desc,ticks,args)
         }
-    } else if type_left == reghld { 
-        ticks+=8
+    } else if type_left == reghld {
         var reg_high string = string(reg_left[1])
         var reg_low string =  string(reg_left[2])
       
        lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                c.mmu.write_w(uint16( c.reg8[reg_high] <<8) | uint16(c.reg8[reg_low]),val_right16)
-                //c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])]--
+                
+                addr := (uint16(c.reg8[reg_high]) <<8) | uint16(c.reg8[reg_low])        
+                c.mmu.write_b(addr,val_right8)
+
+                if uint16(c.reg8[reg_high]) <<8 |  uint16(c.reg8[reg_low])  > 255 {
+                    c.reg8[reg_right]--
+                } else {
+                    c.reg8[reg_low]--
+                } 
                 c.do_instr(desc,ticks,args)
+         
         }
+           
     } else if type_left == reghli { 
-        ticks+=8
-        //var reg_high string = string(reg_left[1])
-        //var reg_low string =  string(reg_left[2])
+        var reg_high string = string(reg_left[1])
+        var reg_low string =  string(reg_left[2])
       
        lambda = func(c *CPU) {
                 val_right8,val_right16 = c.addr_type(type_right,reg_right)
-                //c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])] = val_right16
-                //c.mem[(( c.reg8[reg_high] <<8) | c.reg8[reg_low])]++
+                
+                addr := (uint16(c.reg8[reg_high]) <<8) | uint16(c.reg8[reg_low])        
+                c.mmu.write_b(addr,val_right8)
+
+                if uint16(c.reg8[reg_high]) <<8 |  uint16(c.reg8[reg_low])  > 255 {
+                    c.reg8[reg_right]++
+                } else {
+                    c.reg8[reg_low]++
+                } 
                 c.do_instr(desc,ticks,args)
         }
 
 
      } else if type_left == reg16_combo { 
-        ticks+=8
         var reg_high string = string(reg_left[0])
         var reg_low string =  string(reg_left[1])
       
@@ -339,10 +481,33 @@ func gen_ld(reg_left string, reg_right string) (Action)  {
                 
                 c.reg8[reg_high] = uint8(val_right16 & 0xff00>>8)
                 c.reg8[reg_low] = uint8(val_right16 &0x00ff)
-            
                 c.do_instr(desc,ticks,args)
+
+
+        }
+    } else if reg_left == "SP" && reg_right =="n" { 
+        lambda = func(c *CPU) {
+                
+                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                if(val_right16>127){ 
+                    val_right16=-((^val_right16+1)&0xff); 
+                }
+
+                c.reg16["SP"] += val_right16
+                c.reg8["H"] =  uint8(val_right16 & 0xff00>>8)
+                c.reg8["L"] = uint8(val_right16 &0x00ff)
+        
+                c.do_instr(desc+" special",ticks,args)
+        }
+    }  else if type_left == reg16  {
+        lambda = func(c *CPU)  {
+                val_right8,val_right16 = c.addr_type(type_right,reg_right)
+                c.reg16[reg_left] = val_right16
+                c.do_instr(desc,(ticks),(args))
         }
     }
+
+
 
    if lambda != nil {
         //fmt.Println("Created LD "+reg_left+","+reg_right)
@@ -383,106 +548,107 @@ func BuildCpu() *CPU{
     /////////////////
 
     //Generate opcode Map
-    c.ops[0x7f] = gen_ld("A","A")
-    c.ops[0x78] = gen_ld("A","B")
-    c.ops[0x77] = gen_ld("A","C")
-    c.ops[0x7A] = gen_ld("A","D")
-    c.ops[0x7B] = gen_ld("A","E")
-    c.ops[0x7C] = gen_ld("A","H")
-    c.ops[0x7D] = gen_ld("A","L")
-    c.ops[0x0A] = gen_ld("A","(BC)")
-    c.ops[0x1A] = gen_ld("A","(DE)")
-    c.ops[0x7E] = gen_ld("A","(HL)")
-    c.ops[0xFA] = gen_ld("A","(nn)")
-    c.ops[0x3E] = gen_ld("A","n")
-    c.ops[0xF2] = gen_ld("A","(C)")
+    c.ops[0x7f] = gen_ld("A","A",4,1)
+    c.ops[0x78] = gen_ld("A","B",4,1)
+    c.ops[0x77] = gen_ld("A","C",4,1)
+    c.ops[0x7A] = gen_ld("A","D",4,1)
+    c.ops[0x7B] = gen_ld("A","E",4,1)
+    c.ops[0x7C] = gen_ld("A","H",4,1)
+    c.ops[0x7D] = gen_ld("A","L",4,1)
+    c.ops[0x0A] = gen_ld("A","(BC)",8,1)
+    c.ops[0x1A] = gen_ld("A","(DE)",8,1)
+    c.ops[0x7E] = gen_ld("A","(HL)",8,1)
+    c.ops[0xFA] = gen_ld("A","(nn)",8,1)
+    c.ops[0x3E] = gen_ld("A","n",8,2)
+    c.ops[0xF2] = gen_ld("A","(C)",8,1)
     
     
-    c.ops[0x06] = gen_ld("B","n")
-    c.ops[0x40] = gen_ld("B","B")
-    c.ops[0x41] = gen_ld("B","C")
-    c.ops[0x42] = gen_ld("B","D")    
-    c.ops[0x43] = gen_ld("B","E")
-    c.ops[0x44] = gen_ld("B","H")
-    c.ops[0x45] = gen_ld("B","L")
-    c.ops[0x46] = gen_ld("B","(HL)")
-    c.ops[0x47] = gen_ld("B","A")    
+    c.ops[0x06] = gen_ld("B","n",8,2)
+    c.ops[0x40] = gen_ld("B","B",4,1)
+    c.ops[0x41] = gen_ld("B","C",4,1)
+    c.ops[0x42] = gen_ld("B","D",4,1)    
+    c.ops[0x43] = gen_ld("B","E",4,1)
+    c.ops[0x44] = gen_ld("B","H",4,1)
+    c.ops[0x45] = gen_ld("B","L",4,1)
+    c.ops[0x46] = gen_ld("B","(HL)",8,1)
+    c.ops[0x47] = gen_ld("B","A",4,1)    
 
-    c.ops[0x48] = gen_ld("C","B")
-    c.ops[0x49] = gen_ld("C","C")
-    c.ops[0x4A] = gen_ld("C","D")
-    c.ops[0x4B] = gen_ld("C","E")
-    c.ops[0x4C] = gen_ld("C","H")
-    c.ops[0x4D] = gen_ld("C","L")
-    c.ops[0x4E] = gen_ld("C","(HL)")    
-    c.ops[0x4F] =  gen_ld("C","A")    
-    c.ops[0x0E] =  gen_ld("C","n")    
-    c.ops[0x50] = gen_ld("D","B")
-    c.ops[0x51] = gen_ld("D","C")
-    c.ops[0x52] = gen_ld("D","D")
-    c.ops[0x53] = gen_ld("D","E")
-    c.ops[0x54] = gen_ld("D","H")
-    c.ops[0x55] = gen_ld("D","L")
-    c.ops[0x56] = gen_ld("D","(HL)")    
-    c.ops[0x57] = gen_ld("D","A")    
-    c.ops[0x16] =  gen_ld("D","E")    
+    c.ops[0x48] = gen_ld("C","B",4,1)
+    c.ops[0x49] = gen_ld("C","C",4,1)
+    c.ops[0x4A] = gen_ld("C","D",4,1)
+    c.ops[0x4B] = gen_ld("C","E",4,1)
+    c.ops[0x4C] = gen_ld("C","H",4,1)
+    c.ops[0x4D] = gen_ld("C","L",4,1)
+    c.ops[0x4E] = gen_ld("C","(HL)",8,1)    
+    c.ops[0x4F] =  gen_ld("C","A",4,1)    
+    c.ops[0x0E] =  gen_ld("C","n",8,2)    
+    c.ops[0x50] = gen_ld("D","B",4,1)
+    c.ops[0x51] = gen_ld("D","C",4,1)
+    c.ops[0x52] = gen_ld("D","D",4,1)
+    c.ops[0x53] = gen_ld("D","E",4,1)
+    c.ops[0x54] = gen_ld("D","H",4,1)
+    c.ops[0x55] = gen_ld("D","L",4,1)
+    c.ops[0x56] = gen_ld("D","(HL)",8,1)    
+    c.ops[0x57] = gen_ld("D","A",4,1)    
+    c.ops[0x16] =  gen_ld("D","E",4,1)    
     
-    c.ops[0x58] = gen_ld("E","B")
-    c.ops[0x59] = gen_ld("E","C")
-    c.ops[0x5A] = gen_ld("E","D")
-    c.ops[0x5B] = gen_ld("E","E")
-    c.ops[0x5C] = gen_ld("E","H")
-    c.ops[0x5D] = gen_ld("E","L")
-    c.ops[0x5E] = gen_ld("E","(HL)")
-    c.ops[0x5F] = gen_ld("E","A")        
-    c.ops[0x1E] = gen_ld("E","n")        
+    c.ops[0x58] = gen_ld("E","B",4,1)
+    c.ops[0x59] = gen_ld("E","C",4,1)
+    c.ops[0x5A] = gen_ld("E","D",4,1)
+    c.ops[0x5B] = gen_ld("E","E",4,1)
+    c.ops[0x5C] = gen_ld("E","H",4,1)
+    c.ops[0x5D] = gen_ld("E","L",4,1)
+    c.ops[0x5E] = gen_ld("E","(HL)",8,1)
+    c.ops[0x5F] = gen_ld("E","A",4,1)        
+    c.ops[0x1E] = gen_ld("E","n",8,2)        
     
-    c.ops[0x60] = gen_ld("H","B")
-    c.ops[0x61] = gen_ld("H","C")
-    c.ops[0x62] = gen_ld("H","D")
-    c.ops[0x63] = gen_ld("H","E")
-    c.ops[0x64] = gen_ld("H","H")
-    c.ops[0x65] = gen_ld("H","L")
-    c.ops[0x66] = gen_ld("H","(HL)")
-    c.ops[0x67] = gen_ld("H","A")
-    c.ops[0x26] = gen_ld("H","n")        
+    c.ops[0x60] = gen_ld("H","B",4,1)
+    c.ops[0x61] = gen_ld("H","C",4,1)
+    c.ops[0x62] = gen_ld("H","D",4,1)
+    c.ops[0x63] = gen_ld("H","E",4,1)
+    c.ops[0x64] = gen_ld("H","H",4,1)
+    c.ops[0x65] = gen_ld("H","L",4,1)
+    c.ops[0x66] = gen_ld("H","(HL)",8,1)
+    c.ops[0x67] = gen_ld("H","A",4,1)
+    c.ops[0x26] = gen_ld("H","n",8,2)        
     
-    c.ops[0x68] = gen_ld("L","B")
-    c.ops[0x69] = gen_ld("L","C")
-    c.ops[0x6A] = gen_ld("L","D")
-    c.ops[0x6B] = gen_ld("L","E")
-    c.ops[0x6C] = gen_ld("L","H")
-    c.ops[0x6D] = gen_ld("L","L")
-    c.ops[0x6E] = gen_ld("L","(HL)")
-    c.ops[0x6F] = gen_ld("L","A")
-    c.ops[0x2E] = gen_ld("L","n")   
+    c.ops[0x68] = gen_ld("L","B",4,1)
+    c.ops[0x69] = gen_ld("L","C",4,1)
+    c.ops[0x6A] = gen_ld("L","D",4,1)
+    c.ops[0x6B] = gen_ld("L","E",4,1)
+    c.ops[0x6C] = gen_ld("L","H",4,1)
+    c.ops[0x6D] = gen_ld("L","L",4,1)
+    c.ops[0x6E] = gen_ld("L","(HL)",8,1)
+    c.ops[0x6F] = gen_ld("L","A",4,1)
+    c.ops[0x2E] = gen_ld("L","n",8,2)   
  
-    c.ops[0x70] = gen_ld("(HL)","B")
-    c.ops[0x71] = gen_ld("(HL)","C")
-    c.ops[0x72] = gen_ld("(HL)","D")
-    c.ops[0x73] = gen_ld("(HL)","E")
-    c.ops[0x74] = gen_ld("(HL)","H")
-    c.ops[0x75] = gen_ld("(HL)","L")
-    c.ops[0x77] = gen_ld("(HL)","A")
-    c.ops[0x36] = gen_ld("(HL)","n")
+    c.ops[0x70] = gen_ld("(HL)","B",8,1)
+    c.ops[0x71] = gen_ld("(HL)","C",8,1)
+    c.ops[0x72] = gen_ld("(HL)","D",8,1)
+    c.ops[0x73] = gen_ld("(HL)","E",8,1)
+    c.ops[0x74] = gen_ld("(HL)","H",8,1)
+    c.ops[0x75] = gen_ld("(HL)","L",8,1)
+    c.ops[0x77] = gen_ld("(HL)","A",8,1)
+    c.ops[0x36] = gen_ld("(HL)","n",8,1)
     
-    c.ops[0x02] = gen_ld("(BC)","A")
-    c.ops[0x12] = gen_ld("(DE)","A")
-    c.ops[0xEA] = gen_ld("(nn)","A")
-    c.ops[0xE2] = gen_ld("(C)","A")
-    c.ops[0x3A] = gen_ld("A","(HLD)")
-    c.ops[0x32] = gen_ld("(HLD)","A")
-    c.ops[0x2A] = gen_ld("A","(HLI)")
-    c.ops[0x22] = gen_ld("(HLI)","A")
-    c.ops[0xE0] = gen_ld("(n)","A")
-    c.ops[0xF0] = gen_ld("A","(n)")
+    c.ops[0x02] = gen_ld("(BC)","A",8,1)
+    c.ops[0x12] = gen_ld("(DE)","A",8,1)
+    c.ops[0xEA] = gen_ld("(nn)","A",16,3)
+    c.ops[0xE2] = gen_ld("(C)","A",8,1)
+    c.ops[0x3A] = gen_ld("A","(HLD)",12,1)
+    c.ops[0x32] = gen_ld("(HLD)","A",12,1)
+    c.ops[0x2A] = gen_ld("A","(HLI)",12,1)
+    c.ops[0x22] = gen_ld("(HLI)","A",12,1)
+    c.ops[0xE0] = gen_ld("(n)","A",8,2)
+    c.ops[0xF0] = gen_ld("A","(n)",8,2)
 
-    c.ops[0x01] = gen_ld("BC","nn")
-    c.ops[0x11] = gen_ld("DE","nn")
-    c.ops[0x21] = gen_ld("HL","nn")
-    c.ops[0x31] = gen_ld("SP","nn")
-    c.ops[0xf9] = gen_ld("SP","HL")
-    c.ops[0x08] = gen_ld("(nn)","SP") //wrong cycle count on this one
+    c.ops[0x01] = gen_ld("BC","nn",12,3)
+    c.ops[0x11] = gen_ld("DE","nn",12,3)
+    c.ops[0x21] = gen_ld("HL","nn",12,3)
+    c.ops[0x31] = gen_ld("SP","nn",12,3)
+    c.ops[0xf8] = gen_ld("SP","n",12,2) //signed
+    c.ops[0xf9] = gen_ld("SP","HL",8,1)
+    c.ops[0x08] = gen_ld("(nn)","SP",20,3)
     c.ops[0xf5] = gen_push_pop("PUSH","AF") 
     c.ops[0xC5] = gen_push_pop("PUSH","BC") 
     c.ops[0xD5] = gen_push_pop("PUSH","DE") 
@@ -493,6 +659,99 @@ func BuildCpu() *CPU{
     c.ops[0xD1] = gen_push_pop("POP","DE") 
     c.ops[0xE1] = gen_push_pop("POP","HL") 
 
+    c.ops[0x87] = gen_alu("ADD","A","A",4,1)
+    c.ops[0x80] = gen_alu("ADD","A","B",4,1)
+    c.ops[0x81] = gen_alu("ADD","A","C",4,1)
+    c.ops[0x82] = gen_alu("ADD","A","D",4,1)
+    c.ops[0x83] = gen_alu("ADD","A","E",4,1)
+    c.ops[0x84] = gen_alu("ADD","A","H",4,1)
+    c.ops[0x85] = gen_alu("ADD","A","L",4,1)
+    c.ops[0x86] = gen_alu("ADD","A","(HL)",8,1)
+    c.ops[0xc6] = gen_alu("ADD","A","n",8,2)
+    
+    c.ops[0x97] = gen_alu("SUB","A","A",4,1)
+    c.ops[0x90] = gen_alu("SUB","A","B",4,1)
+    c.ops[0x91] = gen_alu("SUB","A","C",4,1)
+    c.ops[0x92] = gen_alu("SUB","A","D",4,1)
+    c.ops[0x93] = gen_alu("SUB","A","E",4,1)
+    c.ops[0x94] = gen_alu("SUB","A","H",4,1)
+    c.ops[0x95] = gen_alu("SUB","A","L",4,1)
+    c.ops[0x96] = gen_alu("SUB","A","(HL)",8,1)
+    c.ops[0xD6] = gen_alu("SUB","A","n",8,2)
+    
+    //No tests for these
+    c.ops[0x9F] = gen_alu("SBC","A","A",4,1)
+    c.ops[0x99] = gen_alu("SBC","A","B",4,1)
+    c.ops[0x99] = gen_alu("SBC","A","C",4,1)
+    c.ops[0x9A] = gen_alu("SBC","A","D",4,1)
+    c.ops[0x9B] = gen_alu("SBC","A","E",4,1)
+    c.ops[0x9C] = gen_alu("SBC","A","H",4,1)
+    c.ops[0x9D] = gen_alu("SBC","A","L",4,1)
+    c.ops[0x9E] = gen_alu("SBC","A","(HL)",8,1)
+    //c.ops[0xD6] = gen_alu("SBC","A","n",8,2)
+    
+    c.ops[0xA7] = gen_alu("AND","A","A",4,1)
+    c.ops[0xA0] = gen_alu("AND","A","B",4,1)
+    c.ops[0xA1] = gen_alu("AND","A","C",4,1)
+    c.ops[0xA2] = gen_alu("AND","A","D",4,1)
+    c.ops[0xA3] = gen_alu("AND","A","E",4,1)
+    c.ops[0xA4] = gen_alu("AND","A","H",4,1)
+    c.ops[0xA5] = gen_alu("AND","A","L",4,1)
+    c.ops[0xA6] = gen_alu("AND","A","(HL)",8,1)
+    c.ops[0xE6] = gen_alu("AND","A","n",8,2)
+
+    c.ops[0xB7] = gen_alu("OR","A","A",4,1)
+    c.ops[0xB0] = gen_alu("OR","A","B",4,1)
+    c.ops[0xB1] = gen_alu("OR","A","C",4,1)
+    c.ops[0xB2] = gen_alu("OR","A","D",4,1)
+    c.ops[0xB3] = gen_alu("OR","A","E",4,1)
+    c.ops[0xB4] = gen_alu("OR","A","H",4,1)
+    c.ops[0xB5] = gen_alu("OR","A","L",4,1)
+    c.ops[0xB6] = gen_alu("OR","A","(HL)",8,1)
+    c.ops[0xF6] = gen_alu("OR","A","n",8,2)
+
+    c.ops[0xAF] = gen_alu("XOR","A","A",4,1)
+    c.ops[0xA8] = gen_alu("XOR","A","B",4,1)
+    c.ops[0xA9] = gen_alu("XOR","A","C",4,1)
+    c.ops[0xAA] = gen_alu("XOR","A","D",4,1)
+    c.ops[0xAB] = gen_alu("XOR","A","E",4,1)
+    c.ops[0xAC] = gen_alu("XOR","A","H",4,1)
+    c.ops[0xAD] = gen_alu("XOR","A","L",4,1)
+    c.ops[0xAE] = gen_alu("XOR","A","(HL)",8,1)
+    c.ops[0xEE] = gen_alu("XOR","A","n",8,2)
+    
+    c.ops[0xBF] = gen_alu("CP","A","A",4,1)
+    c.ops[0xB8] = gen_alu("CP","A","B",4,1)
+    c.ops[0xB9] = gen_alu("CP","A","C",4,1)
+    c.ops[0xBA] = gen_alu("CP","A","D",4,1)
+    c.ops[0xBB] = gen_alu("CP","A","E",4,1)
+    c.ops[0xBC] = gen_alu("CP","A","H",4,1)
+    c.ops[0xBD] = gen_alu("CP","A","L",4,1)
+    c.ops[0xBE] = gen_alu("CP","A","(HL)",8,1)
+    c.ops[0xFE] = gen_alu("CP","A","n",8,2)
+    
+    c.ops[0x3D] = gen_alu("DEC","A","",4,1)
+    c.ops[0x05] = gen_alu("DEC","B","",4,1)
+    c.ops[0x0D] = gen_alu("DEC","C","",4,1)
+    c.ops[0x15] = gen_alu("DEC","D","",4,1)
+    c.ops[0x1D] = gen_alu("DEC","E","",4,1)
+    c.ops[0x25] = gen_alu("DEC","H","",4,1)
+    c.ops[0x2D] = gen_alu("DEC","L","",4,1)
+    c.ops[0x35] = gen_alu("DEC","(HL)","",12,1)
+    
+
+    
+    c.ops[0x3c] = gen_alu("INC","A","",4,1)
+    c.ops[0x04] = gen_alu("INC","B","",4,1)
+    c.ops[0x0c] = gen_alu("INC","C","",4,1)
+    c.ops[0x14] = gen_alu("INC","D","",4,1)
+    c.ops[0x1c] = gen_alu("INC","E","",4,1)
+    c.ops[0x24] = gen_alu("INC","H","",4,1)
+    c.ops[0x2c] = gen_alu("INC","L","",4,1)
+    c.ops[0x34] = gen_alu("INC","(HL)","",12,1)
+    
+
+    
 
     return c
 }
