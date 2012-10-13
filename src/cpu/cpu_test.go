@@ -93,7 +93,7 @@ func TestLD_A_HLI(T *testing.T){
     c.mmu.write_b(0xffee,0xff)
     c.ops[0x2a](c) //LD A,(HLD)
     
-   if (c.reg8["A"] !=0xff && c.reg8["H"] != 0x0 || c.reg8["L"] != 0xEE) {
+   if (c.reg8["A"] !=0xff && c.reg8["H"] != 0x0 || c.reg8["L"] != 0xEF) {
         T.Error("Fail for LD A,(HLI)",c.reg8)
     }
     
@@ -103,8 +103,8 @@ func TestLD_A_HLI(T *testing.T){
     c.mmu.write_b(0x00ee,0xff)
     c.ops[0x2a](c) //LD A,(HLD)
     
-   if (c.reg8["A"] !=0xff || c.reg8["H"] != 0 || c.reg8["L"] != 0xED) {
-        T.Error("Fail for LD A,(HLI)",c.reg8)
+   if (c.reg8["A"] !=0xff || c.reg8["H"] != 0 || c.reg8["L"] != 0xEF) {
+        T.Error("Fail for LD A,(HLI)",c.reg8)   
    }
    c.reg8["H"] = 0x0
    c.reg8["L"] = 0x0
@@ -136,8 +136,8 @@ func TestLD_A_HLD(T *testing.T){
     c.mmu.write_b(0xffee,0xff)
     c.ops[0x3a](c) //LD A,(HLD)
     
-   if (c.reg8["A"] !=0xff || c.reg8["H"] != 0xfe || c.reg8["L"] != 0xEE) {
-        T.Error("Fail for LD A,(HLI)",c.reg8)
+   if (c.reg8["A"] !=0xff || c.reg8["L"]!=0xED) {
+        T.Error("Fail for LD A,(HLD)",c.reg8)
     }
     
     c.reg8["H"] = 0x0
@@ -162,7 +162,7 @@ func TestLD_A_HLD(T *testing.T){
    c.reg8["A"] = 4
    c.ops[0x32](c) //LD (HLD),A
 
-   if (c.mmu.read_b(0xff00) != 4 || c.reg8["H"] == 0xfe) {
+   if (c.mmu.read_b(0xff00) != 4 || c.reg8["H"] != 0xfE) {
         T.Error("Fail for LD A,(HLI)",c.reg8)
    }
     
@@ -596,11 +596,12 @@ func Test_INC_DEC(T *testing.T){
             T.Error("Fail for DEC B",c.reg8)
         }
 
-    c.ops[0x05](c)
-    c.ops[0x05](c)
-
-    if  c.reg8["B"] != 0xff  {
-            T.Error("Fail for DEC B",c.reg8)
+    
+    c.reg8["H"] = 0xff
+    c.reg8["L"] = 0x00
+    c.ops[0x23](c)    
+    if  c.reg8["L"] != 0x1  {
+            T.Error("Fail for INC HL",c.reg8)
         }
 
 

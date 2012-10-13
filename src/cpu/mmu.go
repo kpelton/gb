@@ -14,8 +14,7 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 }
 
 func (m *MMU)read_w(addr uint16) (uint16) {
-    return uint16(m.mem[addr+1]) <<8 | uint16(m.mem[addr])  
-   
+    return uint16(m.read_b(addr)) + uint16((m.read_b(addr+1))) << 8
 }
 
 func (m *MMU)write_b(addr uint16,val uint8) () {
