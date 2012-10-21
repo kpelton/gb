@@ -561,8 +561,9 @@ func Test_PUSH(T *testing.T){
 
     
     for c.reg16["SP"]>0 {
-        c.ops[0xE5](c) //LD A,(nn)   
-   if  (c.mmu.read_w(c.reg16["SP"]+2) != 0xdead)  {
+        c.ops[0xE5](c) //LD A,(nn)  
+   if  (c.mmu.read_w(c.reg16["SP"]) != 0xdead)  {
+        c.Print_dump()
         T.Error("Fail for PUSH HL",c.reg16,c.mmu.read_w(c.reg16["SP"]+2))
     } 
 }
@@ -570,7 +571,9 @@ func Test_PUSH(T *testing.T){
         c.ops[0xC1](c) //LD A,(nn) 
         c.reg8["B"] = 0
         c.reg8["C"] = 0
+        c.Print_dump()
    if  (c.reg8["B"] ==  0xde && c.reg8["B"] ==  0xad)  {
+        c.Print_dump()
         T.Error("Fail for POP BC",c.reg16,c.mmu.read_w(c.reg16["SP"]-2))
     } 
 
@@ -597,11 +600,12 @@ func Test_INC_DEC(T *testing.T){
         }
 
     
-    c.reg8["H"] = 0xff
-    c.reg8["L"] = 0x00
-    c.ops[0x23](c)    
-    if  c.reg8["L"] != 0x1  {
-            T.Error("Fail for INC HL",c.reg8)
+    c.reg8["D"] = 0x33
+    c.reg8["E"] = 0x01
+    c.ops[0x13](c)    
+    if  c.reg8["E"] != 0x2  {
+               c.Print_dump()
+            T.Error("Fail for INC DE")
         }
 
 
