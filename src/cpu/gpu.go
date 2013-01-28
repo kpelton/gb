@@ -28,21 +28,10 @@ func (s *Screen) initSDL() () {
     s.screen = sdl.SetVideoMode(160, 144, 32, sdl.RESIZABLE)
     
 
-			println("Couldn't open Joystick!")
-
 
 	if s.screen == nil {
 		fmt.Println(sdl.GetError())
 	}
-
-
-	var video_info = sdl.GetVideoInfo()
-
-	fmt.Println("HW_available = ", video_info.HW_available)
-	fmt.Println("WM_available = ", video_info.WM_available)
-	fmt.Println("Video_mem = ", video_info.Video_mem, "kb")
-
-	sdl.EnableUNICODE(1)
 
 	sdl.WM_SetCaption("Monko's Gameboy", "")
     
@@ -144,7 +133,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
     var tile uint16
     
     //Bit3 Tile map base
-    if (g.LCDC & 0x8 == 0x10) {
+    if (g.LCDC & 0x40 == 0x40) {
         map_base = 0x9c00
         map_limit = 0x9fff
     } else {
@@ -159,8 +148,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
         tile_base = 0x8800
         //tile_limit = 0x97FF
     }
-    fmt.Printf("\nmap_base:0x%X\n",map_base)
-    fmt.Printf("tile_base:0x%X\n",tile_base)
+
    
     i:=0
     j:=0
@@ -189,7 +177,7 @@ func (g *GPU) print_tile_line(line uint,) {
             //fmt.Println(i,map_line,j,tile_line)
             switch (g.tmap[i][map_line][j][tile_line]) {
                 case 0:
-                    g.screen.PutPixel(int16(x),int16(line),uint32(0))
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0xff))
 
                 case 1:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
@@ -210,16 +198,27 @@ func (g *GPU) print_tile_line(line uint,) {
 }
 func (g *GPU) print_tile_map(m *MMU) {
   
-   
+
+    if (g.LY==0) {m.gpu.get_tile_map(m)}
+        //fmt.Println(g.tmap)
     
-    m.gpu.get_tile_map(m)
-    //fmt.Println(g.tmap)
-    for i:=0; i<144; i++ {
-        g.print_tile_line(uint(i))
+        g.print_tile_line(uint(g.LY))
         g.LY++
 
-    }
-            g.screen.screen.Flip()
+        
+    if (g.LY==153) {
+		g.LY=0
+	
+		m.write_b(0xffff,m.read_b(0xffff)|0x01)  
+		g.screen.screen.Flip()
+
+	}
+
+        //fmt.Println(g.LY)
+
+       //m.write_b(0xff0f,0x02)  
+       //g.screen.screen.Flip()
+
 
 }
    

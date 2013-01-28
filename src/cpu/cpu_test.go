@@ -316,7 +316,7 @@ func TestMMU(T *testing.T){
     if c.mmu.mem[0xff01] != 0x11 {
         T.Error("Fail MMU read_w(upper) exepcted 0x11 got:",c.mmu.mem[0xff00]  )
     }
-    if c.mmu.mem[0x0000] != 0x11 {
+    if c.mmu.read_b(0x0000) != 0x11 {
         T.Error("Fail MMU read_b: expected 0x11 got",c.mmu.mem[0x0000]  )
     }
     
@@ -426,9 +426,9 @@ func TestLD_SP_n(T *testing.T){
     c.mmu.write_w(0xff,0x2211)
     c.reg16["SP"] =1
 
-    c.ops[0xf8](c) //LD A,(nn)
+    c.ops[0xf8](c) //LD SP_nn
 
-    if (c.reg8["L"]!=124 || c.reg16["SP"]!=125) {
+    if (c.reg16["SP"]!=124) {
         T.Error("Fail for LD SP,nn",c.reg16,c.reg8)
     }
     c.mmu.write_b(c.reg16["PC"]+1,0xfb)

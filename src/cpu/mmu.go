@@ -4,14 +4,19 @@ import "fmt"
 type MMU struct {
 
     mem [0x10000]uint8
+    cart [0x8000]uint8
     vm  [0x2000] uint8
-    gpu *GPU 
+    gpu *GPU
+    inbios bool
 }
 func NewMMU(gpu *GPU )(*MMU) {
     m :=new(MMU)
     m.gpu = gpu
+    m.inbios = false
     return m
 }
+
+
 func (m *MMU) Dump_vm() {
     j:=0;
     fmt.Printf("\n0x8000:")
@@ -31,6 +36,7 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
     switch (addr) {
         case 0xff40:
             m.gpu.LCDC = val
+		//fmt.Printf("VAL:%04X\n",val)
         case 0xff41:
             m.gpu.STAT = val
         case 0xff42:
@@ -49,8 +55,12 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
     switch (addr) {
         case 0xff40:
             val= m.gpu.LCDC
+			//	fmt.Printf("RVAL:%04X\n",val)
+
         case 0xff41:
             val=m.gpu.STAT
+			//	fmt.Printf("RVAL:%04X\n",val)
+
         case 0xff42:
             val=m.gpu.SCY
         case 0xff43:
@@ -59,6 +69,7 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
             val=m.gpu.LY
         case 0xff45:
             val=m.gpu.LYC
+
     }
 
     return val
@@ -67,6 +78,11 @@ func (m *MMU)read_b(addr uint16) (uint8) {
     
     if  addr >= 0x8000 && addr < 0xa000  {
         return m.vm[addr & 0x1fff]  
+    } else if addr >= 0x100 && addr <= 0x8000  {
+        return m.cart[addr]  
+    }else if addr <= 0x100 && !m.inbios {
+        return m.cart[addr]  
+
     } else if addr >= 0xff40 && addr < 0xff46{
         return m.read_mmio(addr)      
     }
@@ -84,9 +100,16 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
     if addr >= 0x8000 && addr < 0xA000{
         m.vm[addr & 0x1fff] = val
         //fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
-
+        
+   
             m.vm[addr & 0x1fff] = val
         return
+    }else if addr >=0x100 && addr <= 0x8000 {
+        m.cart[addr] =val
+        return 
+    }else if addr <= 0x100 && !m.inbios{      
+       m.cart[addr] = val
+        return 
     } else if addr >= 0xff40 && addr < 0xff46{
         m.write_mmio(addr,val)
         return      
