@@ -148,8 +148,10 @@ func (g *GPU) get_tile_map(m *MMU)  {
         tile_base = 0x8800
         //tile_limit = 0x97FF
     }
-
    
+        
+
+
     i:=0
     j:=0
     for offset:=map_base; offset<=map_limit; offset++ {
@@ -184,7 +186,7 @@ func (g *GPU) print_tile_line(line uint,) {
                 case 2:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0x606060))
                 case 3:
-                    g.screen.PutPixel(int16(x),int16(line),uint32(0xff00000))
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x00ff000))
             
             }
             j++
