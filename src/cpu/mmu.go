@@ -20,8 +20,8 @@ func NewMMU(gpu *GPU )(*MMU) {
 func (m *MMU) Dump_mem() {
     j:=0;
     fmt.Printf("\n0x0000:")
-    for i:=0; i<0x2000; i++ {
-        fmt.Printf("%02X ",m.cart[i])
+    for i:=0x8000; i<0xafff; i++ {
+        fmt.Printf("%02X ",m.vm[i])
         j++
         if j==16 {
             fmt.Printf("\n0x%04X:",i+1+0x0000)
@@ -34,7 +34,7 @@ func (m *MMU) Dump_mem() {
 func (m *MMU) Dump_vm() {
     j:=0;
     fmt.Printf("\n0x8000:")
-    for i:=0; i<0x2000; i++ {
+    for i:=0x0000; i<0x20000; i++ {
         fmt.Printf("%02X ",m.vm[i])
         j++
         if j==16 {
@@ -121,7 +121,12 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 
     } else if addr >= 0xff40 && addr < 0xff46{
         return m.read_mmio(addr)      
+    
+	//shadow ram
+	}else if addr >= 0xe000 && addr <= 0xfe00{
+		    return m.mem[addr-0x1000]    
     }
+	
     return m.mem[addr]
     
 
@@ -148,8 +153,14 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
         return 
     } else if addr >= 0xff40 && addr < 0xff46{
         m.write_mmio(addr,val)
-        return      
-    }   
+        return
+		//shadow ram
+    }  else if addr >= 0xe000 && addr <= 0xfe00{
+		m.write_mmio(addr-0x1000,val)
+		return
+
+    } 
+	
 
 
     

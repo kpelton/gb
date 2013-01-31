@@ -69,7 +69,7 @@ func (c *CPU) set_br(addr uint16) {
 	if c.reg16["PC"] == addr {
 		fmt.Printf("Hit break at 0x%04x\n", addr)
 		c.Print_dump()
-		c.mmu.Dump_mem()
+		c.mmu.Dump_vm()
 		c.gpu.print_tile_map(c.mmu)
 		os.Exit(1)
 	}
@@ -96,7 +96,7 @@ func (c *CPU) load_bios() {
 	for i := 0; i < n; i++ {
 		c.mmu.write_b(uint16(i), buf[i])
 	}
-	c.mmu.write_b(0xff00, 0xff);
+	//c.mmu.write_b(0xff00, 0xff);
 }
 
 func (c *CPU) Exec() {
@@ -109,14 +109,15 @@ func (c *CPU) Exec() {
 	
 	for {
 	
-		c.mmu.write_b(0xff00, 0x10);
+	//	c.mmu.write_b(0xff00, 0x10);
 
 		op = uint16(c.mmu.read_w(c.reg16["PC"]))
-		if !c.mmu.inbios {
-			
-				fmt.Printf("PC:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"],c.reg8["FL_N"],c.reg8["EI"]);
+			if !c.mmu.inbios {
+ //FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n			
+			fmt.Printf("PC:%04x A:%02x B:%02x C:%02x D:%02x E:%02x  F:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["F"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"],c.reg8["FL_N"],c.reg8["EI"]);
+		//	fmt.Printf("PC:%04x A:%04x B:%04x C:%04x D:%04x E:%04x H:%04x L:%04x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"]);
 		}
-		//c.set_br(0xe9)
+	
 		if op&0x00ff != 0xcb {
 			op &= 0xff
 
@@ -132,14 +133,15 @@ func (c *CPU) Exec() {
 			value(c)
 		} else {
 			fmt.Printf("Undefined OP:0x%04X\n", op)
+			c.mmu.Dump_vm()
 			os.Exit(1)
 		}
 
-		val := c.mmu.read_b(0xffff)
+		val := c.mmu.read_b(0xff0f)
 	
 
 	elapsed := time.Since(start)
-		if  elapsed >= 300*time.Microsecond {
+		if  elapsed >= 530*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 
@@ -150,18 +152,20 @@ func (c *CPU) Exec() {
 			//fmt.Println("VAL",val)
 			if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8["EI"] == 1  {
 				fmt.Println("INT")
-				c.mmu.write_b(0xffff,0)
-				c.mmu.write_b(0xff0f,1)
-				f(c) //push pc on stak
+			c.reg8["EI"] = 0
+			//	c.mmu.write_b(0xffff,0)
+		//	c.mmu.write_b(0xff0f,0)
+				f(c) //push pc on stack
 
 				c.reg16["PC"] = 0x40
 			
 			} 
 			if     !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
-				fmt.Println("INT")
-				c.mmu.write_b(0xffff,0)
-				c.mmu.write_b(0xff0f,1)
-				f(c) //push pc on stak
+			//	fmt.Println("INT")
+				//c.mmu.write_b(0xffff,0)
+			//	c.mmu.write_b(0xff0f,1)
+				
+			//	f(c) //push pc on stak
 
 				c.reg16["PC"] = 0x48
 			
@@ -174,6 +178,7 @@ func (c *CPU) Exec() {
 		}
 		if c.mmu.inbios && c.reg16["PC"] >= 0xfa {
 			c.mmu.inbios = false
+			c.reg16["PC"]=0x100
 			//os.Exit(1)
 			//fmt.Println("A")
 		}
@@ -198,7 +203,6 @@ func get_ld_type(arg string) int {
 		arg_type = reghld
 	case (arg == "(PC)" || arg == "(SP)"):
 		arg_type = memreg16
-
 	case arg == "(HLI)":
 		arg_type = reghli
 	case arg == "(LDH)":
@@ -235,7 +239,7 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
 	if !c.mmu.inbios   {
-	fmt.Printf("%s\n",desc)
+//	fmt.Printf("%s\n",desc)
 	//fmt.Printf("PC:%04",c.reg16["PC"])
     //c.Print_dump()
 	}	
@@ -739,6 +743,7 @@ func gen_ret(left string, skip_flag uint8, mask uint8, val uint8) Action {
 
 	lambda := func(c *CPU) {
 		if skip_flag == 1 || c.reg8[reg] == 1 {
+			fmt.Println("RETURNING","z",c.reg8[reg])
 			val := f_get_val(c)
 			//fmt.Println(val)
 			f_set_val(c, val)
@@ -879,6 +884,21 @@ func gen_rotate_shift(left string, reg_right string, ticks uint16, args uint16) 
 	 case "SCF":
 		lambda = func(c *CPU) {
 		c.reg8["FL_C"] = 1	
+	    c.do_instr(desc, ticks, args)
+
+
+		
+		}
+
+	case "CCF":
+		lambda = func(c *CPU) {
+			if (c.reg8["FL_C"] == 1) {
+
+				c.reg8["FL_C"] = 0
+			}else {
+
+				c.reg8["FL_C"] = 1
+			}
 	    c.do_instr(desc, ticks, args)
 
 
@@ -1486,10 +1506,18 @@ func BuildCpu() *CPU {
 	c.ops[0xCB15] = gen_rotate_shift("RL", "L", 8, 2)
 	c.ops[0xCB16] = gen_rotate_shift("RL", "(HL)", 16, 2)
 	//c.ops[0xCB19]  = gen_rotate_shift("RR" ,"c",8,2)
-	//WRONG
+
 
 	//WRONG
-	c.ops[0x0F] = gen_rotate_shift("RRC", "A", 8, 2)
+	c.ops[0x0f] = gen_rotate_shift("RRCA", "A", 8, 1) 
+	c.ops[0xCB0f] = gen_rotate_shift("RRC", "A", 8, 2) 
+	c.ops[0xCB08] = gen_rotate_shift("RRC", "B", 8, 2) 
+	c.ops[0xCB09] = gen_rotate_shift("RRC", "C", 8, 2) 
+	c.ops[0xCB0A] = gen_rotate_shift("RRC", "D", 8, 2) 
+	c.ops[0xCB0B] = gen_rotate_shift("RRC", "E", 8, 2) 
+	c.ops[0xCB0C] = gen_rotate_shift("RRC", "H", 8, 2) 
+	c.ops[0xCB0D] = gen_rotate_shift("RRC", "L", 8, 2) 
+	c.ops[0xCB0E] = gen_rotate_shift("RRC", "(HL)", 16, 2) 
 
 
 	c.ops[0x1F] = gen_rotate_shift("RR", "A", 8, 1) 
@@ -1511,6 +1539,15 @@ func BuildCpu() *CPU {
 	c.ops[0xCB24] = gen_rotate_shift("SLA", "H", 8, 2) 
 	c.ops[0xCB25] = gen_rotate_shift("SLA", "L", 8, 2) 
 	c.ops[0xCB26] = gen_rotate_shift("SLA", "(HL)", 16, 2) 
+
+	c.ops[0xCB07] = gen_rotate_shift("RLC", "A", 8, 2) 
+	c.ops[0xCB00] = gen_rotate_shift("RLC", "B", 8, 2) 
+	c.ops[0xCB01] = gen_rotate_shift("RLC", "C", 8, 2) 
+	c.ops[0xCB02] = gen_rotate_shift("RLC", "D", 8, 2) 
+	c.ops[0xCB03] = gen_rotate_shift("RLC", "E", 8, 2) 
+	c.ops[0xCB04] = gen_rotate_shift("RLC", "H", 8, 2) 
+	c.ops[0xCB05] = gen_rotate_shift("RLC", "L", 8, 2) 
+	c.ops[0xCB06] = gen_rotate_shift("RLC", "(HL)", 16, 2) 
 
 
 	c.ops[0xCB2F] = gen_rotate_shift("SRA", "A", 8, 2) 
@@ -1595,15 +1632,22 @@ func BuildCpu() *CPU {
 	f := gen_push_pop("PUSH", "PC")
 
 	c.ops[0xEF] = func(c *CPU) { f(c); c.reg16["PC"] = 0x28 }
-	c.ops[0xCF] = func(c *CPU) { f(c); c.reg16["PC"] = 0x08 }
+	//c.ops[0xCF] = func(c *CPU) { f(c); c.reg16["PC"] = Ox08 }
+
+
 	c.ops[0xDF] = func(c *CPU) { f(c); c.reg16["PC"] = 0x16 }
-	//c.ops[0xDF] = func(c *CPU) { f(c); c.reg16["PC"] += 0x16 }
+
+	c.ops[0xDF] = func(c *CPU) { f(c); c.reg16["PC"] += 0x16 }
 	c.ops[0xc7] = func(c *CPU) { f(c); c.reg16["PC"] = 0 }
+	c.ops[0xe7] = func(c *CPU) { f(c); c.reg16["PC"] = 0x20 }
 
 c.ops[0xFF] = func(c *CPU) { f(c); c.reg16["PC"] += 0x38 }
-/*
+
 	c.ops[0x76] = func(c *CPU) { c.do_instr("HALT", 4, 0) }
 	c.ops[0x37] =  gen_rotate_shift("SCF", "A", 4, 1)
-*/
+	c.ops[0x3f] =  gen_rotate_shift("CCF", "A", 4, 1)
+
+	c.ops[0x27] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
+
 	return c
 }

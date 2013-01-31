@@ -54,6 +54,7 @@ func (s*Screen) DrawLoop() {
 
 type GPU struct {
     screen *Screen
+	t_screen *Screen
     LCDC uint8
     STAT uint8
     SCY uint8
@@ -72,6 +73,9 @@ type GPU struct {
 func newGPU() *GPU {
     g := new(GPU)
     g.screen = newScreen()
+	g.t_screen = newScreen()
+ 
+
     return g
 }
 
@@ -169,17 +173,17 @@ func (g *GPU) get_tile_map(m *MMU)  {
         w_map_limit = 0x9Bff
     }
 
-
  
 		for offset:=map_base; offset<=map_limit; offset++ {
 			b:=m.read_b(offset)
 		
 	    if tile_base == 0x8800 { 
 			//signed case
+
 			if b > 127 {
 				b -= 128
 			} else {
-				b+=127
+				b+=128
 			}
 			
 
@@ -270,7 +274,6 @@ func (g *GPU) print_tile_line_w(line uint,) {
         
         for j<8 {
             switch (g.w_tmap[i][map_line][j][tile_line]) {
-            
 
                 case 1:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
@@ -294,7 +297,6 @@ func (g *GPU) print_tile_map(m *MMU) {
 
     if (g.LY==0) {m.gpu.get_tile_map(m)}
         //fmt.Println(g.tmap)
-      
         g.print_tile_line(uint(g.LY))
 		if (g.LCDC & 0x10 == 0x10){
 		
@@ -308,6 +310,7 @@ func (g *GPU) print_tile_map(m *MMU) {
 	if g.LY == g.LYC {
 		//set coincidenct flag
 		g.STAT |= 0x2
+		m.write_b(0xff0f,m.read_b(0xff0f)|0x02)  
 
 	}else{
 		//reset the flag
@@ -315,16 +318,19 @@ func (g *GPU) print_tile_map(m *MMU) {
 
 	}
         
-    if (g.LY==143) {
+    if (g.LY==153) {
 		//V-BLANK
 		g.STAT |= 0x017
-		m.write_b(0xffff,m.read_b(0xffff)|0x01)  
+		m.write_b(0xff0f,m.read_b(0xff0f)|0x01)  
 		g.screen.screen.Flip()
+		g.t_screen.screen.Flip()
+
+		g.LY=0
 
 	}
-	 if (g.LY==153) {
-		g.LY=0
-	}
+	// if (g.LY==153) {
+//		g.LY=0
+//	}
         
 
        //m.write_b(0xff0f,0x02)  
