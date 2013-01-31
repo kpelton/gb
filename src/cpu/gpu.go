@@ -60,8 +60,12 @@ type GPU struct {
     SCX uint8
     LYC uint8
     LY uint8
+	WX uint8
+    WY uint8
+
     currline uint8
-    tmap TileMap
+    bg_tmap TileMap
+	w_tmap TileMap
     
 }
 
@@ -126,14 +130,17 @@ func (g *GPU) get_tile_map(m *MMU)  {
 
     var map_base uint16
     var map_limit uint16
-
+	var w_map_base uint16
+	var w_map_limit uint16
+	var i int
+	var j int
     var tile_base uint16
     //var tile_limit uint16
 
     var tile uint16
     
     //Bit3 Tile map base
-    if (g.LCDC & 0x40 == 0x40) {
+    if (g.LCDC & 0x08 == 0x08) {
         map_base = 0x9c00
         map_limit = 0x9fff
     } else {
@@ -141,30 +148,86 @@ func (g *GPU) get_tile_map(m *MMU)  {
         map_limit = 0x9Bff
     }
     //Bit4 Tile data select
-    if (g.LCDC & 0x10 == 0x10) {
+		if (g.LCDC & 0x10 == 0x10) {
         tile_base = 0x8000
+
         //tile_limit = 0x8FFF
     } else {
         tile_base = 0x8800
+		fmt.Println("!!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!\n")
+		fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
         //tile_limit = 0x97FF
     }
-
-       
-
-
-    i:=0
-    j:=0
-    for offset:=map_base; offset<=map_limit; offset++ {
-        b:=m.read_b(offset)
-        //only handles simple case
-        tile = tile_base+(uint16(b)*16)
-        g.tmap[i][j] =g.get_tile_val(m,tile)
-        i++
-        if i == 32 {
-            i=0
-            j++
-        }
+	
+    //Bit3 Tile map base
+    if (g.LCDC & 0x40 == 0x40) {
+        w_map_base = 0x9c00
+        w_map_limit = 0x9fff
+		fmt.Println("x")
+    } else {
+        w_map_base = 0x9800
+        w_map_limit = 0x9Bff
     }
+
+
+ 
+		for offset:=map_base; offset<=map_limit; offset++ {
+			b:=m.read_b(offset)
+		
+	    if tile_base == 0x8800 { 
+			//signed case
+			if b > 127 {
+				b -= 128
+			} else {
+				b+=127
+			}
+			
+
+			tile = tile_base+(uint16((b)*16))
+		}else {
+			
+			//unsigned
+
+			tile = tile_base+(uint16(b)*16)
+		}			
+			g.bg_tmap[i][j] =g.get_tile_val(m,tile)
+
+			i++
+			if i == 32 {
+				i=0
+				j++
+			}
+		}
+		
+	i= 0
+	j=0
+	if (g.LCDC & 0x10 == 0x10){
+
+	
+	for offset:=w_map_base; offset<=w_map_limit; offset++ {
+		b:=m.read_b(offset)
+			 if tile_base == 0x8800 { 
+			//signed case
+			if b > 127 {
+				b -= 128
+			} else {
+				b+=127
+			}
+			
+			tile = tile_base+(uint16((b)*16))
+		}else {
+			
+			//unsigned
+			tile = tile_base+(uint16(b)*16)
+		}		
+		g.w_tmap[i][j] =g.get_tile_val(m,tile)
+		i++
+		if i == 32 {
+			i=0
+			j++
+		}
+	}	
+}
 
 }
 
@@ -177,9 +240,37 @@ func (g *GPU) print_tile_line(line uint,) {
         
         for j<8 {
             //fmt.Println(i,map_line,j,tile_line)
-            switch (g.tmap[i][map_line][j][tile_line]) {
+            switch (g.bg_tmap[i][map_line][j][tile_line]) {
                 case 0:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0xff))
+
+                case 1:
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
+                case 2:
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x606060))
+                case 3:
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x00ff000))
+            
+            }
+            j++
+           x++
+        }
+         j=0
+         i=(1+i) &31
+        
+    }    
+
+}
+func (g *GPU) print_tile_line_w(line uint,) {
+    tile_line := (uint8(line)+g.WY) & 7
+    map_line := (uint8(line)+g.WX) >>3 
+    j:=g.WX &7
+    i:= g.WX >>3
+    for x:=0; x<160; {
+        
+        for j<8 {
+            switch (g.w_tmap[i][map_line][j][tile_line]) {
+            
 
                 case 1:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
@@ -203,20 +294,38 @@ func (g *GPU) print_tile_map(m *MMU) {
 
     if (g.LY==0) {m.gpu.get_tile_map(m)}
         //fmt.Println(g.tmap)
-    
+      
         g.print_tile_line(uint(g.LY))
-        g.LY++
-
-        
-    if (g.LY==153) {
-		g.LY=0
+		if (g.LCDC & 0x10 == 0x10){
+		
+	    g.print_tile_line_w(uint(g.LY))
+		//H-BLANK
+		g.STAT= 0x00
+		
+	}
 	
+        g.LY++
+	if g.LY == g.LYC {
+		//set coincidenct flag
+		g.STAT |= 0x2
+
+	}else{
+		//reset the flag
+		g.STAT &= 0xfd
+
+	}
+        
+    if (g.LY==143) {
+		//V-BLANK
+		g.STAT |= 0x017
 		m.write_b(0xffff,m.read_b(0xffff)|0x01)  
 		g.screen.screen.Flip()
 
 	}
-
-        //fmt.Println(g.LY)
+	 if (g.LY==153) {
+		g.LY=0
+	}
+        
 
        //m.write_b(0xff0f,0x02)  
        //g.screen.screen.Flip()

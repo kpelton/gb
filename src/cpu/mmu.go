@@ -13,7 +13,8 @@ func NewMMU(gpu *GPU )(*MMU) {
     m :=new(MMU)
     m.gpu = gpu
     m.inbios = false
-    return m
+    m.write_b(0xff00,0x10)
+	return m
 }
 
 func (m *MMU) Dump_mem() {
@@ -50,8 +51,12 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff40:
             m.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
+			fmt.Printf("->LCDC:%04X\n",val)
+
         case 0xff41:
             m.gpu.STAT = val
+			fmt.Printf("->STAT:%04X\n",val)
+
         case 0xff42:
             m.gpu.SCY = val
         case 0xff43:
@@ -60,6 +65,15 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
             m.gpu.LY = val
         case 0xff45:
             m.gpu.LYC = val
+			//fmt.Printf("->LYC:%04X\n",val)
+
+		case 0xff4A:
+            m.gpu.WY = val
+			fmt.Printf("->WY:%04X\n",val)
+		case 0xff4B:
+			fmt.Printf("->WX:%04X\n",val)
+            m.gpu.WX = val
+		
     }
 
 }
@@ -68,11 +82,11 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
     switch (addr) {
         case 0xff40:
             val= m.gpu.LCDC
-			//	fmt.Printf("RVAL:%04X\n",val)
+				fmt.Printf("<-LCDC:%04X\n",val)
 
         case 0xff41:
             val=m.gpu.STAT
-			//	fmt.Printf("RVAL:%04X\n",val)
+				fmt.Printf("<-STAT:%04X\n",val)
 
         case 0xff42:
             val=m.gpu.SCY
@@ -82,6 +96,14 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
             val=m.gpu.LY
         case 0xff45:
             val=m.gpu.LYC
+			//fmt.Printf("->LYC:%04X\n",val)
+
+		case 0xff4A:
+            val = m.gpu.WY 
+			fmt.Printf("->WY:%04X\n",val)
+		case 0xff4B:
+			fmt.Printf("->WX:%04X\n",val)
+            val = m.gpu.WX
 
     }
 
@@ -113,7 +135,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
 
     if addr >= 0x8000 && addr < 0xA000{
         m.vm[addr & 0x1fff] = val
-        //fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
+        fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
         
             m.vm[addr & 0x1fff] = val
         return

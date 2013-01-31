@@ -96,7 +96,7 @@ func (c *CPU) load_bios() {
 	for i := 0; i < n; i++ {
 		c.mmu.write_b(uint16(i), buf[i])
 	}
-	//c.mmu.write_b(0xff00, 0xff);
+	c.mmu.write_b(0xff00, 0xff);
 }
 
 func (c *CPU) Exec() {
@@ -108,10 +108,13 @@ func (c *CPU) Exec() {
 	var calls = make(OpCall)
 	
 	for {
+	
+		c.mmu.write_b(0xff00, 0x10);
 
 		op = uint16(c.mmu.read_w(c.reg16["PC"]))
 		if !c.mmu.inbios {
-			fmt.Printf("PC:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"],c.reg8["FL_N"],c.reg8["EI"]);
+			
+				fmt.Printf("PC:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"],c.reg8["FL_N"],c.reg8["EI"]);
 		}
 		//c.set_br(0xe9)
 		if op&0x00ff != 0xcb {
@@ -133,26 +136,18 @@ func (c *CPU) Exec() {
 		}
 
 		val := c.mmu.read_b(0xffff)
-		if   !c.mmu.inbios && val == 0x08 &&c.reg8["EI"] == 1 {
-		sb := c.mmu.read_b(0xff02)
-		if sb != 0 {
-			fmt.Println("serial",c.mmu.read_b(0xff01))
-			f(c) //push pc on stack
-			c.reg16["PC"] = 0x58
-			continue
-		}
-		}
+	
 
 	elapsed := time.Since(start)
-		if  elapsed >= 500*time.Microsecond {
+		if  elapsed >= 300*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 
 
 		    
+
 			
-			
-			//fmt.Println("VAL"+string(val))
+			//fmt.Println("VAL",val)
 			if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8["EI"] == 1  {
 				fmt.Println("INT")
 				c.mmu.write_b(0xffff,0)
@@ -162,6 +157,17 @@ func (c *CPU) Exec() {
 				c.reg16["PC"] = 0x40
 			
 			} 
+			if     !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
+				fmt.Println("INT")
+				c.mmu.write_b(0xffff,0)
+				c.mmu.write_b(0xff0f,1)
+				f(c) //push pc on stak
+
+				c.reg16["PC"] = 0x48
+			
+			} 
+
+			
 
 			start = time.Now()
 
@@ -228,11 +234,11 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
-	//if !c.mmu.inbios   {
-	//fmt.Printf("%s\n",desc)
+	if !c.mmu.inbios   {
+	fmt.Printf("%s\n",desc)
 	//fmt.Printf("PC:%04",c.reg16["PC"])
     //c.Print_dump()
-	//}	
+	}	
 	c.reg16["PC"] += args
 
 }
@@ -361,6 +367,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 	case memnn:
 		lambda = func(c *CPU) uint16 {
 			addr := uint16(c.mmu.read_b(c.reg16["PC"]+2))<<8 | uint16(c.mmu.read_b(c.reg16["PC"]+1))
+			fmt.Printf("%04x,%04x\n",addr,c.mmu.read_w(addr))
 			return c.mmu.read_w(addr)
 		}
 	case n:
@@ -456,7 +463,6 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 
 			if (prev &0xf) <  (right &0xf)  { c.reg8["FL_H"] = 1} else { c.reg8["FL_H"] = 0}
 			if prev < right{
-				f_set_val(c, 256-(f_right_get_val(c) - f_left_get_val(c )))
 				c.reg8["FL_C"] = 1
 
 			}else { 
@@ -737,6 +743,9 @@ func gen_ret(left string, skip_flag uint8, mask uint8, val uint8) Action {
 			//fmt.Println(val)
 			f_set_val(c, val)
 			c.reg16["SP"] += 2
+			if left == "RETI" {
+				c.reg8["EI"] = 1
+			}
 			c.do_instr(left, 8, 0)
 		} else {
 			c.do_instr(left, 8, 1)
