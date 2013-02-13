@@ -4,6 +4,7 @@ import (
 	"fmt"
     "github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
     //"time"
+
 )
 
 //GPU registers
@@ -158,8 +159,8 @@ func (g *GPU) get_tile_map(m *MMU)  {
         //tile_limit = 0x8FFF
     } else {
         tile_base = 0x8800
-		fmt.Println("!!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!\n")
-		fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
+	//	fmt.Println("!!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!\n")
+	//	fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
         //tile_limit = 0x97FF
     }
 	
@@ -172,18 +173,17 @@ func (g *GPU) get_tile_map(m *MMU)  {
         w_map_base = 0x9800
         w_map_limit = 0x9Bff
     }
-
- 
+	b:=0
 		for offset:=map_base; offset<=map_limit; offset++ {
-			b:=m.read_b(offset)
-		
+//	b:=m.read_b(offset)
+		   
 	    if tile_base == 0x8800 { 
 			//signed case
 
 			if b > 127 {
-				b -= 128
-			} else {
-				b+=128
+				if n > 127 {
+					b = (^(n + 1)) & 0x00ff
+				}
 			}
 			
 
@@ -201,7 +201,8 @@ func (g *GPU) get_tile_map(m *MMU)  {
 				i=0
 				j++
 			}
-		}
+b++	
+}
 		
 	i= 0
 	j=0
@@ -236,17 +237,20 @@ func (g *GPU) get_tile_map(m *MMU)  {
 }
 
 func (g *GPU) print_tile_line(line uint,) {
-    tile_line := (uint8(line)+g.SCY) & 7
-    map_line := (uint8(line)+g.SCY) >>3 
-    j:=g.SCX &7
-    i:= g.SCX >>3
+    //tile_line := (uint8(line)+g.SCY) & 7
+  //  map_line := (uint8(line)+g.SCY) >>3 
+    tile_line := (uint8(line)) & 7
+    map_line := (uint8(line)) >>3 
+
+j:=g.SCX &7
+    i:=g.SCX >>3
     for x:=0; x<160; {
         
         for j<8 {
             //fmt.Println(i,map_line,j,tile_line)
             switch (g.bg_tmap[i][map_line][j][tile_line]) {
                 case 0:
-                    g.screen.PutPixel(int16(x),int16(line),uint32(0xff))
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x00))
 
                 case 1:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
@@ -300,7 +304,7 @@ func (g *GPU) print_tile_map(m *MMU) {
         g.print_tile_line(uint(g.LY))
 		if (g.LCDC & 0x10 == 0x10){
 		
-	    g.print_tile_line_w(uint(g.LY))
+	  //  g.print_tile_line_w(uint(g.LY))
 		//H-BLANK
 		g.STAT= 0x00
 		

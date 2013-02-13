@@ -51,11 +51,11 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff40:
             m.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
-			fmt.Printf("->LCDC:%04X\n",val)
+		//	fmt.Printf("->LCDC:%04X\n",val)
 
         case 0xff41:
             m.gpu.STAT = val
-			fmt.Printf("->STAT:%04X\n",val)
+		//	fmt.Printf("->STAT:%04X\n",val)
 
         case 0xff42:
             m.gpu.SCY = val
@@ -69,9 +69,9 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
 
 		case 0xff4A:
             m.gpu.WY = val
-			fmt.Printf("->WY:%04X\n",val)
+		//	fmt.Printf("->WY:%04X\n",val)
 		case 0xff4B:
-			fmt.Printf("->WX:%04X\n",val)
+		//	fmt.Printf("->WX:%04X\n",val)
             m.gpu.WX = val
 		
     }
@@ -82,11 +82,11 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
     switch (addr) {
         case 0xff40:
             val= m.gpu.LCDC
-				fmt.Printf("<-LCDC:%04X\n",val)
+		//		fmt.Printf("<-LCDC:%04X\n",val)
 
         case 0xff41:
             val=m.gpu.STAT
-				fmt.Printf("<-STAT:%04X\n",val)
+	//			fmt.Printf("<-STAT:%04X\n",val)
 
         case 0xff42:
             val=m.gpu.SCY
@@ -100,9 +100,9 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
 
 		case 0xff4A:
             val = m.gpu.WY 
-			fmt.Printf("->WY:%04X\n",val)
+		//	fmt.Printf("->WY:%04X\n",val)
 		case 0xff4B:
-			fmt.Printf("->WX:%04X\n",val)
+		//	fmt.Printf("->WX:%04X\n",val)
             val = m.gpu.WX
 
     }
@@ -113,7 +113,7 @@ func (m *MMU)read_b(addr uint16) (uint8) {
     
     if  addr >= 0x8000 && addr < 0xa000  {
         return m.vm[addr & 0x1fff]  
-    } else if addr >= 0x100 && addr <= 0x8000  {
+    } else if addr >= 0x100 && addr < 0x8000  {
 
         return m.cart[addr]  
     }else if addr <= 0x100 && !m.inbios {
@@ -122,10 +122,10 @@ func (m *MMU)read_b(addr uint16) (uint8) {
     } else if addr >= 0xff40 && addr < 0xff46{
         return m.read_mmio(addr)      
     
-	//shadow ram
-	}else if addr >= 0xe000 && addr <= 0xfe00{
+
+	}else if addr >= 0xe000 && addr < 0xfe00{
 		    return m.mem[addr-0x1000]    
-    }
+   }
 	
     return m.mem[addr]
     
@@ -144,7 +144,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
         
             m.vm[addr & 0x1fff] = val
         return
-    }else if addr >=0x100 && addr <= 0x8000 {
+    }else if addr >=0x100 && addr < 0x8000 {
         m.cart[addr] =val
 
         return 
@@ -154,9 +154,11 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
     } else if addr >= 0xff40 && addr < 0xff46{
         m.write_mmio(addr,val)
         return
+	
 		//shadow ram
-    }  else if addr >= 0xe000 && addr <= 0xfe00{
-		m.write_mmio(addr-0x1000,val)
+    }  else if addr >= 0xe000 && addr < 0xfe00{
+		m.mem[addr-0x1000]=val
+		fmt.Println("shadow")
 		return
 
     } 

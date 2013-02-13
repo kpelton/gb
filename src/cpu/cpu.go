@@ -80,23 +80,38 @@ func (c *CPU) load_bios() {
 	fi, err := os.Open(os.Args[1])
 	buf := make([]uint8, 0xffff)
 
-	n, err := fi.Read(buf)
+	n,err := fi.Read(buf)
 
-	if err != nil {
+	if err != nil || n ==0 {
 		panic(err)
 	}
 
 	for i := 0; i < 0x8000; i++ {
 		c.mmu.write_b(uint16(i), buf[i])
 	}
-	fi, err = os.Open("GB_BIOS.bin")
+//	fi, err = os.Open("GB_BIOS.bin")
 
-	n, err = fi.Read(buf)
-	c.mmu.inbios = true
-	for i := 0; i < n; i++ {
-		c.mmu.write_b(uint16(i), buf[i])
-	}
+//	n, err = fi.Read(buf)
+//	c.mmu.inbios = true
+//	for i := 0; i < n; i++ {
+//		c.mmu.write_b(uint16(i), buf[i])
+//	}
 	//c.mmu.write_b(0xff00, 0xff);
+
+	c.reg16["PC"] = 0x100
+	c.reg16["SP"] = 0xfffe
+	c.reg8["A"] = 0x11
+	c.reg8["B"] = 0x00
+	c.reg8["C"] = 0x13
+	c.reg8["D"] = 0x00
+	c.reg8["E"] = 0xd8
+	c.reg8["F"] = 0x90
+	c.reg8["H"] = 0x01
+	c.reg8["L"] = 0x4d
+	c.reg8["FL_Z"] = 0x1
+	c.reg8["FL_C"] = 0x1
+	c.reg8["FL_H"] = 0x0
+	c.reg8["FL_N"] = 0x0
 }
 
 func (c *CPU) Exec() {
@@ -104,7 +119,6 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 	start := time.Now()
-	f := gen_push_pop("PUSH", "PC")
 	var calls = make(OpCall)
 	
 	for {
@@ -114,8 +128,8 @@ func (c *CPU) Exec() {
 		op = uint16(c.mmu.read_w(c.reg16["PC"]))
 			if !c.mmu.inbios {
  //FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n			
-			fmt.Printf("PC:%04x A:%02x B:%02x C:%02x D:%02x E:%02x  F:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["F"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"],c.reg8["FL_N"],c.reg8["EI"]);
-		//	fmt.Printf("PC:%04x A:%04x B:%04x C:%04x D:%04x E:%04x H:%04x L:%04x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"]);
+				fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16["PC"],c.reg16["SP"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"]);
+	//	fmt.Printf("PC:%04x A:%04x B:%04x C:%04x D:%04x E:%04x H:%04x L:%04x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"]);
 		}
 	
 		if op&0x00ff != 0xcb {
@@ -141,25 +155,26 @@ func (c *CPU) Exec() {
 	
 
 	elapsed := time.Since(start)
-		if  elapsed >= 530*time.Microsecond {
+		if  elapsed >= 1000*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 
 
 		    
+		//	f := gen_push_pop("PUSH", "PC")
 
 			
-			//fmt.Println("VAL",val)
-			if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8["EI"] == 1  {
-				fmt.Println("INT")
-			c.reg8["EI"] = 0
+		//	//fmt.Println("VAL",val)
+		//	if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8["EI"] == 1  {
+			//	fmt.Println("INT")
+		//	c.reg8["EI"] = 0
 			//	c.mmu.write_b(0xffff,0)
 		//	c.mmu.write_b(0xff0f,0)
-				f(c) //push pc on stack
-
-				c.reg16["PC"] = 0x40
+			//	f(c) //push pc on stack
+//
+			//	c.reg16["PC"] = 0x40
 			
-			} 
+		//	} 
 			if     !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
 			//	fmt.Println("INT")
 				//c.mmu.write_b(0xffff,0)
@@ -167,7 +182,7 @@ func (c *CPU) Exec() {
 				
 			//	f(c) //push pc on stak
 
-				c.reg16["PC"] = 0x48
+			//	c.reg16["PC"] = 0x48
 			
 			} 
 
@@ -177,9 +192,12 @@ func (c *CPU) Exec() {
 
 		}
 		if c.mmu.inbios && c.reg16["PC"] >= 0xfa {
+			c.reg16["A"]=0x1
+			c.reg16["FL_Z"]=0x1
 			c.mmu.inbios = false
 			c.reg16["PC"]=0x100
-			//os.Exit(1)
+
+
 			//fmt.Println("A")
 		}
 		//fmt.Println(elapsed)
@@ -239,9 +257,9 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
 	if !c.mmu.inbios   {
-//	fmt.Printf("%s\n",desc)
+	//fmt.Printf("%s\n",desc)
 	//fmt.Printf("PC:%04",c.reg16["PC"])
-    //c.Print_dump()
+    //  c.Print_dump()
 	}	
 	c.reg16["PC"] += args
 
@@ -271,7 +289,8 @@ func gen_set_val(a_type int, reg string) SetVal {
 			reg_high := c.reg8[string(reg[1])]
 			reg_low := c.reg8[string(reg[2])]
 			addr := (uint16(reg_high) << 8) | uint16(reg_low)
-			c.mmu.write_w(addr, val)
+		//	fmt.Printf("0x%02x",val)
+			c.mmu.write_b(addr, uint8(val))
 		}
 
 	case memn:
@@ -287,29 +306,31 @@ func gen_set_val(a_type int, reg string) SetVal {
 			c.mmu.write_w(addr, val)
 		}
 	case reghli:
+		f:=gen_alu("INC", "HL", "", 0, 0)
 		lambda = func(c *CPU, val uint16) {
 			reg_high := c.reg8[string(reg[1])]
 			reg_low := c.reg8[string(reg[2])]
 			addr := (uint16(reg_high))<<8 | uint16(reg_low)
-			addr++
 
 			c.reg8[string(reg[1])] = uint8(addr & 0xff00 >> 8)
 			c.reg8[string(reg[2])] = uint8(addr & 0x00ff)
 			//fmt.Printf("0x%x,0x%x\n",addr,reg_low)                        
 			//fmt.Println(reg,c.reg8,addr,val)
-			c.mmu.write_b(addr-1, uint8(val))
+			c.mmu.write_b(addr, uint8(val))
+			f(c)
 		}
 	case reghld:
+		f:=gen_alu("DEC", "HL", "", 0, 0)
+
 		lambda = func(c *CPU, val uint16) {
 			reg_high := c.reg8[string(reg[1])]
 			reg_low := c.reg8[string(reg[2])]
 			addr := (uint16(reg_high))<<8 | uint16(reg_low)
-			addr--
 
 			c.reg8[string(reg[1])] = uint8(addr & 0xff00 >> 8)
 			c.reg8[string(reg[2])] = uint8(addr & 0x00ff)
-
-			c.mmu.write_b(addr+1, uint8(val))
+			f(c)
+			c.mmu.write_b(addr, uint8(val))
 		}
 	default:
 		lambda = func(c *CPU, val uint16) {
@@ -346,7 +367,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 			reg_low := c.reg8[string(reg[2])]
 			addr := (uint16(reg_high) << 8) | uint16(reg_low)
 
-			return c.mmu.read_w(addr)
+			return uint16(c.mmu.read_b(addr))
 		}
 	case reg16:
 		lambda = func(c *CPU) uint16 {
@@ -355,7 +376,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 
 	case memreg16:
 		lambda = func(c *CPU) uint16 {
-			//fmt.Println("CALLEDDD!!!")
+		//	fmt.Println("CALLEDDD!!!")
 			return c.mmu.read_w(c.reg16[reg])
 		}
 
@@ -371,7 +392,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 	case memnn:
 		lambda = func(c *CPU) uint16 {
 			addr := uint16(c.mmu.read_b(c.reg16["PC"]+2))<<8 | uint16(c.mmu.read_b(c.reg16["PC"]+1))
-			fmt.Printf("%04x,%04x\n",addr,c.mmu.read_w(addr))
+	//		fmt.Printf("%04x,%04x\n",addr,c.mmu.read_w(addr))
 			return c.mmu.read_w(addr)
 		}
 	case n:
@@ -384,6 +405,9 @@ func gen_get_val(a_type int, reg string) GetVal {
 		}
 
 	case reghld:
+		
+		f:=gen_alu("DEC", "HL", "", 0, 0)
+
 		lambda = func(c *CPU) uint16 {
 			//parse reg_right
 			reg_high := c.reg8[string(reg[1])]
@@ -391,25 +415,24 @@ func gen_get_val(a_type int, reg string) GetVal {
 
 			addr := (uint16(reg_high) << 8) | uint16(reg_low)
 
-			addr--
 			c.reg8[string(reg[1])] = uint8(addr & 0xff00 >> 8)
 			c.reg8[string(reg[2])] = uint8(addr & 0x00ff)
-
-			return uint16(c.mmu.read_w(addr + 1))
+			f(c)
+			return uint16(c.mmu.read_w(addr))
 
 		}
 
 	case reghli:
 		//parse reg_right
+		f:=gen_alu("INC", "HL", "", 0, 0)
 		lambda = func(c *CPU) uint16 {
 			reg_high := c.reg8[string(reg[1])]
 			reg_low := c.reg8[string(reg[2])]
 			addr := (uint16(reg_high) << 8) | uint16(reg_low)
-			addr++
 			c.reg8[string(reg[1])] = uint8(addr & 0xff00 >> 8)
 			c.reg8[string(reg[2])] = uint8(addr & 0x00ff)
-
-			return uint16(c.mmu.read_b(addr - 1))
+			f(c)
+			return uint16(c.mmu.read_b(addr))
 		}
 
 	}
@@ -443,7 +466,39 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 	f_set_val := gen_set_val(type_left, reg_left)
 
 	switch op_type {
+
+
 	case "ADD":
+		if reg_left == "SP" {
+			lambda = func(c *CPU) {
+				n:=f_right_get_val(c)
+				
+				if n > 127 {
+					n = (^(n-1)) & 0x00ff
+					n = -n
+				}
+			//	fmt.Println(n,f_right_get_val(c))
+				if 0xff - (f_left_get_val(c) &0x00ff) < f_right_get_val(c) {
+					c.reg8["FL_C"] = 1
+				} else {
+					c.reg8["FL_C"] = 0
+
+				}
+				if (0x000f - (f_left_get_val(c) & 0x000f) <  (f_right_get_val(c) & 0x000f)) {
+					c.reg8["FL_H"] = 1
+				} else {
+					c.reg8["FL_H"] = 0
+
+				}
+				f_set_val(c, f_left_get_val(c) +n)
+
+				c.reg8["FL_Z"] = 0
+				c.reg8["FL_N"] = 0
+
+				c.do_instr(desc, (ticks), (args))
+				
+			}
+	}else{	
 		lambda = func(c *CPU) {
 			prev := f_left_get_val(c)
 			right :=  f_right_get_val(c)
@@ -452,7 +507,24 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 
 			if uint32((prev &0xf) + (right &0xf)) > 15 { c.reg8["FL_H"] = 1} else { c.reg8["FL_H"] = 0}
 			if uint32(prev +right) > 0xff { c.reg8["FL_C"] = 1} else { c.reg8["FL_C"] = 0}
-			if uint32(prev+right) == 0 { c.reg8["FL_Z"] = 1} else { c.reg8["FL_Z"] = 0}
+			if uint8(prev)+uint8(right) == 0x0 { c.reg8["FL_Z"] = 1} else { c.reg8["FL_Z"] = 0}
+			c.reg8["FL_N"] =0
+
+
+			c.do_instr(desc, ticks, args)
+		}
+	}
+	case "ADD16":
+		lambda = func(c *CPU) {
+			prev := f_left_get_val(c)
+			right :=  f_right_get_val(c)
+
+			f_set_val(c,prev+right)
+
+			if uint32((prev &0xf) + (right &0xf)) > 0xfff { c.reg8["FL_H"] = 1} else { c.reg8["FL_H"] = 0}
+			if uint32(prev +right) > 0xffff { c.reg8["FL_C"] = 1} else { c.reg8["FL_C"] = 0}
+			
+			c.reg8["FL_N"] =0
 
 
 			c.do_instr(desc, ticks, args)
@@ -589,6 +661,8 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
    
 
 		
+
+		
 	case "INC":
 		lambda = func(c *CPU) {
 
@@ -641,9 +715,9 @@ func gen_push_pop(left string, reg_right string) Action {
 
 			c.mmu.write_w(c.reg16["SP"], f_get_val(c))
 			//fmt.Printf("0x%04x",c.reg16["SP"])
+			c.do_instr(desc, 20, 1)
 
 			//fmt.Println(c.reg8,c.reg16)
-			c.do_instr(desc, 20, 1)
 		}
 	} else if left == "POP" {
 
@@ -669,10 +743,21 @@ func gen_jmp(left string, reg_right string, skip_flags uint8, signed uint8, mask
 	type_right := get_ld_type(reg_right)
 
 	desc := left + "," + reg_right
-
-	//create func to set PC
 	f_get_val := gen_get_val(type_right, reg_right)
 
+	//create func to set PC
+	if reg_right == "(HL)" {
+		f_get_val = func(c *CPU) uint16 {
+			fmt.Println("FFFFIIIIXXX")
+			reg_high := c.reg8[string(reg_right[1])]
+			reg_low := c.reg8[string(reg_right[2])]
+			addr := (uint16(reg_high) << 8) | uint16(reg_low)
+			//only case that reads word from (HL)
+			return uint16(c.mmu.read_w(addr))
+		}
+	}
+	
+	
 	lambda := func(c *CPU) {
 		n := f_get_val(c)
 		//fmt.Printf("JMP ADDR:0x%X,mask:0x%X,check:0x%X\n",n,mask,check)   
@@ -691,12 +776,15 @@ func gen_jmp(left string, reg_right string, skip_flags uint8, signed uint8, mask
 			if signed == 1 {
 				if n > 127 {
 					n = (^(n + 1)) & 0x00ff
+				//	fmt.Printf("%02x\n",n)
 					c.reg16["PC"] -= n
-				} else {
-					c.reg16["PC"] += n + 2
-				}
 
-				//fmt.Printf("JMP ADDR:0x%X\n",n)                            
+				} else {
+				//	fmt.Printf("%02x\n",n)
+
+					c.reg16["PC"] += n+args
+
+				}                  
 
 			} else {
 				c.reg16["PC"] = n
@@ -728,7 +816,7 @@ func gen_call(left string, reg_right string, skip_flags uint8, signed uint8, mas
 	return lambda
 }
 
-func gen_ret(left string, skip_flag uint8, mask uint8, val uint8) Action {
+func gen_ret(left string, skip_flag uint8, mask uint8, check uint8) Action {
 
 	f_get_val := gen_get_val(memreg16, "SP")
 	f_set_val := gen_set_val(reg16, "PC")
@@ -742,8 +830,8 @@ func gen_ret(left string, skip_flag uint8, mask uint8, val uint8) Action {
 		}
 
 	lambda := func(c *CPU) {
-		if skip_flag == 1 || c.reg8[reg] == 1 {
-			fmt.Println("RETURNING","z",c.reg8[reg])
+		if skip_flag == 1 || c.reg8[reg] == check {
+			//fmt.Println("RETURNING","z",c.reg8[reg])
 			val := f_get_val(c)
 			//fmt.Println(val)
 			f_set_val(c, val)
@@ -899,6 +987,9 @@ func gen_rotate_shift(left string, reg_right string, ticks uint16, args uint16) 
 
 				c.reg8["FL_C"] = 1
 			}
+			c.reg8["FL_H"] = 0
+			c.reg8["FL_N"] = 0
+
 	    c.do_instr(desc, ticks, args)
 
 
@@ -1000,6 +1091,41 @@ func gen_ld(reg_left string, reg_right string, ticks uint16, args uint16) Action
 	return lambda
 }
 
+func gen_ldh(reg_left string, reg_right string, ticks uint16, args uint16) Action {
+
+
+	lambda := func(c *CPU) { fmt.Println("Undefined LD op ", reg_right, " ", reg_left) }
+	desc := "LDH" + reg_left + "," + reg_right
+
+	if reg_left == "(n)" {
+
+
+
+		lambda = func(c *CPU) {
+			valn := c.mmu.read_b(c.reg16["PC"] + 1)
+			c.mmu.write_b(0xff00+uint16(valn),c.reg8["A"])
+			c.do_instr(desc, (ticks), (args))
+		//	fmt.Printf("->%04x,%04x\n",0xff00+uint16(valn),valn)
+
+		}
+	} else if reg_left == "A" {
+
+
+		lambda = func(c *CPU) {
+
+			valn := c.mmu.read_b(c.reg16["PC"] + 1)
+			valff := c.mmu.read_b(0xff00+uint16(valn))
+			c.reg8["A"] = valff
+			c.do_instr(desc, (ticks), (args))
+			//fmt.Printf("<-%04x,%04x\n",0xff00+uint16(valn),valn)
+
+
+		}
+	}
+	return lambda
+}
+
+
 func gen_ld_sp(reg_left string, reg_right string, ticks uint16, args uint16) Action {
 
 	type_left := get_ld_type(reg_left)
@@ -1007,16 +1133,15 @@ func gen_ld_sp(reg_left string, reg_right string, ticks uint16, args uint16) Act
 
 	lambda := func(c *CPU) { fmt.Println("Undefined LD op ", reg_right, " ", reg_left) }
 
-	desc := "LD " + reg_left + "," + reg_right
+ 	desc := "LD " + reg_left + "," + reg_right
 
 	f_left_get_val := gen_get_val(type_right, reg_right)	
 	f_get_val := gen_get_val(type_right, reg_right)
 	f_set_val := gen_set_val(type_left, reg_left)
-
+	
 	lambda = func(c *CPU) {
 		f_set_val(c, f_left_get_val(c) -f_get_val(c))
-		
-		if 0xff - f_left_get_val(c) < f_get_val(c) {
+		if 0xff - (f_left_get_val(c) &0x00ff) < f_get_val(c) {
 			c.reg8["FL_C"] = 1
 		} else {
 			c.reg8["FL_C"] = 0
@@ -1028,8 +1153,8 @@ func gen_ld_sp(reg_left string, reg_right string, ticks uint16, args uint16) Act
 			c.reg8["FL_H"] = 0
 
 		}
-		if f_left_get_val(c) == 0 { c.reg8["FL_Z"] = 1} else { c.reg8["FL_Z"] = 0}
 
+		c.reg8["FL_Z"] = 0
 		c.reg8["FL_N"] = 0
 
 		c.do_instr(desc, (ticks), (args))
@@ -1167,8 +1292,8 @@ func BuildCpu() *CPU {
 	c.ops[0x32] = gen_ld("(HLD)", "A", 12, 1)
 	c.ops[0x2A] = gen_ld("A", "(HLI)", 12, 1)
 	c.ops[0x22] = gen_ld("(HLI)", "A", 12, 1)
-	c.ops[0xE0] = gen_ld("(n)", "A", 8, 2)
-	c.ops[0xF0] = gen_ld("A", "(n)", 8, 2)
+	c.ops[0xE0] = gen_ldh("(n)", "A", 12, 2)
+	c.ops[0xF0] = gen_ldh("A", "(n)", 12, 2)
 
 	c.ops[0x01] = gen_ld("BC", "nn", 12, 3)
 	c.ops[0x11] = gen_ld("DE", "nn", 12, 3)
@@ -1196,7 +1321,7 @@ func BuildCpu() *CPU {
 	c.ops[0x85] = gen_alu("ADD", "A", "L", 4, 1)
 	c.ops[0x86] = gen_alu("ADD", "A", "(HL)", 8, 1)
 	c.ops[0xc6] = gen_alu("ADD", "A", "n", 8, 2)
-	c.ops[0xe8] = gen_alu("ADD", "SP", "n", 16, 2)
+	c.ops[0xe8] = gen_alu("ADD", "SP", "n", 16, 2) //wrong
 
 
 	c.ops[0x8F] = gen_alu("ADC", "A", "A", 4, 1)
@@ -1209,11 +1334,10 @@ func BuildCpu() *CPU {
 	c.ops[0x8E] = gen_alu("ADC", "A", "(HL)", 8, 1)
 	c.ops[0xCE] = gen_alu("ADC", "A", "n", 4, 2)
 
-	//need to add case for zero flag for these ops
-	c.ops[0x9] = gen_alu("ADD", "HL", "BC", 8, 1)
-	c.ops[0x19] = gen_alu("ADD", "HL", "DE", 8, 1)
-	c.ops[0x29] = gen_alu("ADD", "HL", "HL", 8, 1)
-	c.ops[0x39] = gen_alu("ADD", "HL", "SP", 8, 1)
+	c.ops[0x9] = gen_alu("ADD16", "HL", "BC", 8, 1)
+	c.ops[0x19] = gen_alu("ADD16", "HL", "DE", 8, 1)
+	c.ops[0x29] = gen_alu("ADD16", "HL", "HL", 8, 1)
+	c.ops[0x39] = gen_alu("ADD16", "HL", "SP", 8, 1)
 
 	c.ops[0x97] = gen_alu("SUB", "A", "A", 4, 1)
 	c.ops[0x90] = gen_alu("SUB", "A", "B", 4, 1)
@@ -1508,7 +1632,7 @@ func BuildCpu() *CPU {
 	//c.ops[0xCB19]  = gen_rotate_shift("RR" ,"c",8,2)
 
 
-	//WRONG
+	
 	c.ops[0x0f] = gen_rotate_shift("RRCA", "A", 8, 1) 
 	c.ops[0xCB0f] = gen_rotate_shift("RRC", "A", 8, 2) 
 	c.ops[0xCB08] = gen_rotate_shift("RRC", "B", 8, 2) 
@@ -1583,14 +1707,14 @@ func BuildCpu() *CPU {
 	c.ops[0xcA] = gen_jmp("JPZ", "nn", 0, 0, 0x80, 1, 12, 3)
 	c.ops[0xD2] = gen_jmp("JPNC", "nn", 0, 0, 0x10, 0, 12, 3)
 	c.ops[0xDA] = gen_jmp("JPC", "nn", 0, 0, 0x10, 1, 12, 3)
-	c.ops[0xE9] = gen_jmp("JP", "(HL)", 1, 0, 0, 0, 4, 1)
+	c.ops[0xE9] = gen_jmp("JP", "HL", 1, 0, 0, 0, 4, 1)
 	//Relative jmp
 	c.ops[0x20] = gen_jmp("JPNZ REL", "n", 0, 1, 0x80, 0, 8, 2)
 	c.ops[0x28] = gen_jmp("JPZ REL", "n", 0, 1, 0x80, 1, 8, 2)
 	c.ops[0x30] = gen_jmp("JPNC REL", "n", 0, 1, 0x10, 0, 8, 2)
 	c.ops[0x38] = gen_jmp("JPC REL", "n", 0, 1, 0x10, 1, 8, 2)
-	c.ops[0x18] = gen_jmp("JP", "n", 1, 1, 0, 0, 8, 2)      //signed
-	c.ops[0xCD] = gen_call("CALL", "nn", 0, 0, 0, 0, 12, 3) //signed
+	c.ops[0x18] = gen_jmp("JP", "n",      1, 1, 0, 0, 8, 2)      //signed
+	c.ops[0xCD] = gen_call("CALL", "nn", 0, 0, 0, 0, 12, 3)
 	c.ops[0xC4] = gen_call("CALLNZ", "nn", 0, 0, 0x80, 0, 12, 3)
 	c.ops[0xCC] = gen_call("CALLZ", "nn", 0, 0, 0x80, 1, 12, 3)
 	c.ops[0xD4] = gen_call("CALLNC", "nn", 0, 0, 0x10, 0, 12, 3)
@@ -1608,8 +1732,8 @@ func BuildCpu() *CPU {
 
 	//Haven't done these yet
 	c.ops[0x0] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
-	c.ops[0xDD] = func(c *CPU) { c.do_instr("DD NOP", 4, 1) }
-	c.ops[0xFC] = func(c *CPU) { c.do_instr("DD NOP", 4, 1) }
+//	c.ops[0xDD] = func(c *CPU) { c.do_instr("DD NOP", 4, 1) }
+//	c.ops[0xFC] = func(c *CPU) { c.do_instr("DD NOP", 4, 1) }
 	//c.ops[0xf4] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
 
 	c.ops[0x10] = func(c *CPU) { c.do_instr("STOP", 4, 1) }
@@ -1631,23 +1755,19 @@ func BuildCpu() *CPU {
 
 	f := gen_push_pop("PUSH", "PC")
 
-	c.ops[0xEF] = func(c *CPU) { f(c); c.reg16["PC"] = 0x28 }
-	//c.ops[0xCF] = func(c *CPU) { f(c); c.reg16["PC"] = Ox08 }
-
-
-	c.ops[0xDF] = func(c *CPU) { f(c); c.reg16["PC"] = 0x16 }
-
-	c.ops[0xDF] = func(c *CPU) { f(c); c.reg16["PC"] += 0x16 }
-	c.ops[0xc7] = func(c *CPU) { f(c); c.reg16["PC"] = 0 }
-	c.ops[0xe7] = func(c *CPU) { f(c); c.reg16["PC"] = 0x20 }
-
-c.ops[0xFF] = func(c *CPU) { f(c); c.reg16["PC"] += 0x38 }
+		c.ops[0xc7] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0 }
+	c.ops[0xCF] = func(c *CPU) {c.reg16["PC"]++;  f(c); c.reg16["PC"] = 0x8 }
+	c.ops[0xd7] = func(c *CPU)  {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x16 }
+	c.ops[0xDF] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x18 }
+	c.ops[0xe7] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x20 }
+	c.ops[0xEF] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x28 }
+	c.ops[0xFF] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x38 }
 
 	c.ops[0x76] = func(c *CPU) { c.do_instr("HALT", 4, 0) }
 	c.ops[0x37] =  gen_rotate_shift("SCF", "A", 4, 1)
 	c.ops[0x3f] =  gen_rotate_shift("CCF", "A", 4, 1)
 
-	c.ops[0x27] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
+	//c.ops[0x27] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
 
 	return c
 }
