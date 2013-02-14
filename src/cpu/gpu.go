@@ -158,7 +158,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
 
         //tile_limit = 0x8FFF
     } else {
-        tile_base = 0x8000
+        tile_base = 0x8800
 //	fmt.Println("WARNING!!!!!!!!!!!!!!!\n")
 //		fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
         //tile_limit = 0x97FF
@@ -307,25 +307,27 @@ func (g *GPU) print_tile_map(m *MMU) {
 	}
 //	}
 
-//	if (g.LCDC & 0x10 == 0x10){
+	if (g.LCDC & 0x10 == 0x10){
 	//	g.LY++
 	    //g.print_tile_line_w(uint(g.LY))
 		//H-BLANK
-		//g.STAT= 0x00
+		g.STAT= 0x00
 		
+	}
+//	if (g.LCDC & 0x80 == 0x80) { 
+	g.LY++
 //	}
-		g.LY++
         
-//	if g.LY == g.LYC {
-//		//set coincidenct flag
-//		g.STAT |= 0x2
-//		m.write_b(0xff0f,m.read_b(0xff0f)|0x02)  
+	if g.LY == g.LYC {
+		//set coincidenct flag
+		g.STAT |= 0x2
+		m.write_b(0xff0f,m.read_b(0xff0f)|0x02)  
 
-//	}else{
-//		//reset the flag
-//		g.STAT &= 0xfd
+	}else{
+		//reset the flag
+		g.STAT &= 0xfd
 
-//	}
+	}
         
     if (g.LY==153) {
 		//V-BLANK

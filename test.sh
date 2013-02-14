@@ -1,7 +1,7 @@
 #!/bin/bash
 runtime=${1:-5s}
 lines="200000"
-rom="roms/Tetris.gb"
+rom="roms/fonts.gb"
 compare="diffuse"
 ./main $rom > main_out &
 ./gbem $rom > gbem_out &

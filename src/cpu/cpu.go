@@ -17,6 +17,7 @@ const (
 	memreg16
 	memreg
 	memnn
+	memnn8
 	memn
 	nn
 	n
@@ -119,17 +120,15 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 	start := time.Now()
-	var calls = make(OpCall)
 	
 	for {
 	
 		c.mmu.write_b(0xff00, 0x2f);
 
 		op = uint16(c.mmu.read_w(c.reg16["PC"]))
-			if !c.mmu.inbios {
- //FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n			
+			if !c.mmu.inbios {		
 			fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16["PC"],c.reg16["SP"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"]);
-	//	fmt.Printf("PC:%04x A:%04x B:%04x C:%04x D:%04x E:%04x H:%04x L:%04x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"]);
+
 		}
 	
 		if op&0x00ff != 0xcb {
@@ -140,7 +139,7 @@ func (c *CPU) Exec() {
 		}
 		
 		value, ok := c.ops[op]
-		calls[op]=1
+		//calls[op]=1
 		//fmt.Print(calls)
 		if ok {
 			//Do instruction
@@ -176,13 +175,13 @@ func (c *CPU) Exec() {
 			
 		} 
 			if     !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
-			//	fmt.Println("INT")
+				fmt.Println("INTC")
 				//c.mmu.write_b(0xffff,0)
-			//	c.mmu.write_b(0xff0f,1)
+				c.mmu.write_b(0xff0f,0)
 				
-			//	f(c) //push pc on stak
+				f(c) //push pc on stak
 
-			//	c.reg16["PC"] = 0x48
+				c.reg16["PC"] = 0x48
 			
 			} 
 
@@ -227,6 +226,8 @@ func get_ld_type(arg string) int {
 		arg_type = regldh
 	case arg == "(nn)":
 		arg_type = memnn
+	case arg == "(nn)8":
+		arg_type = memnn8	
 	case arg == "(n)":
 		arg_type = memn
 	case len(arg) == 4:
@@ -305,6 +306,14 @@ func gen_set_val(a_type int, reg string) SetVal {
 
 			c.mmu.write_w(addr, val)
 		}
+	case memnn8:
+		lambda = func(c *CPU, val uint16) {
+			addr := uint16(c.mmu.read_b(c.reg16["PC"]+2))<<8 | uint16(c.mmu.read_b(c.reg16["PC"]+1))
+
+			c.mmu.write_b(addr, uint8(val))
+		}	
+
+
 	case reghli:
 		f:=gen_alu("INC", "HL", "", 0, 0)
 		lambda = func(c *CPU, val uint16) {
@@ -395,6 +404,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 	//		fmt.Printf("%04x,%04x\n",addr,c.mmu.read_w(addr))
 			return c.mmu.read_w(addr)
 		}
+
 	case n:
 		lambda = func(c *CPU) uint16 {
 			return uint16(c.mmu.read_b(c.reg16["PC"] + 1))
@@ -727,6 +737,23 @@ func gen_push_pop(left string, reg_right string) Action {
 			val := c.mmu.read_w(c.reg16["SP"])
 			//fmt.Printf("read 0x%04x to 0x%04x",val,c.reg16["SP"])
 			//fmt.Println(val)
+			if reg_right == "AF" { 
+				new_val := val & 0x00ff
+
+				if new_val & 0x10 == 0x10 {
+					c.reg8["FL_C"]=1
+				}
+				if new_val & 0x20 == 0x20 {	
+					c.reg8["FL_H"]=1
+				}
+				if new_val & 0x40 == 0x40 {
+					c.reg8["FL_N"]=1		
+				}
+				if new_val & 0x40 == 0x40 {
+					c.reg8["FL_Z"]=1			
+				}
+	
+			}
 			c.reg16["SP"] += 2
 			f_set_val(c, val)
 
@@ -1286,7 +1313,7 @@ func BuildCpu() *CPU {
 
 	c.ops[0x02] = gen_ld("(BC)", "A", 8, 1)
 	c.ops[0x12] = gen_ld("(DE)", "A", 8, 1)
-	c.ops[0xEA] = gen_ld("(nn)", "A", 16, 3)
+	c.ops[0xEA] = gen_ld("(nn)8", "A", 16, 3)
 	c.ops[0xE2] = gen_ld("(C)", "A", 8, 1)
 	c.ops[0x3A] = gen_ld("A", "(HLD)", 12, 1)
 	c.ops[0x32] = gen_ld("(HLD)", "A", 12, 1)

@@ -168,8 +168,10 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
     } else if addr == 0xff80 {
 		fmt.Println("FF80:",val)
 
+	} else if addr > 0xd801 && addr <0xd80f {
+		fmt.Printf("FAIL:%X,%X\n",addr,val)
+
 	} 
-	
 
 
     
