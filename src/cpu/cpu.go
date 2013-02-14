@@ -123,12 +123,12 @@ func (c *CPU) Exec() {
 	
 	for {
 	
-	//	c.mmu.write_b(0xff00, 0x10);
+		c.mmu.write_b(0xff00, 0x2f);
 
 		op = uint16(c.mmu.read_w(c.reg16["PC"]))
 			if !c.mmu.inbios {
  //FL_Z:%01x FL_C:%01x FL_H:%01x FL_N:%01x EI:%01x\n			
-				fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16["PC"],c.reg16["SP"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"]);
+			fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16["PC"],c.reg16["SP"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"]);
 	//	fmt.Printf("PC:%04x A:%04x B:%04x C:%04x D:%04x E:%04x H:%04x L:%04x\n",c.reg16["PC"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"]);
 		}
 	
@@ -155,26 +155,26 @@ func (c *CPU) Exec() {
 	
 
 	elapsed := time.Since(start)
-		if  elapsed >= 1000*time.Microsecond {
+		if  elapsed >= 100*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 
 
 		    
-		//	f := gen_push_pop("PUSH", "PC")
+		f := gen_push_pop("PUSH", "PC")
 
 			
-		//	//fmt.Println("VAL",val)
-		//	if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8["EI"] == 1  {
-			//	fmt.Println("INT")
-		//	c.reg8["EI"] = 0
-			//	c.mmu.write_b(0xffff,0)
-		//	c.mmu.write_b(0xff0f,0)
-			//	f(c) //push pc on stack
-//
-			//	c.reg16["PC"] = 0x40
+			//fmt.Println("VAL",val)
+			if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8["EI"] == 1  {
+			fmt.Println("INT")
+		c.reg8["EI"] = 0
+	//	c.mmu.write_b(0xffff,0)
+		c.mmu.write_b(0xff0f,0)
+			f(c) //push pc on stack
+
+	 c.reg16["PC"] = 0x40
 			
-		//	} 
+		} 
 			if     !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
 			//	fmt.Println("INT")
 				//c.mmu.write_b(0xffff,0)
@@ -632,7 +632,7 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 			f_set_val(c, f_left_get_val(c)&f_right_get_val(c))
 			if f_left_get_val(c) ==0 { c.reg8["FL_Z"] = 1} else { c.reg8["FL_Z"] = 0}
 			c.reg8["FL_C"] = 0
-			c.reg8["FL_H"] = 0
+			c.reg8["FL_H"] = 1
 			c.reg8["FL_N"] = 0
 
 

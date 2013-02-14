@@ -122,8 +122,8 @@ func (g *GPU) print_tile(m *MMU,addr uint16,xoff uint16, yoff uint16) {
                     g.screen.PutPixel(int16(j+xoff),int16(i+yoff),uint32(0x606060))
                 case 3:
                     g.screen.PutPixel(int16(j+xoff),int16(i+yoff),uint32(0xff00000))
-                default:
-                    g.screen.PutPixel(int16(j+xoff),int16(i+yoff),uint32(0xff00000))
+               //default:
+                 //   g.screen.PutPixel(int16(j+xoff),int16(i+yoff),uint32(0xff00000))
 
             }
         }
@@ -147,9 +147,9 @@ func (g *GPU) get_tile_map(m *MMU)  {
     //Bit3 Tile map base
     if (g.LCDC & 0x08 == 0x08) {
         map_base = 0x9c00
-        map_limit = 0x9fff
+       map_limit = 0x9fff
     } else {
-        map_base = 0x9800
+       map_base = 0x9800
         map_limit = 0x9Bff
     }
     //Bit4 Tile data select
@@ -158,9 +158,9 @@ func (g *GPU) get_tile_map(m *MMU)  {
 
         //tile_limit = 0x8FFF
     } else {
-        tile_base = 0x8800
-	//	fmt.Println("!!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!\n")
-	//	fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
+        tile_base = 0x8000
+//	fmt.Println("WARNING!!!!!!!!!!!!!!!\n")
+//		fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
         //tile_limit = 0x97FF
     }
 	
@@ -173,12 +173,13 @@ func (g *GPU) get_tile_map(m *MMU)  {
         w_map_base = 0x9800
         w_map_limit = 0x9Bff
     }
-	b:=0
+//	b:=0
 		for offset:=map_base; offset<=map_limit; offset++ {
-//	b:=m.read_b(offset)
+	b:=m.read_b(offset)
 		   
-	    if tile_base == 0x8800 { 
+	    if tile_base == 0x8811 { 
 			//signed case
+
 
 			if b > 127 {
 				if n > 127 {
@@ -201,7 +202,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
 				i=0
 				j++
 			}
-b++	
+//b++	
 }
 		
 	i= 0
@@ -237,10 +238,10 @@ b++
 }
 
 func (g *GPU) print_tile_line(line uint,) {
-    //tile_line := (uint8(line)+g.SCY) & 7
-  //  map_line := (uint8(line)+g.SCY) >>3 
-    tile_line := (uint8(line)) & 7
-    map_line := (uint8(line)) >>3 
+    tile_line := (uint8(line)+g.SCY) & 7
+    map_line := (uint8(line)+g.SCY) >>3 
+    //tile_line := (uint8(line)) & 7
+    //map_line := (uint8(line)) >>3 
 
 j:=g.SCX &7
     i:=g.SCX >>3
@@ -249,8 +250,8 @@ j:=g.SCX &7
         for j<8 {
             //fmt.Println(i,map_line,j,tile_line)
             switch (g.bg_tmap[i][map_line][j][tile_line]) {
-                case 0:
-                    g.screen.PutPixel(int16(x),int16(line),uint32(0x00))
+                case 0: 
+					g.screen.PutPixel(int16(x),int16(line),uint32(0x00))
 
                 case 1:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
@@ -301,40 +302,41 @@ func (g *GPU) print_tile_map(m *MMU) {
 
     if (g.LY==0) {m.gpu.get_tile_map(m)}
         //fmt.Println(g.tmap)
+	if (g.LCDC & 0x81 == 0x81){
         g.print_tile_line(uint(g.LY))
-		if (g.LCDC & 0x10 == 0x10){
-		
-	  //  g.print_tile_line_w(uint(g.LY))
+	}
+//	}
+
+//	if (g.LCDC & 0x10 == 0x10){
+	//	g.LY++
+	    //g.print_tile_line_w(uint(g.LY))
 		//H-BLANK
-		g.STAT= 0x00
+		//g.STAT= 0x00
 		
-	}
-	
-        g.LY++
-	if g.LY == g.LYC {
-		//set coincidenct flag
-		g.STAT |= 0x2
-		m.write_b(0xff0f,m.read_b(0xff0f)|0x02)  
+//	}
+		g.LY++
+        
+//	if g.LY == g.LYC {
+//		//set coincidenct flag
+//		g.STAT |= 0x2
+//		m.write_b(0xff0f,m.read_b(0xff0f)|0x02)  
 
-	}else{
-		//reset the flag
-		g.STAT &= 0xfd
+//	}else{
+//		//reset the flag
+//		g.STAT &= 0xfd
 
-	}
+//	}
         
     if (g.LY==153) {
 		//V-BLANK
 		g.STAT |= 0x017
 		m.write_b(0xff0f,m.read_b(0xff0f)|0x01)  
 		g.screen.screen.Flip()
-		g.t_screen.screen.Flip()
+//		g.t_screen.screen.Flip()
 
 		g.LY=0
 
 	}
-	// if (g.LY==153) {
-//		g.LY=0
-//	}
         
 
        //m.write_b(0xff0f,0x02)  

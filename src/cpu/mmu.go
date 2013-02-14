@@ -51,7 +51,7 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff40:
             m.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
-		//	fmt.Printf("->LCDC:%04X\n",val)
+			fmt.Printf("->LCDC:%04X\n",val)
 
         case 0xff41:
             m.gpu.STAT = val
@@ -62,7 +62,9 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff43:
             m.gpu.SCX = val
         case 0xff44:
-            m.gpu.LY = val
+            m.gpu.LY = 0
+		    //fmt.Printf("->LY:%04X\n",val)
+
         case 0xff45:
             m.gpu.LYC = val
 			//fmt.Printf("->LYC:%04X\n",val)
@@ -119,14 +121,16 @@ func (m *MMU)read_b(addr uint16) (uint8) {
     }else if addr <= 0x100 && !m.inbios {
         return m.cart[addr]  
 
-    } else if addr >= 0xff40 && addr < 0xff46{
+    } else if addr >= 0xff40 && addr < 0xff4C{
         return m.read_mmio(addr)      
     
 
 	}else if addr >= 0xe000 && addr < 0xfe00{
 		    return m.mem[addr-0x1000]    
-   }
-	
+   } else if addr == 0xff80 {
+		fmt.Println("Read:FF80:",m.mem[addr])
+
+	} 
     return m.mem[addr]
     
 
@@ -140,7 +144,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
 
     if addr >= 0x8000 && addr < 0xA000{
         m.vm[addr & 0x1fff] = val
-        fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
+       // fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
         
             m.vm[addr & 0x1fff] = val
         return
@@ -160,8 +164,11 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
 		m.mem[addr-0x1000]=val
 		fmt.Println("shadow")
 		return
+	
+    } else if addr == 0xff80 {
+		fmt.Println("FF80:",val)
 
-    } 
+	} 
 	
 
 
