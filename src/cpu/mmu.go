@@ -123,14 +123,10 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 
     } else if addr >= 0xff40 && addr < 0xff4C{
         return m.read_mmio(addr)      
-    
 
 	}else if addr >= 0xe000 && addr < 0xfe00{
-		    return m.mem[addr-0x1000]    
-   } else if addr == 0xff80 {
-		fmt.Println("Read:FF80:",m.mem[addr])
-
-	} 
+		return m.mem[addr-0x1000]    
+	}
     return m.mem[addr]
     
 
@@ -166,14 +162,8 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
 		return
 	
     } else if addr == 0xff80 {
-		fmt.Println("FF80:",val)
-
-	} else if addr > 0xd801 && addr <0xd80f {
-		fmt.Printf("FAIL:%X,%X\n",addr,val)
-
-	} 
-
-
+		//fmt.Println("FF80:",val)
+	}
     
     m.mem[addr] = val
     

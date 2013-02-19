@@ -7,9 +7,6 @@ import (
 
 )
 
-//GPU registers
-
-
 
 type Screen struct {
     screen *sdl.Surface 
@@ -168,7 +165,6 @@ func (g *GPU) get_tile_map(m *MMU)  {
     if (g.LCDC & 0x40 == 0x40) {
         w_map_base = 0x9c00
         w_map_limit = 0x9fff
-		fmt.Println("x")
     } else {
         w_map_base = 0x9800
         w_map_limit = 0x9Bff
@@ -251,7 +247,7 @@ j:=g.SCX &7
             //fmt.Println(i,map_line,j,tile_line)
             switch (g.bg_tmap[i][map_line][j][tile_line]) {
                 case 0: 
-					g.screen.PutPixel(int16(x),int16(line),uint32(0x00))
+				g.screen.PutPixel(int16(x),int16(line),uint32(0xff))
 
                 case 1:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
