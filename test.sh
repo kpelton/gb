@@ -1,8 +1,8 @@
 #!/bin/bash
 runtime=${1:-5s}
 lines="500000"
-rom="03.gb"
-compare="bcompare"
+rom="roms/ttt.gb"
+compare="diffuse"
 ./main $rom > main_out &
 ./gbem $rom > gbem_out &
 #Sleep for the specified time.

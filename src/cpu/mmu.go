@@ -7,11 +7,13 @@ type MMU struct {
     cart [0x8000]uint8
     vm  [0x2000] uint8
     gpu *GPU
+	gp *GP
     inbios bool
 }
-func NewMMU(gpu *GPU )(*MMU) {
+func NewMMU(gpu *GPU,gp *GP)(*MMU) {
     m :=new(MMU)
     m.gpu = gpu
+	m.gp = gp
     m.inbios = false
     m.write_b(0xff00,0x10)
 	return m
@@ -48,6 +50,10 @@ func (m *MMU) Dump_vm() {
 
 func (m* MMU) write_mmio(addr uint16,val uint8) () {
     switch (addr) {
+		case 0xff00:
+            m.gp.P1 = val
+				fmt.Printf("->P1:%04X\n",val)
+
         case 0xff40:
             m.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
@@ -82,6 +88,11 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
 func (m* MMU) read_mmio(addr uint16) (uint8) {
     var val uint8 = 0
     switch (addr) {
+		case 0xff00:
+           val=m.gp.P1 		
+				fmt.Printf("<-P1:%04X\n",val)
+
+		
         case 0xff40:
             val= m.gpu.LCDC
 		//		fmt.Printf("<-LCDC:%04X\n",val)
@@ -121,7 +132,7 @@ func (m *MMU)read_b(addr uint16) (uint8) {
     }else if addr <= 0x100 && !m.inbios {
         return m.cart[addr]  
 
-    } else if addr >= 0xff40 && addr < 0xff4C{
+    } else if addr == 0xff00 || (addr >= 0xff40 && addr < 0xff4C){
         return m.read_mmio(addr)      
 
 	}else if addr >= 0xe000 && addr < 0xfe00{
@@ -151,7 +162,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
     }else if addr <= 0x100 && !m.inbios{      
        m.cart[addr] = val
         return 
-    } else if addr >= 0xff40 && addr < 0xff46{
+    } else if addr == 0xff00 || (addr >= 0xff40 && addr < 0xff46){
         m.write_mmio(addr,val)
         return
 	

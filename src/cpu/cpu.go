@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+
 )
 
 const (
@@ -41,6 +42,8 @@ type CPU struct {
 	mem   Memory
 	mmu   *MMU
 	gpu   *GPU
+	gp    *GP
+
 }
 
 //DO the thang
@@ -113,6 +116,7 @@ func (c *CPU) load_bios() {
 	c.reg8["FL_C"] = 0x1
 	c.reg8["FL_H"] = 0x0
 	c.reg8["FL_N"] = 0x0
+	c.mmu.write_b(0xff00, 0x0f);
 }
 
 func (c *CPU) Exec() {
@@ -120,14 +124,14 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 	start := time.Now()
-	
+    
+
 	for {
-	
-		c.mmu.write_b(0xff00, 0x2f);
+
 
 		op = uint16(c.mmu.read_w(c.reg16["PC"]))
 			if !c.mmu.inbios {		
-	//		fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16["PC"],c.reg16["SP"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"]);//,c.reg8["FL_N"]);
+		//	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16["PC"],c.reg16["SP"],c.reg8["A"],c.reg8["B"],c.reg8["C"],c.reg8["D"],c.reg8["E"],c.reg8["H"],c.reg8["L"],c.reg8["FL_Z"],c.reg8["FL_C"],c.reg8["FL_H"]);//,c.reg8["FL_N"]);
 
 		}
 	
@@ -149,18 +153,19 @@ func (c *CPU) Exec() {
 			c.mmu.Dump_vm()
 			os.Exit(1)
 		}
-
-		val := c.mmu.read_b(0xff0f)
-	
-
-	elapsed := time.Since(start)
-		if  elapsed >= 100*time.Microsecond {
+		//Update gamepad/buttons
+		c.gp.Update()
+		
+		elapsed := time.Since(start)
+		
+		if  elapsed >= 32*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
+			val := c.mmu.read_b(0xff0f)
+			//gp control to be fixed later
+			
 
-
-		    
-		f := gen_push_pop("PUSH", "PC")
+			f := gen_push_pop("PUSH", "PC")
 
 			
 			//fmt.Println("VAL",val)
@@ -173,17 +178,26 @@ func (c *CPU) Exec() {
 
 	 c.reg16["PC"] = 0x40
 			
-		} 
-			if     !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
+			
+		} else if     !c.mmu.inbios && val &0x8 == 0x8 &&c.reg8["EI"] == 1  {
+				c.reg8["EI"] = 0
+				c.mmu.write_b(0xff0f,0)
+				f(c) //push pc on stack
+				fmt.Println("INTP")
+
+				c.reg16["PC"] = 0x60
+			
+		} else if !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
 				fmt.Println("INTC")
 				//c.mmu.write_b(0xffff,0)
 				c.mmu.write_b(0xff0f,0)
-				
+				c.reg8["EI"] = 0
+
 				f(c) //push pc on stak
 
 				c.reg16["PC"] = 0x48
 			
-			} 
+			}
 
 			
 
@@ -502,14 +516,14 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 			lambda = func(c *CPU) {
 				n:=f_right_get_val(c)
 				prev:=f_left_get_val(c)
-				fmt.Println("before",n)					
+				//fmt.Println("before",n)					
 
 				if n > 127 {
 
 					val :=^uint8((n& 0x00ff))
 					val +=1
 
-					fmt.Println(val)					
+				//	fmt.Println(val)					
 					f_set_val(c, prev - uint16(val))
 					
 				}else{
@@ -960,12 +974,12 @@ func gen_rotate_shift(left string, reg_right string, ticks uint16, args uint16) 
 		lambda = func(c *CPU) {
 			prev := uint8(f_left_get_val(c))
 			c.reg8["FL_C"]  = (prev & 0x80) >> 7
-			fmt.Println("Before",prev,(prev << 1))
+		//	fmt.Println("Before",prev,(prev << 1))
 
 			f_set_val(c, uint16((prev << 1) +c.reg8["FL_C"]))
 
 			if f_left_get_val(c) ==0 { c.reg8["FL_Z"] = 1} else { c.reg8["FL_Z"] = 0}
-			fmt.Println("After",f_left_get_val(c))
+		//	fmt.Println("After",f_left_get_val(c))
 			c.reg8["FL_H"] = 0
 			c.reg8["FL_N"] = 0
 
@@ -1245,8 +1259,10 @@ func NewCpu() *CPU {
 
 func BuildCpu() *CPU {
 	c := new(CPU)
-	c.gpu = newGPU()
-	c.mmu = NewMMU(c.gpu)
+	c.gpu = NewGPU()
+	c.gp = NewGP(c)
+	c.mmu = NewMMU(c.gpu,c.gp)
+
 	c.reg8 = make(RegMap8)
 	c.reg16 = make(RegMap16)
 	c.ops = make(OpMap)

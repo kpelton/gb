@@ -3,7 +3,6 @@ package cpu
 import (
 	"fmt"
     "github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
-    //"time"
 
 )
 
@@ -68,7 +67,7 @@ type GPU struct {
     
 }
 
-func newGPU() *GPU {
+func NewGPU() *GPU {
     g := new(GPU)
     g.screen = newScreen()
 	g.t_screen = newScreen()
@@ -333,15 +332,17 @@ func (g *GPU) print_tile_map(m *MMU) {
 //		g.t_screen.screen.Flip()
 
 		g.LY=0
+	
+
 
 	}
-        
+   
+
+
 
        //m.write_b(0xff0f,0x02)  
        //g.screen.screen.Flip()
-
-
-}
+	}
    
 
 
