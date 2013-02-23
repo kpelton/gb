@@ -28,7 +28,7 @@ const (
 type Action func(*CPU)
 type SetVal func(*CPU, uint16)
 type GetVal func(*CPU) uint16
-type OpMap map[uint16]Action
+type OpMap  [0xffff] Action
 type RegMap8 map[string]uint8
 type RegMap16 map[string]uint16
 type Memory [0x10000]uint8
@@ -141,23 +141,15 @@ func (c *CPU) Exec() {
 			op = 0xcb00 | ((op & 0xff00) >> 8)
 		}
 		
-		value, ok := c.ops[op]
-		//calls[op]=1
-		//fmt.Print(calls)
-		if ok {
-			//Do instruction
-			value(c)
-		} else {
-			fmt.Printf("Undefined OP:0x%04X\n", op)
-			c.mmu.Dump_vm()
-			os.Exit(1)
-		}
+		//run op
+		c.ops[op](c)
+		
 		//Update gamepad/buttons
 		c.gp.Update()
 		
 		elapsed := time.Since(start)
 		
-		if  elapsed >= 300*time.Microsecond {
+		if  elapsed >= 20000*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			val := c.mmu.read_b(0xff0f)
@@ -191,7 +183,7 @@ func (c *CPU) Exec() {
 				c.mmu.write_b(0xff0f,0)
 				c.reg8["EI"] = 0
 
-				f(c) //push pc on stak
+				f(c) //push pc on stack
 
 				c.reg16["PC"] = 0x48
 			
@@ -1264,7 +1256,6 @@ func BuildCpu() *CPU {
 
 	c.reg8 = make(RegMap8)
 	c.reg16 = make(RegMap16)
-	c.ops = make(OpMap)
 
 	//Init registers
 	/////////////////
