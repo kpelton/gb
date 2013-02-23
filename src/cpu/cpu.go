@@ -43,7 +43,6 @@ type CPU struct {
 	mmu   *MMU
 	gpu   *GPU
 	gp    *GP
-
 }
 
 //DO the thang
@@ -158,11 +157,10 @@ func (c *CPU) Exec() {
 		
 		elapsed := time.Since(start)
 		
-		if  elapsed >= 32*time.Microsecond {
+		if  elapsed >= 300*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			val := c.mmu.read_b(0xff0f)
-			//gp control to be fixed later
 			
 
 			f := gen_push_pop("PUSH", "PC")
@@ -170,7 +168,7 @@ func (c *CPU) Exec() {
 			
 			//fmt.Println("VAL",val)
 			if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8["EI"] == 1  {
-			fmt.Println("INT")
+		//	fmt.Println("INT")
 		c.reg8["EI"] = 0
 	//	c.mmu.write_b(0xffff,0)
 		c.mmu.write_b(0xff0f,0)
@@ -272,7 +270,7 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
 	if !c.mmu.inbios   {
-//	fmt.Printf("%s\n",desc)
+	//fmt.Printf("%s\n",desc)
 	//fmt.Printf("PC:%04",c.reg16["PC"])
     //  c.Print_dump()
 	}	
@@ -1259,9 +1257,10 @@ func NewCpu() *CPU {
 
 func BuildCpu() *CPU {
 	c := new(CPU)
+
 	c.gpu = NewGPU()
 	c.gp = NewGP(c)
-	c.mmu = NewMMU(c.gpu,c.gp)
+	c.mmu = NewMMU(c)
 
 	c.reg8 = make(RegMap8)
 	c.reg16 = make(RegMap16)
@@ -1371,7 +1370,7 @@ func BuildCpu() *CPU {
 	c.ops[0x74] = gen_ld("(HL)", "H", 8, 1)
 	c.ops[0x75] = gen_ld("(HL)", "L", 8, 1)
 	c.ops[0x77] = gen_ld("(HL)", "A", 8, 1)
-	c.ops[0x36] = gen_ld("(HL)", "n", 8, 1)
+	c.ops[0x36] = gen_ld("(HL)", "n", 8, 2)
 
 	c.ops[0x02] = gen_ld("(BC)", "A", 8, 1)
 	c.ops[0x12] = gen_ld("(DE)", "A", 8, 1)
@@ -1849,7 +1848,7 @@ func BuildCpu() *CPU {
 
 	c.ops[0xc7] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0 }
 	c.ops[0xCF] = func(c *CPU) {c.reg16["PC"]++;  f(c); c.reg16["PC"] = 0x8 }
-	c.ops[0xD7] = func(c *CPU)  {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x16 }
+	c.ops[0xD7] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x16 }
 	c.ops[0xDF] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x18 }
 	c.ops[0xE7] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x20 }
 	c.ops[0xEF] = func(c *CPU) {c.reg16["PC"]++; f(c); c.reg16["PC"] = 0x28 }

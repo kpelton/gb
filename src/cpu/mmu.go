@@ -6,16 +6,14 @@ type MMU struct {
     mem [0x10000]uint8
     cart [0x8000]uint8
     vm  [0x2000] uint8
-    gpu *GPU
-	gp *GP
+	oam [0xA0] uint8
+	cpu *CPU
     inbios bool
 }
-func NewMMU(gpu *GPU,gp *GP)(*MMU) {
+func NewMMU(cpu *CPU)(*MMU) {
     m :=new(MMU)
-    m.gpu = gpu
-	m.gp = gp
     m.inbios = false
-    m.write_b(0xff00,0x10)
+	m.cpu = cpu
 	return m
 }
 
@@ -43,44 +41,57 @@ func (m *MMU) Dump_vm() {
             fmt.Printf("\n0x%04X:",i+1+0x8000)
             j=0
         } 
-    }
+    }    
+}
 
-        
-    }
+
+func (m* MMU) exec_dma(addr uint8) () {
+	var real_addr uint16 
+	var i uint16
+	real_addr = uint16(addr) *0x100
+	
+	for i = 0; i < 160; i++ {
+		m.oam[i] = m.read_b(real_addr+i)
+	}
+}
 
 func (m* MMU) write_mmio(addr uint16,val uint8) () {
     switch (addr) {
 		case 0xff00:
-            m.gp.P1 = val
-				fmt.Printf("->P1:%04X\n",val)
+            m.cpu.gp.P1 = val
+		//		fmt.Printf("->P1:%04X\n",val)
 
         case 0xff40:
-            m.gpu.LCDC = val
+            m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
 			fmt.Printf("->LCDC:%04X\n",val)
 
         case 0xff41:
-            m.gpu.STAT = val
+            m.cpu.gpu.STAT = val
 		//	fmt.Printf("->STAT:%04X\n",val)
 
         case 0xff42:
-            m.gpu.SCY = val
+            m.cpu.gpu.SCY = val
         case 0xff43:
-            m.gpu.SCX = val
+            m.cpu.gpu.SCX = val
         case 0xff44:
-            m.gpu.LY = 0
+            m.cpu.gpu.LY = 0
 		    //fmt.Printf("->LY:%04X\n",val)
 
         case 0xff45:
-            m.gpu.LYC = val
+            m.cpu.gpu.LYC = val
 			//fmt.Printf("->LYC:%04X\n",val)
+		
+		case 0xff46:
+			//fmt.Printf("->DMA:%04X\n",val)
 
+		m.exec_dma(val)
 		case 0xff4A:
-            m.gpu.WY = val
+            m.cpu.gpu.WY = val
 		//	fmt.Printf("->WY:%04X\n",val)
 		case 0xff4B:
 		//	fmt.Printf("->WX:%04X\n",val)
-            m.gpu.WX = val
+            m.cpu.gpu.WX = val
 		
     }
 
@@ -89,34 +100,36 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
     var val uint8 = 0
     switch (addr) {
 		case 0xff00:
-           val=m.gp.P1 		
-				fmt.Printf("<-P1:%04X\n",val)
+           val=m.cpu.gp.P1 		
+		
+		//fmt.Printf("<-P1:%04X\n",val)
 
 		
         case 0xff40:
-            val= m.gpu.LCDC
+            val= m.cpu.gpu.LCDC
 		//		fmt.Printf("<-LCDC:%04X\n",val)
 
         case 0xff41:
-            val=m.gpu.STAT
+            val=m.cpu.gpu.STAT
 	//			fmt.Printf("<-STAT:%04X\n",val)
 
         case 0xff42:
-            val=m.gpu.SCY
+            val=m.cpu.gpu.SCY
         case 0xff43:
-            val=m.gpu.SCX
+            val=m.cpu.gpu.SCX
         case 0xff44:
-            val=m.gpu.LY
+            val=m.cpu.gpu.LY
         case 0xff45:
-            val=m.gpu.LYC
+            val=m.cpu.gpu.LYC
 			//fmt.Printf("->LYC:%04X\n",val)
-
+		case 0xff46:
+		    panic("DMA register is not readable!")
 		case 0xff4A:
-            val = m.gpu.WY 
+            val = m.cpu.gpu.WY 
 		//	fmt.Printf("->WY:%04X\n",val)
 		case 0xff4B:
 		//	fmt.Printf("->WX:%04X\n",val)
-            val = m.gpu.WX
+            val = m.cpu.gpu.WX
 
     }
 
@@ -132,7 +145,11 @@ func (m *MMU)read_b(addr uint16) (uint8) {
     }else if addr <= 0x100 && !m.inbios {
         return m.cart[addr]  
 
-    } else if addr == 0xff00 || (addr >= 0xff40 && addr < 0xff4C){
+	} else if (addr >= 0xfe00 && addr <= 0xfe9f){
+		fmt.Printf("%x\n",addr)
+        return m.oam[addr & 0x00ff]  
+		
+    } else if addr == 0xff00 || (addr >= 0xff40 && addr <= 0xff4B){
         return m.read_mmio(addr)      
 
 	}else if addr >= 0xe000 && addr < 0xfe00{
@@ -162,19 +179,18 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
     }else if addr <= 0x100 && !m.inbios{      
        m.cart[addr] = val
         return 
-    } else if addr == 0xff00 || (addr >= 0xff40 && addr < 0xff46){
+    } else if addr == 0xff00 || (addr >= 0xff40 && addr <=0xff4B){
         m.write_mmio(addr,val)
         return
-	
-		//shadow ram
+	} else if (addr >= 0xfe00 && addr <= 0xfe9f){
+		m.oam[addr & 0x00ff] = val
+		return
     }  else if addr >= 0xe000 && addr < 0xfe00{
 		m.mem[addr-0x1000]=val
 		fmt.Println("shadow")
 		return
 	
-    } else if addr == 0xff80 {
-		//fmt.Println("FF80:",val)
-	}
+    }
     
     m.mem[addr] = val
     

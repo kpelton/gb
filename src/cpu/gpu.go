@@ -11,6 +11,8 @@ type Screen struct {
     screen *sdl.Surface 
 }
 
+
+
 func newScreen() *Screen {
     s := new(Screen)
     s.initSDL()
@@ -67,6 +69,17 @@ type GPU struct {
     
 }
 
+type sprite struct {
+    y uint8
+	x uint8
+	num uint8
+	fl_pal uint8
+	fl_x_flip uint8 
+	fl_y_flip uint8
+	fl_pri uint8
+}
+
+
 func NewGPU() *GPU {
     g := new(GPU)
     g.screen = newScreen()
@@ -103,27 +116,23 @@ func (g *GPU) get_tile_val(m *MMU,addr uint16) (Tile) {
 
 
 
-func (g *GPU) print_tile(m *MMU,addr uint16,xoff uint16, yoff uint16) {
+func (g *GPU) print_tile(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16) {
     var i uint16
-    var j uint16
 
     tile := g.get_tile_val(m,addr)
     for i=0; i<8; i++ {
-        for j=0; j<8; j++ {
- 
-            switch (tile[j][i]) {
+            switch (tile[i][ytoff]) {
                 case 1:
-                    g.screen.PutPixel(int16(j+xoff),int16(i+yoff),uint32(0xc0c0c0))
+                    g.screen.PutPixel(int16(i+xoff),int16(yoff),uint32(0xc0c0c0))
                 case 2:
-                    g.screen.PutPixel(int16(j+xoff),int16(i+yoff),uint32(0x606060))
+                    g.screen.PutPixel(int16(i+xoff),int16(yoff),uint32(0x606060))
                 case 3:
-                    g.screen.PutPixel(int16(j+xoff),int16(i+yoff),uint32(0xff00000))
-               //default:
-                 //   g.screen.PutPixel(int16(j+xoff),int16(i+yoff),uint32(0xff00000))
+                    g.screen.PutPixel(int16(i+xoff),int16(yoff),uint32(0xff00000))
+                //efault:
+                      g.screen.PutPixel(int16(i+xoff),int16(  yoff),uint32(0x00ff000))
 
             }
         }
-    }
 }
 
 
@@ -168,9 +177,9 @@ func (g *GPU) get_tile_map(m *MMU)  {
         w_map_base = 0x9800
         w_map_limit = 0x9Bff
     }
-//	b:=0
+  //b:=0
 		for offset:=map_base; offset<=map_limit; offset++ {
-	b:=m.read_b(offset)
+  	b:=m.read_b(offset)
 		   
 	    if tile_base == 0x8811 { 
 			//signed case
@@ -197,7 +206,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
 				i=0
 				j++
 			}
-//b++	
+//+	
 }
 		
 	i= 0
@@ -292,10 +301,46 @@ func (g *GPU) print_tile_line_w(line uint,) {
     }    
 
 }
+
+func (g *GPU) print_sprites(m *MMU) {
+
+	var sp sprite
+	var j uint8
+	var yoff uint8
+	var ytoff uint8
+	for i:=0; i<0xA0; i+=4 {
+		//Main attributes
+		sp.y = m.oam[i]
+		if sp.y == 0 || sp.y >144 {
+			continue
+		}
+		sp.x = m.oam[i+1]
+		//tile number is uint
+		sp.num = m.oam[i+2]
+		//Flags
+		sp.fl_pri = m.oam[i+3] >>7
+		sp.fl_y_flip = (m.oam[i+3] &0x40) >>6
+		sp.fl_x_flip = (m.oam[i+3] &0x20) >>5
+		sp.fl_pal = (m.oam[i+3] &0x10) >>4
+		yoff = sp.y - 16
+
+		
+		if yoff >  g.LY-8 && yoff <=g.LY  {
+			ytoff = (g.LY - yoff)
+
+			fmt.Println(yoff,sp,ytoff)
+			g.print_tile(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff)) 
+		}
+	}
+
+
+}
+
+
 func (g *GPU) print_tile_map(m *MMU) {
   
 
-    if (g.LY==0) {m.gpu.get_tile_map(m)}
+    if (g.LY==0) {g.get_tile_map(m)}
         //fmt.Println(g.tmap)
 	if (g.LCDC & 0x81 == 0x81){
         g.print_tile_line(uint(g.LY))
@@ -304,14 +349,24 @@ func (g *GPU) print_tile_map(m *MMU) {
 
 	if (g.LCDC & 0x10 == 0x10){
 	//	g.LY++
-	    //g.print_tile_line_w(uint(g.LY))
+	  //  g.print_tile_line_w(uint(g.LY))
 		//H-BLANK
-		g.STAT= 0x00
+	//	g.STAT= 0x00
 		
 	}
-//	if (g.LCDC & 0x80 == 0x80) { 
+
+	if (g.LCDC & 0x10 == 0x10){
+	//	g.LY++
+	  //  g.print_tile_line_w(uint(g.LY))
+		//H-BLANK
+	//	g.STAT= 0x00
+		
+	}
+	if (g.LCDC & 0x02 == 0x02){
+	    g.print_sprites(m)
+	}
+
 	g.LY++
-//	}
         
 	if g.LY == g.LYC {
 		//set coincidenct flag

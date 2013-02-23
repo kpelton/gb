@@ -1,7 +1,7 @@
 package cpu
 
 import (
-	"fmt"
+	//"fmt"
     "github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 
 )
@@ -18,8 +18,8 @@ type GP struct {
 
 func NewGP(cpu *CPU) *GP {
     g := new(GP)
-	g.P1 = 0x3f
-	g.old=0x3f
+	g.P1 = 0x2f
+	g.old=0x2f
 	g.cpu = cpu
 	sdl.EnableKeyRepeat(1,1)
 
@@ -110,7 +110,7 @@ func (g *GP) Update(){
 					}
 				}
 
-			fmt.Printf("0x%x\n",g)
+			//fmt.Printf("0x%x\n",g)
 
 				
 			}
