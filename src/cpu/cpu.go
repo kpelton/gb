@@ -31,7 +31,6 @@ type GetVal func(*CPU) uint16
 type OpMap  [0xffff] Action
 type RegMap8 map[string]uint8
 type RegMap16 map[string]uint16
-type Memory [0x10000]uint8
 
 type OpCall map[uint16]uint32
 
@@ -39,7 +38,6 @@ type CPU struct {
 	ops   OpMap
 	reg8  RegMap8
 	reg16 RegMap16
-	mem   Memory
 	mmu   *MMU
 	gpu   *GPU
 	gp    *GP
@@ -90,7 +88,7 @@ func (c *CPU) load_bios() {
 	}
 
 	for i := 0; i < 0x8000; i++ {
-		c.mmu.write_b(uint16(i), buf[i])
+		c.mmu.load_cart(uint16(i), buf[i])
 	}
 //	fi, err = os.Open("GB_BIOS.bin")
 
@@ -149,7 +147,7 @@ func (c *CPU) Exec() {
 		
 		elapsed := time.Since(start)
 		
-		if  elapsed >= 100*time.Microsecond {
+		if  elapsed >= 50*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			val := c.mmu.read_b(0xff0f)
@@ -177,7 +175,7 @@ func (c *CPU) Exec() {
 
 				c.reg16["PC"] = 0x60
 			
-		} else if !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
+		} /*else if !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8["EI"] == 1  {
 				fmt.Println("INTC")
 				//c.mmu.write_b(0xffff,0)
 				c.mmu.write_b(0xff0f,0)
@@ -188,7 +186,7 @@ func (c *CPU) Exec() {
 				c.reg16["PC"] = 0x48
 			
 			}
-
+*/
 			
 
 			start = time.Now()
@@ -262,7 +260,7 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
 	if !c.mmu.inbios   {
-	//fmt.Printf("%s\n",desc)
+//	fmt.Printf("%s\n",desc)
 	//fmt.Printf("PC:%04",c.reg16["PC"])
     //  c.Print_dump()
 	}	
@@ -1822,13 +1820,8 @@ func BuildCpu() *CPU {
 	c.ops[0xFB] = func(c *CPU) { ; c.reg8["EI"] = 1; c.do_instr("EI", 4, 1) }
 
 	c.ops[0xF3] = func(c *CPU) { c.reg8["EI"] = 0;c.do_instr("DI", 4, 1) }
-/*
-	//c.ops[0xCF] = func(c *CPU) { c.do_instr("DI", 4, 1) }
-
-	//flip all bits
-*/
-
-		c.ops[0x2F] = func(c *CPU) { 
+		
+    c.ops[0x2F] = func(c *CPU) { 
 		c.reg8["FL_H"] = 1
 		c.reg8["FL_N"] = 1
 		c.reg8["A"] = ^c.reg8["A"]

@@ -341,7 +341,7 @@ func (g *GPU) print_sprites(m *MMU) {
 			ytoff = (g.LY - yoff)
 			if sp.fl_y_flip == 1 { ytoff = (^ytoff) & 0x07 }
 			if sp.fl_x_flip == 1 { xflip = true }
-		
+			fmt.Println(sp)
 			g.print_tile(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip)
 		}
 	}
@@ -357,6 +357,7 @@ func (g *GPU) print_tile_map(m *MMU) {
         //fmt.Println(g.tmap)
 	if (g.LCDC & 0x81 == 0x81){
         g.print_tile_line(uint(g.LY))
+		
 	}
 //	}
 
@@ -380,21 +381,22 @@ func (g *GPU) print_tile_map(m *MMU) {
 	}
 
 	g.LY++
-        
-	if g.LY == g.LYC {
-		//set coincidenct flag
-		g.STAT |= 0x2
-		m.write_b(0xff0f,m.read_b(0xff0f)|0x02)  
+    g.STAT = 0x00
 
-	}else{
-		//reset the flag
-		g.STAT &= 0xfd
+	//if g.LY == g.LYC {
+	//	//set coincidenct flag
+	//	g.STAT |= 0x2
+	//	m.write_b(0xff0f,m.read_b(0xff0f)|0x02)  
 
-	}
+//	}else{
+//		//reset the flag
+//		g.STAT &= 0xfd
+
+//	}
         
     if (g.LY==153) {
 		//V-BLANK
-		g.STAT |= 0x017
+		g.STAT = 0x01
 		m.write_b(0xff0f,m.read_b(0xff0f)|0x01)  
 		g.screen.screen.Flip()
 //		g.t_screen.screen.Flip()

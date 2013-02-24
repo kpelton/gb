@@ -164,7 +164,15 @@ func (m *MMU)read_w(addr uint16) (uint16) {
     return uint16(m.read_b(addr)) + uint16((m.read_b(addr+1))) << 8
 }
 
+func (m *MMU)load_cart(addr uint16,val uint8) () {
+
+	m.cart[addr] = val
+
+}
+
 func (m *MMU)write_b(addr uint16,val uint8) () {
+
+	    fmt.Printf("write:%04x:%04x\n",addr,val)
 
     if addr >= 0x8000 && addr < 0xA000{
         m.vm[addr & 0x1fff] = val
@@ -173,7 +181,8 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
             m.vm[addr & 0x1fff] = val
         return
     }else if addr >=0x100 && addr < 0x8000 {
-        m.cart[addr] =val
+        //m.cart[addr] =val
+	    fmt.Printf("INVALID write:%04x:%04x\n",addr,val)
 
         return 
     }else if addr <= 0x100 && !m.inbios{      
@@ -191,7 +200,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
 		return
 	
     }
-    
+
     m.mem[addr] = val
     
 }
