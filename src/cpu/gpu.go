@@ -114,25 +114,36 @@ func (g *GPU) get_tile_val(m *MMU,addr uint16) (Tile) {
 }
 
 
-
-
-func (g *GPU) print_tile(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16) {
-    var i uint16
-
-    tile := g.get_tile_val(m,addr)
-    for i=0; i<8; i++ {
-            switch (tile[i][ytoff]) {
-                case 1:
-                    g.screen.PutPixel(int16(i+xoff),int16(yoff),uint32(0xc0c0c0))
+func (g *GPU) output_pixel(val uint8, x uint16, y uint16) {
+	switch (val) {
+               case 1:
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0xc0c0c0))
                 case 2:
-                    g.screen.PutPixel(int16(i+xoff),int16(yoff),uint32(0x606060))
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0x606060))
                 case 3:
-                    g.screen.PutPixel(int16(i+xoff),int16(yoff),uint32(0xff00000))
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0xff00000))
                 //efault:
-                      g.screen.PutPixel(int16(i+xoff),int16(  yoff),uint32(0x00ff000))
+                //      g.screen.PutPixel(int16(i+xoff),int16(  yoff),uint32(0x00ff000))
 
             }
-        }
+}
+
+func (g *GPU) print_tile(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16,xflip bool) {
+    var i int16
+	var j uint16
+    tile := g.get_tile_val(m,addr)
+
+	if xflip  {
+		j=0
+		for i=7; i>=0; i-- {
+			g.output_pixel(tile[i][ytoff],uint16(j)+xoff,yoff) 
+			j++
+		}
+	}else{
+		for i=0; i<8; i++ { 
+			g.output_pixel(tile[i][ytoff],uint16(i)+xoff,yoff) 
+		}
+	}
 }
 
 
@@ -308,6 +319,7 @@ func (g *GPU) print_sprites(m *MMU) {
 	var j uint8
 	var yoff uint8
 	var ytoff uint8
+	var xflip bool = false
 	for i:=0; i<0xA0; i+=4 {
 		//Main attributes
 		sp.y = m.oam[i]
@@ -327,9 +339,10 @@ func (g *GPU) print_sprites(m *MMU) {
 		
 		if yoff >  g.LY-8 && yoff <=g.LY  {
 			ytoff = (g.LY - yoff)
-
-			fmt.Println(yoff,sp,ytoff)
-			g.print_tile(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff)) 
+			if sp.fl_y_flip == 1 { ytoff = (^ytoff) & 0x07 }
+			if sp.fl_x_flip == 1 { xflip = true }
+		
+			g.print_tile(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip)
 		}
 	}
 

@@ -1,7 +1,7 @@
 package cpu
 
 import (
-	//"fmt"
+//	"fmt"
     "github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 
 )
@@ -13,13 +13,15 @@ type GP struct {
 	K_RIGHT uint8
 	K_UP uint8
 	K_DOWN uint8
-	old uint8
+	pad uint8
+	other uint8
 }
 
 func NewGP(cpu *CPU) *GP {
     g := new(GP)
-	g.P1 = 0x2f
-	g.old=0x2f
+	g.P1 = 0x0f
+	g.other=0x0f
+	g.pad =0x0f
 	g.cpu = cpu
 	sdl.EnableKeyRepeat(1,1)
 
@@ -31,13 +33,13 @@ func (g *GP) handleKeyDown(e *sdl.KeyboardEvent ) {
 	if g.P1 &0x10 == 0x10  {
 		switch (e.Keysym.Sym) {
 			case sdl.K_RETURN:
-			    g.old  &= ^uint8(0x08)
+			    g.other  &= ^uint8(0x08)
 			case sdl.K_SPACE:
-			   g.old &=  ^uint8(0x04)
+			   g.other &=  ^uint8(0x04)
 			case sdl.K_x:
-			    g.old &=  ^uint8(0x02)
+			    g.other &=  ^uint8(0x02)
 			case sdl.K_z:
-          	    g.old &=  ^uint8(0x01)
+          	    g.other &=  ^uint8(0x01)
 
 		}	
 
@@ -45,45 +47,45 @@ func (g *GP) handleKeyDown(e *sdl.KeyboardEvent ) {
 	if g.P1 &0x20 == 0x20  {
 		switch (e.Keysym.Sym) {
 		    case sdl.K_DOWN:
-			    g.old  &= ^uint8(0x08)
+			    g.pad  &= ^uint8(0x08)
 			case sdl.K_UP:
-			   g.old &=  ^uint8(0x04)
+			   g.pad &=  ^uint8(0x04)
 			case sdl.K_LEFT:
-			    g.old &=  ^uint8(0x02)
+			    g.pad &=  ^uint8(0x02)
 			case sdl.K_RIGHT:
-          	    g.old &=  ^uint8(0x01)
+          	    g.pad  &=  ^uint8(0x01)
 		}
 	}
 }
 
 func (g *GP) handleKeyUp(e *sdl.KeyboardEvent ) {
 
-	if g.P1 &0x10 == 0x10  {
+//	if g.P1 &0x10 == 0x10  {
 		switch (e.Keysym.Sym) {
 			case sdl.K_RETURN:
-			    g.old |=0x08
+			    g.other |=0x08
 			case sdl.K_SPACE:
-			    g.old |=0x04
+			    g.other |=0x04
 			case sdl.K_x:
-			    g.old |=0x02
+			    g.other |=0x02
 			case sdl.K_z:
-			    g.old |=0x01
+			    g.other |=0x01
 
-		}	
+	//	}	
 
 	}	
-	if g.P1 &0x20 == 0x20  {
+//	if g.P1 &0x20 == 0x20  {
 		switch (e.Keysym.Sym) {
 			case sdl.K_DOWN:
-			    g.old |=0x08
+			    g.pad |=0x08
 			case sdl.K_UP:
-			    g.old |=0x04
+			    g.pad |=0x04
 			case sdl.K_LEFT:
-			    g.old |=0x02
+			    g.pad |=0x02
 			case sdl.K_RIGHT:
-			    g.old |=0x01
+			    g.pad |=0x01
 
-		}
+	//	}
 	}
 
 	//fmt.Printf("P1:0x%02x\n",g.P1)
@@ -110,7 +112,6 @@ func (g *GP) Update(){
 					}
 				}
 
-			//fmt.Printf("0x%x\n",g)
 
 				
 			}
@@ -123,7 +124,16 @@ func (g *GP) Update(){
 		break
 	}
 
-	g.P1=g.old
+	if g.P1 &0x20 == 0x20 {
+		g.P1 |= g.pad
+	}
+	if g.P1 &0x10 == 0x10 {
+		g.P1 |= g.other
+	}
+	//g.P1|=g.old			
+//	fmt.Printf("P1:0x%x,PAD:0x%0x,OTHER:0x%0x\n",g.P1,g.pad,g.other)
+
+	
 }
 
 
