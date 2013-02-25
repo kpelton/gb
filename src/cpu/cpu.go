@@ -122,7 +122,8 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 	start := time.Now()
-    
+    f := gen_push_pop("PUSH", "PC")
+
 
 	for {
 
@@ -149,14 +150,14 @@ func (c *CPU) Exec() {
 		elapsed := time.Since(start)
 
 		
-		if  elapsed >= 50*time.Microsecond {
+		if  elapsed >= 100*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			val := c.mmu.read_b(0xff0f)
 			c.DIV++
+								//fmt.Println(elapsed)
 
 
-			f := gen_push_pop("PUSH", "PC")
 
 			
 			//fmt.Println("VAL",val)
@@ -195,15 +196,15 @@ func (c *CPU) Exec() {
 			start = time.Now()
 
 		}
-		if c.mmu.inbios && c.reg16["PC"] >= 0xfa {
-			c.reg16["A"]=0x1
-			c.reg16["FL_Z"]=0x1
-			c.mmu.inbios = false
-			c.reg16["PC"]=0x100
+	//	if c.mmu.inbios && c.reg16["PC"] >= 0xfa {
+	//		c.reg16["A"]=0x1
+	//		c.reg16["FL_Z"]=0x1
+	//		c.mmu.inbios = false
+	//		c.reg16["PC"]=0x100
 
 
 			//fmt.Println("A")
-		}
+	//	}
 		//fmt.Println(elapsed)
 
 	}
@@ -469,7 +470,6 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 	f_set_val := gen_set_val(type_left, reg_left)
 
 	switch op_type {
-
 	case "DAA":
 		lambda = func(c *CPU) {
 			val:= uint16(f_right_get_val(c))
@@ -504,6 +504,8 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 
 	case "ADD":
 		if reg_left == "SP" {
+
+
 			lambda = func(c *CPU) {
 				n:=f_right_get_val(c)
 				prev:=f_left_get_val(c)
@@ -540,7 +542,9 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 				c.do_instr(desc, (ticks), (args))
 				
 			}
-	}else{	
+			
+			
+		}else{	
 		lambda = func(c *CPU) {
 			prev := f_left_get_val(c)
 			right :=  f_right_get_val(c)
@@ -1379,9 +1383,20 @@ func BuildCpu() *CPU {
 	c.ops[0x11] = gen_ld("DE", "nn", 12, 3)
 	c.ops[0x21] = gen_ld("HL", "nn", 12, 3)
 	c.ops[0x31] = gen_ld("SP", "nn", 12, 3)
-	c.ops[0xf8] = gen_alu("ADD","SP", "n", 12, 2) //signed not working
+
+	//special case for f8 op
+	add_sp := gen_alu("ADD","SP", "n", 12, 2) 
+	s_val  := gen_set_val(reg16_combo,"HL")
+	c.ops[0xf8] = func (c *CPU) {
+		before := c.reg16["SP"]
+		add_sp(c)
+		s_val(c,c.reg16["SP"])
+		c.reg16["SP"] = before
+		
+	}
+
 	c.ops[0xf9] = gen_ld("SP", "HL", 8, 1)
-	c.ops[0x08] = gen_ld("(nn)", "SP", 20, 3) //not working
+	c.ops[0x08] = gen_ld("(nn)", "SP", 20, 3)
 	c.ops[0xf5] = gen_push_pop("PUSH", "AF")
 	c.ops[0xC5] = gen_push_pop("PUSH", "BC")
 	c.ops[0xD5] = gen_push_pop("PUSH", "DE")
@@ -1403,7 +1418,7 @@ func BuildCpu() *CPU {
 	c.ops[0x85] = gen_alu("ADD", "A", "L", 4, 1)
 	c.ops[0x86] = gen_alu("ADD", "A", "(HL)", 8, 1)
 	c.ops[0xc6] = gen_alu("ADD", "A", "n", 8, 2)
-	c.ops[0xe8] = gen_alu("ADD", "SP", "n", 16, 2) //wrong
+	c.ops[0xe8] = gen_alu("ADD", "SP", "n", 16, 2) 
 
 
 	c.ops[0x8F] = gen_alu("ADC", "A", "A", 4, 1)

@@ -121,9 +121,9 @@ func (g *GPU) output_pixel(val uint8, x uint16, y uint16) {
                 case 2:
                     g.screen.PutPixel(int16(x),int16(y),uint32(0x606060))
                 case 3:
-                    g.screen.PutPixel(int16(x),int16(y),uint32(0xff00000))
-                //efault:
-                //      g.screen.PutPixel(int16(i+xoff),int16(  yoff),uint32(0x00ff000))
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0x0000000))
+                default:
+                    g.screen.PutPixel(int16(x),int16(  y),uint32(0xffffff))
 
             }
 }
@@ -266,14 +266,13 @@ j:=g.SCX &7
             //fmt.Println(i,map_line,j,tile_line)
             switch (g.bg_tmap[i][map_line][j][tile_line]) {
                 case 0: 
-				g.screen.PutPixel(int16(x),int16(line),uint32(0xff))
-
+				    g.screen.PutPixel(int16(x),int16(line),uint32(0xffffff))
                 case 1:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
                 case 2:
                     g.screen.PutPixel(int16(x),int16(line),uint32(0x606060))
                 case 3:
-                    g.screen.PutPixel(int16(x),int16(line),uint32(0x00ff000))
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x0000000))
             
             }
             j++
@@ -341,7 +340,7 @@ func (g *GPU) print_sprites(m *MMU) {
 			ytoff = (g.LY - yoff)
 			if sp.fl_y_flip == 1 { ytoff = (^ytoff) & 0x07 }
 			if sp.fl_x_flip == 1 { xflip = true }
-			fmt.Println(sp)
+			//fmt.Println(sp)
 			g.print_tile(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip)
 		}
 	}
