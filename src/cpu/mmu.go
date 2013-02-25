@@ -104,7 +104,9 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
 		
 		//fmt.Printf("<-P1:%04X\n",val)
 
-		
+		case 0xff04:
+	 	    val = m.cpu.DIV
+
         case 0xff40:
             val= m.cpu.gpu.LCDC
 		//		fmt.Printf("<-LCDC:%04X\n",val)
@@ -149,7 +151,7 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 		fmt.Printf("%x\n",addr)
         return m.oam[addr & 0x00ff]  
 		
-    } else if addr == 0xff00 || (addr >= 0xff40 && addr <= 0xff4B){
+    } else if addr == 0xff00 || addr == 0xff04 || (addr >= 0xff40 && addr <= 0xff4B){
         return m.read_mmio(addr)      
 
 	}else if addr >= 0xe000 && addr < 0xfe00{
@@ -172,7 +174,7 @@ func (m *MMU)load_cart(addr uint16,val uint8) () {
 
 func (m *MMU)write_b(addr uint16,val uint8) () {
 
-	    fmt.Printf("write:%04x:%04x\n",addr,val)
+	 //   fmt.Printf("write:%04x:%04x\n",addr,val)
 
     if addr >= 0x8000 && addr < 0xA000{
         m.vm[addr & 0x1fff] = val

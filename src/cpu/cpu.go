@@ -41,6 +41,7 @@ type CPU struct {
 	mmu   *MMU
 	gpu   *GPU
 	gp    *GP
+	DIV uint8
 }
 
 //DO the thang
@@ -146,12 +147,14 @@ func (c *CPU) Exec() {
 		c.gp.Update()
 		
 		elapsed := time.Since(start)
+
 		
 		if  elapsed >= 50*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			val := c.mmu.read_b(0xff0f)
-			
+			c.DIV++
+
 
 			f := gen_push_pop("PUSH", "PC")
 
