@@ -82,15 +82,14 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
             m.cpu.gpu.LYC = val
 			//fmt.Printf("->LYC:%04X\n",val)
 		
-		case 0xff46:
-			//fmt.Printf("->DMA:%04X\n",val)
-
-		m.exec_dma(val)
-		case 0xff4A:
+        case 0xff46:
+	   m.exec_dma(val)
+        case 0xff47:
+           m.cpu.gpu.BGP=val 
+          //fmt.Printf("->BGP:%04X\n",val)
+	case 0xff4A:
             m.cpu.gpu.WY = val
-		//	fmt.Printf("->WY:%04X\n",val)
-		case 0xff4B:
-		//	fmt.Printf("->WX:%04X\n",val)
+	case 0xff4B:
             m.cpu.gpu.WX = val
 		
     }
@@ -123,10 +122,12 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
             val=m.cpu.gpu.LY
         case 0xff45:
             val=m.cpu.gpu.LYC
-			//fmt.Printf("->LYC:%04X\n",val)
-		case 0xff46:
-		    panic("DMA register is not readable!")
-		case 0xff4A:
+	//fmt.Printf("->LYC:%04X\n",val)
+	case 0xff46:
+             panic("DMA register is not readable!")
+	case 0xff47:
+	   val= m.cpu.gpu.BGP
+        case 0xff4A:
             val = m.cpu.gpu.WY 
 		//	fmt.Printf("->WY:%04X\n",val)
 		case 0xff4B:

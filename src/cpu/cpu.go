@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"time"
-
+//	"runtime/pprof"
 )
 
 const (
@@ -31,7 +31,6 @@ type GetVal func(*CPU) uint16
 type OpMap  [0xffff] Action
 type RegMap8 map[string]uint8
 type RegMap16 map[string]uint16
-
 type OpCall map[uint16]uint32
 
 type CPU struct {
@@ -122,8 +121,13 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 	start := time.Now()
+	count :=0
     f := gen_push_pop("PUSH", "PC")
-
+	instr_clk := time.Now()
+	fo, err := os.Create("output.txt")
+    if err != nil { panic(err) }
+    defer fo.Close()
+//	pprof.StartCPUProfile(fo) 
 
 	for {
 
@@ -143,10 +147,23 @@ func (c *CPU) Exec() {
 		
 		//run op
 		c.ops[op](c)
+		count++
+		
+		instr_time := time.Since(instr_clk)
 		
 		//Update gamepad/buttons
 		c.gp.Update()
-		
+		if  instr_time >= 1 * time.Second {
+			fmt.Println(count)
+			count =0
+		    instr_clk = time.Now()
+
+			
+		//	pprof.StopCPUProfile() 
+
+		}
+				continue
+
 		elapsed := time.Since(start)
 
 		
@@ -155,7 +172,7 @@ func (c *CPU) Exec() {
 			//read interrupt register
 			val := c.mmu.read_b(0xff0f)
 			c.DIV++
-								//fmt.Println(elapsed)
+						//		fmt.Println(elapsed)
 
 
 
@@ -212,8 +229,7 @@ func (c *CPU) Exec() {
 }
 
 func (c *CPU) tick(val uint16) {
-	//fmt.Println("tick",val);
-	//time.Sleep(time.Duration(val)* time.Duration(4) *time.Nanosecond)
+//	time.Sleep(time.Duration(val) *time.Microsecond)
 }
 
 func get_ld_type(arg string) int {
@@ -1828,12 +1844,8 @@ func BuildCpu() *CPU {
     //enable EI and return
 	c.ops[0xD9] = func(c *CPU) {c.reg8["EI"] = 1 ; f_reti(c);}
 
-	//Haven't done these yet
-	c.ops[0x0] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
-//	c.ops[0xDD] = func(c *CPU) { c.do_instr("DD NOP", 4, 1) }
-//	c.ops[0xFC] = func(c *CPU) { c.do_instr("DD NOP", 4, 1) }
-	//c.ops[0xf4] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
 
+	c.ops[0x0] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
 	c.ops[0x10] = func(c *CPU) { c.do_instr("STOP", 4, 1) }
 	c.ops[0xFB] = func(c *CPU) { ; c.reg8["EI"] = 1; c.do_instr("EI", 4, 1) }
 
