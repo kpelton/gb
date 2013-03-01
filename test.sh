@@ -1,5 +1,5 @@
 #!/bin/bash
-runtime=${1:-5s}
+runtime=${1:-1s}
 lines="500000"
 rom="roms/ttt.gb"
 compare="diffuse"
