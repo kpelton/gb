@@ -6,6 +6,24 @@ import (
 	"time"
 //	"runtime/pprof"
 )
+const (
+	PC = iota
+	SP
+)
+const ( 
+	A = iota
+	B
+	C
+	D
+	E
+	F
+	H
+	L
+	FL_Z
+	FL_C
+	FL_H
+	FL_N
+)
 
 const (
 	reg8 = iota
@@ -23,7 +41,12 @@ const (
 	nn
 	n
 	invalid
+
 )
+
+
+
+
 
 type Action func(*CPU)
 type SetVal func(*CPU, uint16)
@@ -43,39 +66,6 @@ type CPU struct {
 	DIV uint8
 }
 
-//DO the thang
-func (c *CPU) Print_dump() {
-
-	fmt.Println("===8===")
-	fmt.Printf("\tA:0x%04X\n", c.reg8["A"])
-	fmt.Printf("\tB:0x%04X\n", c.reg8["B"])
-	fmt.Printf("\tC:0x%04X\n", c.reg8["C"])
-	fmt.Printf("\tD:0x%04X\n", c.reg8["D"])
-	fmt.Printf("\tE:0x%04X\n", c.reg8["E"])
-	fmt.Printf("\tH:0x%04X\n", c.reg8["H"])
-	fmt.Printf("\tL:0x%04X\n", c.reg8["L"])
-	fmt.Printf("\tFL:0x%04X\n", c.reg8["FL"])
-	fmt.Printf("\tIE:0x%04X\n", c.reg8["IE"])
-	fmt.Println("===16===")
-	fmt.Printf("\tPC:0x%04X\n", c.reg16["PC"])
-	fmt.Printf("\tSP:0x%04X\n", c.reg16["SP"])
-	fmt.Println("===STACK===")
-	for i := c.reg16["SP"]; i < 0x10; i++ {
-		fmt.Printf("\tstack[0x%04X]:0x%02X\n", i, c.mmu.read_b(i))
-	}
-	fmt.Println("")
-
-}
-func (c *CPU) set_br(addr uint16) {
-	if c.reg16["PC"] == addr {
-		fmt.Printf("Hit break at 0x%04x\n", addr)
-		c.Print_dump()
-		c.mmu.Dump_vm()
-		c.gpu.print_tile_map(c.mmu)
-		os.Exit(1)
-	}
-
-}
 func (c *CPU) load_bios() {
 
 	fi, err := os.Open(os.Args[1])
@@ -90,14 +80,7 @@ func (c *CPU) load_bios() {
 	for i := 0; i < 0x8000; i++ {
 		c.mmu.load_cart(uint16(i), buf[i])
 	}
-//	fi, err = os.Open("GB_BIOS.bin")
 
-//	n, err = fi.Read(buf)
-//	c.mmu.inbios = true
-//	for i := 0; i < n; i++ {
-//		c.mmu.write_b(uint16(i), buf[i])
-//	}
-	//c.mmu.write_b(0xff00, 0xff);
 
 	c.reg16["PC"] = 0x100
 	c.reg16["SP"] = 0xfffe
@@ -114,6 +97,42 @@ func (c *CPU) load_bios() {
 	c.reg8["FL_H"] = 0x0
 	c.reg8["FL_N"] = 0x0
 	c.mmu.write_b(0xff00, 0x0f);
+}
+
+func (c *CPU) get_reg_id(reg string) (int) {
+	var val int = -1
+	switch (reg) {
+	case "PC":
+		val = PC
+	case "SP":
+		val = SP
+	case "A":
+		val = A
+	case "B":
+		val = B
+	case "C":
+		val = C
+	case "D":
+		val = D
+	case "E":
+		val = E
+	case "F":
+		val = F
+	case "H":
+		val = H
+	case "L":
+		val = L
+	case "FL_Z":
+		val = FL_Z
+	case "FL_C":
+		val =  FL_C
+	case "FL_H":
+		val =  FL_H
+	case "FL_N":
+		val =  FL_N
+
+	}
+	return val
 }
 
 func (c *CPU) Exec() {
