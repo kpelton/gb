@@ -311,7 +311,7 @@ func (g *GPU) print_sprites(m *MMU) {
 	for i:=0; i<0xA0; i+=4 {
 		//Main attributes
 		sp.y = m.oam[i]
-		if sp.y == 0 || sp.y >145 {
+		if sp.y == 0 || sp.y >155 {
 			continue
 		}
 		sp.x = m.oam[i+1]

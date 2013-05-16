@@ -185,7 +185,7 @@ func (c *CPU) Exec() {
 		elapsed := time.Since(start)
 		
 		
-		if  elapsed >= 50*time.Microsecond {
+		if  elapsed >= 20*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			val := c.mmu.read_b(0xff0f)
