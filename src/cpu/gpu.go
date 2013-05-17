@@ -2,8 +2,7 @@ package cpu
 
 import (
 	"fmt"
-    "github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
-
+    "github.com/banthar/Go-SDL/sdl"
 )
 
 
@@ -24,7 +23,7 @@ func (s *Screen) initSDL() () {
     if sdl.Init(sdl.INIT_EVERYTHING) != 0 {
 		fmt.Println(sdl.GetError())
 	}
-    s.screen = sdl.SetVideoMode(160, 144, 32, sdl.RESIZABLE)
+    s.screen = sdl.SetVideoMode(160, 144, 32, sdl.RESIZABLE|sdl.DOUBLEBUF|sdl.HWSURFACE)
     
 
 
@@ -39,8 +38,11 @@ func (s *Screen) initSDL() () {
 }
 
 func (s *Screen) PutPixel(x int16,y int16,color uint32) {
-    s.screen.FillRect(&sdl.Rect{x,y,1,1},color)
-
+    //Old Method
+	s.screen.FillRect(&sdl.Rect{x,y,1,1},color)
+	//s.screen.Set(int(x),int(y),color)
+	//pix := s.pixPtr(x, y)
+	//pix.SetUint(color)
 }
 
 
@@ -117,7 +119,7 @@ func (g *GPU) output_pixel(val uint8, x uint16, y uint16) {
                 case 3:
                     g.screen.PutPixel(int16(x),int16(y),uint32(0x0000000))
                 case 0:
-                    g.screen.PutPixel(int16(x),int16(  y),uint32(0xffffff))
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0xffffff))
 
             }
 }

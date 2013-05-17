@@ -1,8 +1,9 @@
 package cpu
 
 import (
-//	"fmt"
-    "github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+	//	"fmt"
+    //"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+    "github.com/banthar/Go-SDL/sdl"
 
 )
 
@@ -95,34 +96,30 @@ func (g *GP) handleKeyUp(e *sdl.KeyboardEvent ) {
 func (g *GP) Update(){
 	
 	for {
-		select {
-
-		case event := <-sdl.Events:
-			switch e := event.(type) {	
-			case sdl.KeyboardEvent:
-				if e.Type == 2  { //KeyDown
-					g.handleKeyDown(&e)
-				
-				}else{
-					g.handleKeyUp(&e)
-//					g.P1 = 0x0f
-					if 	g.cpu.mmu.read_b(0xffff) &0x10 == 0x10 {
-						//INT
-						g.cpu.mmu.write_b(0xff0f,(g.cpu.mmu.read_b(0xff0f) |0x08))
-					}
+		ev := sdl.PollEvent()
+		switch e := ev.(type) {			
+			
+		case *sdl.KeyboardEvent:
+			if e.Type == sdl.KEYDOWN{
+				//fmt.Printf("%+v\n",e)
+				g.handleKeyDown(e)
+				//fmt.Printf("%+v\n",e)
+				//fmt.Printf("P1:0x%x,PAD:0x%0x,OTHER:0x%0x\n",g.P1,g.pad,g.other)
+			}else{
+				g.handleKeyUp(e)
+				//			 		g.P1 = 0x0f
+				if 	g.cpu.mmu.read_b(0xffff) &0x10 == 0x10 {
+					//INT
+					g.cpu.mmu.write_b(0xff0f,(g.cpu.mmu.read_b(0xff0f) |0x08))
 				}
-
-
-				
 			}
+			
 		default:
-
 			break
-	
-
 		}
 		break
 	}
+	
 
 	if g.P1 &0x20 == 0x20 {
 		g.P1 |= g.pad
@@ -137,3 +134,4 @@ func (g *GP) Update(){
 }
 
 
+   
