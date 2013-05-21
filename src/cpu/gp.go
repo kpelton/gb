@@ -31,7 +31,7 @@ func NewGP(cpu *CPU) *GP {
 
 func (g *GP) handleKeyDown(e *sdl.KeyboardEvent ) {
 
-	if g.P1 &0x10 == 0x10  {
+//	if g.P1 &0x10 == 0x10  {
 		switch (e.Keysym.Sym) {
 			case sdl.K_RETURN:
 			    g.other  &= ^uint8(0x08)
@@ -44,8 +44,8 @@ func (g *GP) handleKeyDown(e *sdl.KeyboardEvent ) {
 
 		}	
 
-	}	
-	if g.P1 &0x20 == 0x20  {
+//	}	
+//	if g.P1 &0x20 == 0x20  {
 		switch (e.Keysym.Sym) {
 		    case sdl.K_DOWN:
 			    g.pad  &= ^uint8(0x08)
@@ -56,7 +56,7 @@ func (g *GP) handleKeyDown(e *sdl.KeyboardEvent ) {
 			case sdl.K_RIGHT:
           	    g.pad  &=  ^uint8(0x01)
 		}
-	}
+//	}
 }
 
 func (g *GP) handleKeyUp(e *sdl.KeyboardEvent ) {

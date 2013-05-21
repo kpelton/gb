@@ -174,7 +174,8 @@ func (c *CPU) Exec() {
         }
 		count++
 		instr_time := time.Since(instr_clk)
-		timer_int := c.timer.Update()
+		//timer_int := c.timer.Update()
+        timer_int:= false
 		//Update gamepad/buttons
 		c.gp.Update()
 		if  instr_time >= 1 * time.Second {
@@ -194,7 +195,7 @@ func (c *CPU) Exec() {
                     c.is_halted = false
     	            c.reg16[PC] = 0x50
 
-		}else if  elapsed >= 33*time.Microsecond {
+		}else if  elapsed >= 20*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			c.DIV++
