@@ -64,6 +64,8 @@ type CPU struct {
 	mmu   *MMU
 	gpu   *GPU
 	gp    *GP
+    timer *Timer
+    is_halted bool
 	DIV uint8
 }
 
@@ -155,7 +157,7 @@ func (c *CPU) Exec() {
 
 		op = uint16(c.mmu.read_w(c.reg16[PC]))
 			if !c.mmu.inbios {		
-		//	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
+			//fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
 
 		}
 	
@@ -167,10 +169,12 @@ func (c *CPU) Exec() {
 		}
 		
 		//run op
-		c.ops[op](c)
+        if !c.is_halted {
+		    c.ops[op](c)
+        }
 		count++
 		instr_time := time.Since(instr_clk)
-		
+		timer_int := c.timer.Update()
 		//Update gamepad/buttons
 		c.gp.Update()
 		if  instr_time >= 1 * time.Second {
@@ -178,17 +182,21 @@ func (c *CPU) Exec() {
 			count =0
 		    instr_clk = time.Now()
 
-			
 		//	pprof.StopCPUProfile() 
 
 		}
-		
+		val := c.mmu.read_b(0xff0f)
+
 		elapsed := time.Since(start)
-		
-		if  elapsed >= 33*time.Microsecond {
+		if   timer_int  &&c.reg8[EI] ==1 {
+                	c.reg8[EI] = 0
+			        f(c) //push pc on stack
+                    c.is_halted = false
+    	            c.reg16[PC] = 0x50
+
+		}else if  elapsed >= 33*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
-			val := c.mmu.read_b(0xff0f)
 			c.DIV++
 						//		fmt.Println(elapsed)
     		//fmt.Println("INT_VBLANK")
@@ -196,16 +204,17 @@ func (c *CPU) Exec() {
 
 			
 			//fmt.Println("VAL",val)
-			if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8[EI] == 1  {
-		//	fmt.Println("INT")
-		c.reg8[EI] = 0
-	//	c.mmu.write_b(0xffff,0)
-		c.mmu.write_b(0xff0f,0)
-			f(c) //push pc on stack
 
-	 c.reg16[PC] = 0x40
-			
-			
+                if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8[EI] == 1  {
+    		        //	fmt.Println("INT")
+    		        c.reg8[EI] = 0
+    	            //	c.mmu.write_b(0xffff,0)
+    		        c.mmu.write_b(0xff0f,0)
+    			    f(c) //push pc on stack
+            		c.is_halted = false
+    	            c.reg16[PC] = 0x40
+    			
+    			
 		} else if     !c.mmu.inbios && val &0x8 == 0x8 &&c.reg8[EI] == 1  {
 				c.reg8[EI] = 0
 				c.mmu.write_b(0xff0f,0)
@@ -1133,6 +1142,7 @@ func gen_rotate_shift(left string, reg_right string, ticks uint16, args uint16) 
 		}
 
 	 case "SCF":
+
 		lambda = func(c *CPU) {
 		c.reg8[FL_C] = 1	
 		c.reg8[FL_H] = 0
@@ -1312,7 +1322,7 @@ func BuildCpu() *CPU {
 	c.gpu = NewGPU()
 	c.gp = NewGP(c)
 	c.mmu = NewMMU(c)
-
+    c.timer = NewTimer()
 
 
 	//Init registers
@@ -1903,7 +1913,7 @@ func BuildCpu() *CPU {
 	c.ops[0xF7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x30 }
 	c.ops[0xFF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x38 }
 
-	c.ops[0x76] = func(c *CPU) { c.do_instr("HALT", 4, 0) }
+	c.ops[0x76] = func(c *CPU) { c.is_halted=true; c.do_instr("HALT", 4, 1) }
 	c.ops[0x37] =  gen_rotate_shift("SCF", "A", 4, 1)
 	c.ops[0x3f] =  gen_rotate_shift("CCF", "A", 4, 1)
 

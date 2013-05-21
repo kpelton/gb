@@ -61,8 +61,12 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
             m.cpu.gp.P1 = val
 		//		fmt.Printf("->P1:%04X\n",val)
 
-    
-
+        case 0xff05:
+            m.cpu.timer.TIMA = val
+        case 0xff06:
+            m.cpu.timer.TMA = val
+        case 0xff07:
+            m.cpu.timer.TAC = val
         case 0xff40:
             m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
@@ -107,7 +111,12 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
 
 		case 0xff04:
 	 	    val = m.cpu.DIV
-
+        case 0xff05:
+           val =  m.cpu.timer.TIMA 
+        case 0xff06:
+           val = m.cpu.timer.TMA 
+        case 0xff07:
+           val =  m.cpu.timer.TAC
         case 0xff40:
             val= m.cpu.gpu.LCDC
 		//		fmt.Printf("<-LCDC:%04X\n",val)
@@ -144,10 +153,6 @@ func (m *MMU)read_b(addr uint16) (uint8) {
     
     if  addr >= 0x8000 && addr < 0xa000  {
         return m.vm[addr & 0x1fff]  
-    } else if addr ==  0xff07 {
-        fmt.Printf("TMR READ\n")
-
-        return 4
 
     } else if addr >= 0x100 && addr < 0x8000  {
 
@@ -159,7 +164,7 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 		fmt.Printf("%x\n",addr)
         return m.oam[addr & 0x00ff]  
 		
-    } else if addr == 0xff00 || addr == 0xff04 || (addr >= 0xff40 && addr <= 0xff4B){
+    } else if addr == 0xff00 || (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <= 0xff4B){
         return m.read_mmio(addr)      
 
 	}else if addr >= 0xe000 && addr < 0xfe00{
@@ -198,12 +203,8 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
     }else if addr <= 0x100 && !m.inbios{      
        m.cart[addr] = val
         return 
-    } else if addr ==  0xff07 {
-        fmt.Printf("TMR write:%04x\n",val)
 
-        return
-
-    } else if addr == 0xff00 || (addr >= 0xff40 && addr <=0xff4B){
+    } else if addr == 0xff00 ||  (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <=0xff4B){
         m.write_mmio(addr,val)
         return
 	} else if (addr >= 0xfe00 && addr <= 0xfe9f){
