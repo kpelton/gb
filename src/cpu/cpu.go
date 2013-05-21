@@ -141,6 +141,7 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 	start := time.Now()
+
 	count :=0
     f := gen_push_pop("PUSH", "PC")
 	instr_clk := time.Now()
@@ -184,14 +185,13 @@ func (c *CPU) Exec() {
 		
 		elapsed := time.Since(start)
 		
-		
 		if  elapsed >= 33*time.Microsecond {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			val := c.mmu.read_b(0xff0f)
 			c.DIV++
 						//		fmt.Println(elapsed)
-
+    		//fmt.Println("INT_VBLANK")
 
 
 			

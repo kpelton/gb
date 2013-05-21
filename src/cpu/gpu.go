@@ -171,8 +171,8 @@ func (g *GPU) get_tile_map(m *MMU)  {
         //tile_limit = 0x8FFF
     } else {
         tile_base = 0x8800
-//	fmt.Println("WARNING!!!!!!!!!!!!!!!\n")
-//		fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
+	   // fmt.Println("WARNING!!!!!!!!!!!!!!!\n")
+		//fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
         //tile_limit = 0x97FF
     }
 	
@@ -186,31 +186,37 @@ func (g *GPU) get_tile_map(m *MMU)  {
     }
   //b:=0
 		for offset:=map_base; offset<=map_limit; offset++ {
-  		b:=m.read_b(offset)
-		
+  	    	b:=m.read_b(offset)
+    		
 
-	    if tile_base == 0x8800 { 
-			//signed case
-				if b == 0xff {b=0}
-			
+    	    if tile_base == 0x8800 { 
+    			//signed case
+    		    if int8(b) >= 0 {
+          	    	tile = 0x9000+ uint16(int(int8(b))*16)
+                    //fmt.Println(int8(b))
+            	    //fmt.Printf("%x,%x,\n",b,tile)
+                 }else{
+           		    tile = tile_base+ uint16((128+int(int8(b))) * 16)
+                    //fmt.Println(int8(b))
+                    //fmt.Println((128+int(int8(b))) )
+                    //fmt.Printf("%x,%x,\n",b,tile)
+                 }    
+      
+		    }else {
+    			
+    			//unsigned
 
-				tile = tile_base+ uint16(  int8(b)*16)
-			//fmt.Printf("%x,%x\n",b,tile)
-		}else {
-			
-			//unsigned
+    			tile = tile_base+(uint16(b)*16)
+    		}			
+    			g.bg_tmap[i][j] =g.get_tile_val(m,tile)
 
-			tile = tile_base+(uint16(b)*16)
-		}			
-			g.bg_tmap[i][j] =g.get_tile_val(m,tile)
-
-			i++
-			if i == 32 {
-				i=0
-				j++
-			}
-//.b++	
-}
+    			i++
+    			if i == 32 {
+    				i=0
+    				j++
+    			}
+    //.b++	
+    }
 		
 	i= 0
 	j=0
@@ -256,15 +262,15 @@ func (g *GPU) print_tile_line(line uint,) {
         for j<8 {
             //fmt.Println(i,map_line,j,tile_line)
             switch (g.bg_tmap[i][map_line][j][tile_line]) {
-            case 0: 
-	            g.screen.PutPixel(int16(x),int16(line),uint32(0xffffff))
-            case 1:
-                g.screen.PutPixel(int16(x),int16(line),uint32(0xaaaaaa))
-            case 2:
-                g.screen.PutPixel(int16(x),int16(line),uint32(0x555555))
-            case 3:
-                g.screen.PutPixel(int16(x),int16(line),uint32(0x0000000))
-				
+                case 0: 
+    	            g.screen.PutPixel(int16(x),int16(line),uint32(0xffffff))
+                case 1:
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0xaaaaaa))
+                case 2:
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x555555))
+                case 3:
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x0000000))
+    				
             }
             j++
 			x++
