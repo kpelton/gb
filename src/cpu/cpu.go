@@ -142,7 +142,6 @@ func (c *CPU) Exec() {
 
 	c.load_bios()
 	var op uint16
-	start := time.Now()
 
 	count :=0
     f := gen_push_pop("PUSH", "PC")
@@ -174,8 +173,8 @@ func (c *CPU) Exec() {
         }
 		count++
 		instr_time := time.Since(instr_clk)
-		//timer_int := c.timer.Update()
-        timer_int:= false
+        timer_int := c.timer.Update()
+        
 		//Update gamepad/buttons
 		c.gp.Update()
 		if  instr_time >= 1 * time.Second {
@@ -188,20 +187,20 @@ func (c *CPU) Exec() {
 		}
 		val := c.mmu.read_b(0xff0f)
 
-		elapsed := time.Since(start)
+		//elapsed := time.Since(start)
 		if   timer_int  &&c.reg8[EI] ==1 {
                 	c.reg8[EI] = 0
 			        f(c) //push pc on stack
                     c.is_halted = false
     	            c.reg16[PC] = 0x50
 
-		}else if  elapsed >= 20*time.Microsecond {
+		} else if count == 50 {
 			c.gpu.print_tile_map(c.mmu)
 			//read interrupt register
 			c.DIV++
 						//		fmt.Println(elapsed)
     		//fmt.Println("INT_VBLANK")
-
+            count = 0
 
 			
 			//fmt.Println("VAL",val)
@@ -238,7 +237,6 @@ func (c *CPU) Exec() {
 */
 			
 
-			start = time.Now()
 
 		}
 	//	if c.mmu.inbios && c.reg16[PC] >= 0xfa {
