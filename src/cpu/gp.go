@@ -107,11 +107,7 @@ func (g *GP) Update(){
 				//fmt.Printf("P1:0x%x,PAD:0x%0x,OTHER:0x%0x\n",g.P1,g.pad,g.other)
 			}else{
 				g.handleKeyUp(e)
-				//			 		g.P1 = 0x0f
-				if 	g.cpu.mmu.read_b(0xffff) &0x10 == 0x10 {
-					//INT
-					g.cpu.mmu.write_b(0xff0f,(g.cpu.mmu.read_b(0xff0f) |0x08))
-				}
+				g.cpu.ic.Assert(GAME)
 			}
 			
 		default:

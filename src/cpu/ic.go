@@ -1,9 +1,9 @@
 package cpu
 
-//import (
-//   "fmt"
+import (
+   "fmt"
 //    "time"
-//)
+)
 
 type IC struct {
     IE uint8  //Interrupt Enable (R/W)
@@ -16,6 +16,7 @@ const (
    LCDC    = 0x2
    TIMER = 0x4 
    SERIAL  = 0x8
+   GAME = 0x10 
 )
 
 func NewIC() *IC {
@@ -44,11 +45,16 @@ func (i *IC)  Handle() uint16 {
   
         case (i.IF & V_BLANK == V_BLANK) && (i.IE & V_BLANK == V_BLANK) :
             i.Disassert(V_BLANK)
-            value = 0x40 
+            return(0x40)
 
         case (i.IF & TIMER == TIMER) && (i.IE & TIMER == TIMER) :
             i.Disassert(TIMER)
-            value = 0x50
+            return(0x50)
+
+        case (i.IF & GAME == GAME) && (i.IE & GAME == GAME) :
+            i.Disassert(TIMER)
+            fmt.Println("X")
+            return(0x60)
         
     }
     return(value)

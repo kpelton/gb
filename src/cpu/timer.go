@@ -32,7 +32,7 @@ func (timer *Timer) Update(ic *IC) {
         elapsed := time.Since(timer.last_update)
         switch (timer.TAC & 0x3) {
             case KHZ_4096:
-                if   elapsed >= 500*time.Microsecond  {
+                if   elapsed >= 200*time.Microsecond  {
                     timer.last_update = time.Now()
                     if (timer.TIMA == 0xff) {
                         timer.TIMA = timer.TMA
@@ -45,7 +45,7 @@ func (timer *Timer) Update(ic *IC) {
                     //fmt.Println(elapsed,timer.TMA,timer.TIMA)
                 }
             default:
-                fmt.Printf("Unsupported timer frequency!");
+                fmt.Printf("Unsupported timer frequency!\n");
         }
 
     }
