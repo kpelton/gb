@@ -1,53 +1,55 @@
 package cpu
 
-import (
-   "fmt"
+//import (
+//   "fmt"
 //    "time"
-)
+//)
 
-type Ic struct {
+type IC struct {
     IE uint8  //Interrupt Enable (R/W)
     IF uint8 // Interrupt Flag (R/W)
     
 }
 
 const (
-   V_BLANK = 0
-   LCDC 
-   TIMER 
-   SERIAL 
+   V_BLANK = 1
+   LCDC    = 0x2
+   TIMER = 0x4 
+   SERIAL  = 0x8
 )
 
-func New() *Ic {
-    return new(Ic)
+func NewIC() *IC {
+    return new(IC)
 }
 
-func (i *Ic) Assert(signal uint8) {
+func (i *IC) Assert(signal uint8) {
     //check to see if it is masked off
-    if (i.IE & signal == signal) {
-        i.IF |= signal
-    } else {
-        fmt.Println("Interrupt",signal,"Masked off!!!")
-    }
+    //fmt.Println("ASSERT",signal,i.IE,i.IF)
+
+    i.IF |= signal
 }
 
-func (i *Ic) Disassert(signal uint8) {
-    //check to see if it is masked off
-     i.IF &= ^signal
+func (i *IC) Disassert(signal uint8) {
+
+     i.IF &=  ^signal
+     //fmt.Println("Disassert",signal,i.IF,i.IE)
 }
 
 
-func (i *Ic)  Handle() uint8 {
-      var value uint8 = 0
-      switch {
+func (i *IC)  Handle() uint16 {
+    var value uint16 = 0
+    //fmt.Println(i.IE,i.IF)
+
+     switch {
   
-        case i.IF & V_BLANK == V_BLANK:
+        case (i.IF & V_BLANK == V_BLANK) && (i.IE & V_BLANK == V_BLANK) :
             i.Disassert(V_BLANK)
-            value = 0x40            
-        case i.IF & TIMER == TIMER:
-            i.Disassert(V_BLANK)
+            value = 0x40 
+
+        case (i.IF & TIMER == TIMER) && (i.IE & TIMER == TIMER) :
+            i.Disassert(TIMER)
             value = 0x50
-            
+        
     }
     return(value)
 }

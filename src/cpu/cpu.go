@@ -3,8 +3,8 @@ package cpu
 import (
 	"fmt"
 	"os"
-	"time"
 //	"runtime/pprof"
+    "time"
 )
 const (
 	PC = iota
@@ -65,6 +65,7 @@ type CPU struct {
 	gpu   *GPU
 	gp    *GP
     timer *Timer
+    ic    *IC
     is_halted bool
 	DIV uint8
 }
@@ -99,7 +100,7 @@ func (c *CPU) load_bios() {
 	c.reg8[FL_C] = 0x1
 	c.reg8[FL_H] = 0x0
 	c.reg8[FL_N] = 0x0
-	c.mmu.write_b(0xff00, 0x0f);
+    c.reg8[EI] = 0x0
 }
 
 func  get_reg_id(reg string) (int) {
@@ -137,19 +138,33 @@ func  get_reg_id(reg string) (int) {
 	}
 	return val
 }
+func (c *CPU) handleInterrupts() {
 
+    f := gen_push_pop("PUSH", "PC")
+
+    if c.reg8[EI] == 1 {
+        vector := c.ic.Handle()
+        //Handle will Dissassert interrupt
+        if vector >0 {
+            //fmt.Println("INT")
+            f(c) //push pc on stack
+            c.is_halted = false
+    	    c.reg16[PC] = vector
+        }
+    
+    }
+}
 func (c *CPU) Exec() {
 
 	c.load_bios()
 	var op uint16
 
 	count :=0
-    f := gen_push_pop("PUSH", "PC")
-	instr_clk := time.Now()
 	fo, err := os.Create("output.txt")
     if err != nil { panic(err) }
     defer fo.Close()
 //	pprof.StartCPUProfile(fo) 
+    last_update := time.Now()
 
 	for {
 
@@ -170,92 +185,33 @@ func (c *CPU) Exec() {
 		//run op
         if !c.is_halted {
 		    c.ops[op](c)
+
         }
-		count++
-		instr_time := time.Since(instr_clk)
-        timer_int := c.timer.Update()
-        
+        count++
+
+
 		//Update gamepad/buttons
 		c.gp.Update()
-		if  instr_time >= 1 * time.Second {
-			fmt.Println(count)
-			count =0
-		    instr_clk = time.Now()
-
-		//	pprof.StopCPUProfile() 
-
-		}
-		val := c.mmu.read_b(0xff0f)
-
-		//elapsed := time.Since(start)
-		if   timer_int  &&c.reg8[EI] ==1 {
-                	c.reg8[EI] = 0
-			        f(c) //push pc on stack
-                    c.is_halted = false
-    	            c.reg16[PC] = 0x50
-
-		} else if count == 50 {
+        c.timer.Update(c.ic)
+        if count == 50 {
 			c.gpu.print_tile_map(c.mmu)
-			//read interrupt register
-			c.DIV++
-						//		fmt.Println(elapsed)
-    		//fmt.Println("INT_VBLANK")
+   			c.DIV++
             count = 0
 
-			
-			//fmt.Println("VAL",val)
 
-                if     !c.mmu.inbios && val &0x1 == 0x1 &&c.reg8[EI] == 1  {
-    		        //	fmt.Println("INT")
-    		        c.reg8[EI] = 0
-    	            //	c.mmu.write_b(0xffff,0)
-    		        c.mmu.write_b(0xff0f,0)
-    			    f(c) //push pc on stack
-            		c.is_halted = false
-    	            c.reg16[PC] = 0x40
-    			
-    			
-		} else if     !c.mmu.inbios && val &0x8 == 0x8 &&c.reg8[EI] == 1  {
-				c.reg8[EI] = 0
-				c.mmu.write_b(0xff0f,0)
-				f(c) //push pc on stack
-				fmt.Println("INTP")
-
-				c.reg16[PC] = 0x60
-			
-		} /*else if !c.mmu.inbios && val &0x2 == 0x2 &&c.reg8[EI] == 1  {
-				fmt.Println("INTC")
-				//c.mmu.write_b(0xffff,0)
-				c.mmu.write_b(0xff0f,0)
-				c.reg8[EI] = 0
-
-				f(c) //push pc on stack
-
-				c.reg16[PC] = 0x48
-			
-			}
-*/
-			
-
-
-		}
-	//	if c.mmu.inbios && c.reg16[PC] >= 0xfa {
-	//		c.reg16[A]=0x1
-	//		c.reg16[FL_Z]=0x1
-	//		c.mmu.inbios = false
-	//		c.reg16[PC]=0x100
-
-
-			//fmt.Println("A")
-	//	}
-		//fmt.Println(elapsed)
-
-	}
-
+        }
+    
+        c.handleInterrupts()
+        if c.reg16[PC] == 0x40 {
+        elapsed := time.Since(last_update)
+            fmt.Println(elapsed)
+            last_update = time.Now()
+        }
+    }
 }
-
+	
 func (c *CPU) tick(val uint16) {
-//	time.Sleep(time.Duration(val) *time.Microsecond)
+//	time.Sleep(time.Duratio(val) *time.Microsecond)
 }
 
 func get_ld_type(arg string) int {
@@ -304,11 +260,11 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
-	if !c.mmu.inbios   {
+	//if !c.mmu.inbios   {
 	//fmt.Printf("%s\n",desc)
 	//fmt.Printf("PC:%04",c.reg16[PC])
     //  c.Print_dump()
-	}	
+//	}	
 	c.reg16[PC] += args
 
 }
@@ -1003,9 +959,7 @@ func gen_ret(left string, skip_flag uint8, mask uint8, check uint8) Action {
 			f_set_val(c, val)
 			c.reg16[SP] += 2
 			if left == "RETI" {
-				if c.reg8[EI] == 0 {
 					c.reg8[EI] = 1
-				}
 			}
 			c.do_instr(left, 8, 0)
 		} else {
@@ -1322,7 +1276,7 @@ func BuildCpu() *CPU {
 	c.gp = NewGP(c)
 	c.mmu = NewMMU(c)
     c.timer = NewTimer()
-
+    c.ic = NewIC()
 
 	//Init registers
 	/////////////////

@@ -83,21 +83,22 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff44:
             m.cpu.gpu.LY = 0
 		    //fmt.Printf("->LY:%04X\n",val)
-
         case 0xff45:
             m.cpu.gpu.LYC = val
 			//fmt.Printf("->LYC:%04X\n",val)
-		
         case 0xff46:
-	   m.exec_dma(val)
+	        m.exec_dma(val)
         case 0xff47:
-           m.cpu.gpu.BGP=val 
+            m.cpu.gpu.BGP=val 
           //fmt.Printf("->BGP:%04X\n",val)
-	case 0xff4A:
+    	case 0xff4A:
             m.cpu.gpu.WY = val
-	case 0xff4B:
+	    case 0xff4B:
             m.cpu.gpu.WX = val
-		
+	    case 0xffff:
+            m.cpu.ic.IE = val
+        case 0xff0F:
+            m.cpu.ic.IF = val
     }
 
 }
@@ -133,18 +134,21 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
             val=m.cpu.gpu.LY
         case 0xff45:
             val=m.cpu.gpu.LYC
-	//fmt.Printf("->LYC:%04X\n",val)
-	case 0xff46:
+	        //fmt.Printf("->LYC:%04X\n",val)
+	    case 0xff46:
              panic("DMA register is not readable!")
-	case 0xff47:
-	   val= m.cpu.gpu.BGP
+	    case 0xff47:
+	        val= m.cpu.gpu.BGP
         case 0xff4A:
             val = m.cpu.gpu.WY 
 		//	fmt.Printf("->WY:%04X\n",val)
 		case 0xff4B:
 		//	fmt.Printf("->WX:%04X\n",val)
             val = m.cpu.gpu.WX
-
+        case 0xffff:
+            val = m.cpu.ic.IE
+        case 0xff0F:
+            val = m.cpu.ic.IF
     }
 
     return val
@@ -164,7 +168,7 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 		fmt.Printf("%x\n",addr)
         return m.oam[addr & 0x00ff]  
 		
-    } else if addr == 0xff00 || (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <= 0xff4B){
+    } else if addr == 0xff00 || (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <= 0xff4B) || addr == 0xff0f || addr == 0xffff{
         return m.read_mmio(addr)      
 
 	}else if addr >= 0xe000 && addr < 0xfe00{
@@ -204,7 +208,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
        m.cart[addr] = val
         return 
 
-    } else if addr == 0xff00 ||  (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <=0xff4B){
+    } else if addr == 0xff00 ||  (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <=0xff4B) || addr == 0xff0f || addr == 0xffff{
         m.write_mmio(addr,val)
         return
 	} else if (addr >= 0xfe00 && addr <= 0xfe9f){

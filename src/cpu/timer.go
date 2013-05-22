@@ -27,18 +27,16 @@ func NewTimer() *Timer {
     return timer
 }
 
-func (timer *Timer) Update() bool {
+func (timer *Timer) Update(ic *IC) {
     if timer.TAC & START_TIMER == START_TIMER {
         elapsed := time.Since(timer.last_update)
         switch (timer.TAC & 0x3) {
             case KHZ_4096:
-                if   elapsed >= 10000*time.Microsecond  {
+                if   elapsed >= 500*time.Microsecond  {
                     timer.last_update = time.Now()
                     if (timer.TIMA == 0xff) {
                         timer.TIMA = timer.TMA
-                        //fmt.Printf("TIME_INT#\n");
-
-                        return true  //MSG int
+                        ic.Assert(TIMER)
 
                     }else{
                         timer.TIMA +=1
@@ -51,7 +49,7 @@ func (timer *Timer) Update() bool {
         }
 
     }
-    return false // no int 
+
 }
 
 

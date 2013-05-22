@@ -23,8 +23,7 @@ func (s *Screen) initSDL() () {
     if sdl.Init(sdl.INIT_EVERYTHING) != 0 {
 		fmt.Println(sdl.GetError())
 	}
-    s.screen = sdl.SetVideoMode(160, 144, 32, sdl.RESIZABLE|sdl.DOUBLEBUF|sdl.HWSURFACE)
-    
+    s.screen = sdl.SetVideoMode(160, 144, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)    
 
 
 	if s.screen == nil {
@@ -111,6 +110,7 @@ func (g *GPU) get_tile_val(m *MMU,addr uint16) (Tile) {
 
 
 func (g *GPU) output_pixel(val uint8, x uint16, y uint16) {
+
 	switch (val) {
                case 1:
                     g.screen.PutPixel(int16(x),int16(y),uint32(0xaaaaaa))
@@ -147,8 +147,8 @@ func (g *GPU) get_tile_map(m *MMU)  {
 
     var map_base uint16
     var map_limit uint16
-	var w_map_base uint16
-	var w_map_limit uint16
+	//var w_map_base uint16
+	//var w_map_limit uint16
 	var i int
 	var j int
     var tile_base uint16
@@ -175,7 +175,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
 		//fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
         //tile_limit = 0x97FF
     }
-	
+/*
     //Bit3 Tile map base
     if (g.LCDC & 0x40 == 0x40) {
         w_map_base = 0x9c00
@@ -184,6 +184,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
         w_map_base = 0x9800
         w_map_limit = 0x9Bff
     }
+*/
   //b:=0
 		for offset:=map_base; offset<=map_limit; offset++ {
   	    	b:=m.read_b(offset)
@@ -220,6 +221,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
 		
 	i= 0
 	j=0
+/*
 	if (g.LCDC & 0x10 == 0x10){
 
 	
@@ -247,6 +249,8 @@ func (g *GPU) get_tile_map(m *MMU)  {
 		}
 	}	
 }
+*/
+
 
 }
 
@@ -352,7 +356,7 @@ func (g *GPU) print_tile_map(m *MMU) {
     if (g.LY==0) {g.get_tile_map(m)}
         //fmt.Println(g.tmap)
 	if (g.LCDC & 0x81 == 0x81){
-        g.print_tile_line(uint(g.LY))
+       g.print_tile_line(uint(g.LY))
 		
 	}
 //	}
@@ -386,21 +390,15 @@ func (g *GPU) print_tile_map(m *MMU) {
     if (g.LY==153) {
 		//V-BLANK
 		g.STAT = 0x01
-		m.write_b(0xff0f,m.read_b(0xff0f)|0x01)  
+        //ASSERT vblank int
+		m.cpu.ic.Assert(V_BLANK) 
 		g.screen.screen.Flip()
-//		g.t_screen.screen.Flip()
-
 		g.LY=0
 	
 
 
 	}
-   
 
-
-
-       //m.write_b(0xff0f,0x02)  
-       //g.screen.screen.Flip()
 	}
    
 
