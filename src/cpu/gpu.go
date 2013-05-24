@@ -57,6 +57,7 @@ type GPU struct {
     WX uint8
     WY uint8
     BGP uint8
+    mem_written bool
 
     currline uint8
     bg_tmap TileMap
@@ -79,6 +80,7 @@ func NewGPU() *GPU {
     g := new(GPU)
     g.screen = newScreen()
 	g.t_screen = newScreen()
+    g.mem_written = false
  
 
     return g
@@ -353,9 +355,13 @@ func (g *GPU) print_sprites(m *MMU) {
 func (g *GPU) print_tile_map(m *MMU) {
   
 
-    if (g.LY==0) {g.get_tile_map(m)}
+    if (g.LY==0 ) {
+            g.get_tile_map(m)
+            g.mem_written = false
+        }
         //fmt.Println(g.tmap)
 	if (g.LCDC & 0x81 == 0x81){
+    
        g.print_tile_line(uint(g.LY))
 		
 	}

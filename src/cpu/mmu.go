@@ -4,16 +4,20 @@ import "fmt"
 type MMU struct {
 
     mem [0x10000]uint8
-    cart [0x8000]uint8
+    cart [0x10000]uint8
     vm  [0x2000] uint8
 	oam [0xA0] uint8
 	cpu *CPU
+    bank uint16
+    block uint16
     inbios bool
 }
 func NewMMU(cpu *CPU)(*MMU) {
     m :=new(MMU)
     m.inbios = false
 	m.cpu = cpu
+    m.bank = 0
+    m.block = 0
 	return m
 }
 
@@ -60,6 +64,20 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
 		case 0xff00:
             m.cpu.gp.P1 = val
 		//		fmt.Printf("->P1:%04X\n",val)
+        case 0xff02:
+			fmt.Printf("->SERIAL:%04X\n",val)
+            if ((m.mem[0xff02] & 0x80) == 0x80) && ((m.mem[0xff02] & 0x1) == 0x1){
+
+            m.cpu.ic.Assert(SERIAL)
+            m.mem[0xff01] = 0xff
+            m.mem[0xff02] = val & (^uint8(0x80))
+            
+            
+
+            }else{
+             m.mem[0xff02] |= val
+
+            }
 
         case 0xff05:
             m.cpu.timer.TIMA = val
@@ -108,7 +126,7 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
 		case 0xff00:
            val=m.cpu.gp.P1 		
 		
-		//fmt.Printf("<-P1:%04X\n",val)
+		fmt.Printf("<-P1:%04X\n",val)
 
 		case 0xff04:
 	 	    val = m.cpu.DIV
@@ -158,17 +176,22 @@ func (m *MMU)read_b(addr uint16) (uint8) {
     if  addr >= 0x8000 && addr < 0xa000  {
         return m.vm[addr & 0x1fff]  
 
-    } else if addr >= 0x100 && addr < 0x8000  {
+    } else if addr >= 0x100 && addr < 0x4000  {
+        //always ROM bank #0
+        return m.cart[addr]
 
-        return m.cart[addr]  
-    }else if addr <= 0x100 && !m.inbios {
+    } else if addr >= 0x4000 && addr < 0x8000  {
+       // fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
+        return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
+ 
+    } else if addr <= 0x100 && !m.inbios {
         return m.cart[addr]  
 
 	} else if (addr >= 0xfe00 && addr <= 0xfe9f){
 		fmt.Printf("%x\n",addr)
         return m.oam[addr & 0x00ff]  
 		
-    } else if addr == 0xff00 || (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <= 0xff4B) || addr == 0xff0f || addr == 0xffff{
+    } else if addr == 0xff00||(addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <= 0xff4B) || addr == 0xff0f || addr == 0xffff{
         return m.read_mmio(addr)      
 
 	}else if addr >= 0xe000 && addr < 0xfe00{
@@ -180,7 +203,7 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 }
 
 func (m *MMU)read_w(addr uint16) (uint16) {
-    return uint16(m.read_b(addr)) + uint16((m.read_b(addr+1))) << 8
+    return uint16(m.read_b(addr)) | uint16((m.read_b(addr+1))) << 8
 }
 
 func (m *MMU)load_cart(addr uint16,val uint8) () {
@@ -196,19 +219,34 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
     if addr >= 0x8000 && addr < 0xA000{
         m.vm[addr & 0x1fff] = val
        // fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
-        
+        m.cpu.gpu.mem_written = true
             m.vm[addr & 0x1fff] = val
         return
     }else if addr >=0x100 && addr < 0x8000 {
         //m.cart[addr] =val
-	    fmt.Printf("INVALID write:%04x:%04x\n",addr,val)
+        if addr < 0x4000 && addr < 0x6000{
+            if (val >1){
+               fmt.Printf("B:%04x->%04x\n",m.bank,val)
+                m.bank = uint16(val-1)
+            }else{
+                m.bank = uint16(0)
+            }
+        }  else {
+
+
+        }
+
+
+    	    fmt.Printf("BANK write:%04x:%04x\n",addr,val)
+
+
 
         return 
     }else if addr <= 0x100 && !m.inbios{      
        m.cart[addr] = val
         return 
 
-    } else if addr == 0xff00 ||  (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <=0xff4B) || addr == 0xff0f || addr == 0xffff{
+    } else if addr == 0xff00 ||   addr == 0xff02 ||  (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <=0xff4B) || addr == 0xff0f || addr == 0xffff{
         m.write_mmio(addr,val)
         return
 	} else if (addr >= 0xfe00 && addr <= 0xfe9f){

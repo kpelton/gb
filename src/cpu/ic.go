@@ -39,8 +39,9 @@ func (i *IC) Disassert(signal uint8) {
 
 func (i *IC)  Handle() uint16 {
     var value uint16 = 0
-    //fmt.Println(i.IE,i.IF)
-
+    if (i.IE & GAME == GAME) {
+        fmt.Println("I STATUS:",i.IE,i.IF)
+    }
      switch {
   
         case (i.IF & V_BLANK == V_BLANK) && (i.IE & V_BLANK == V_BLANK) :
@@ -52,9 +53,13 @@ func (i *IC)  Handle() uint16 {
             return(0x50)
 
         case (i.IF & GAME == GAME) && (i.IE & GAME == GAME) :
-            i.Disassert(TIMER)
+            i.Disassert(GAME)
             fmt.Println("X")
             return(0x60)
+        case (i.IF & SERIAL == SERIAL) && (i.IE & SERIAL == SERIAL) :
+            i.Disassert(SERIAL)
+            fmt.Println("X")
+            return(0x58)
         
     }
     return(value)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 //	"runtime/pprof"
- //   "time"
+    "time"
 )
 const (
 	PC = iota
@@ -73,7 +73,7 @@ type CPU struct {
 func (c *CPU) load_bios() {
 
 	fi, err := os.Open(os.Args[1])
-	buf := make([]uint8, 0xffff)
+	buf := make([]uint8, 0x10000)
 
 	n,err := fi.Read(buf)
 
@@ -81,7 +81,7 @@ func (c *CPU) load_bios() {
 		panic(err)
 	}
 
-	for i := 0; i < 0x8000; i++ {
+	for i := 0; i < n; i++ {
 		c.mmu.load_cart(uint16(i), buf[i])
 	}
 
@@ -164,13 +164,13 @@ func (c *CPU) Exec() {
     if err != nil { panic(err) }
     defer fo.Close()
 //	pprof.StartCPUProfile(fo) 
-    //last_update := time.Now()
+    last_update := time.Now()
 
 	for {
 
 
 		op = uint16(c.mmu.read_w(c.reg16[PC]))
-	 	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
+	 	//fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
 
 		
 	
@@ -190,22 +190,23 @@ func (c *CPU) Exec() {
 
 
 		//Update gamepad/buttons
+
 		c.gp.Update()
+   
         c.timer.Update(c.ic)
-        if count == 30 {
+        if count == 40 {
 			c.gpu.print_tile_map(c.mmu)
    			c.DIV++
             count = 0
 
-
         }
     
         c.handleInterrupts()
-//        if c.reg16[PC] == 0x40 {
-        //elapsed := time.Since(last_update)
-        //    fmt.Println(elapsed)
-        //    last_update = time.Now()
-  //      }
+        if c.reg16[PC] == 0x40 {
+        elapsed := time.Since(last_update)
+         elapsed+=1//   fmt.Println(elapsed)
+            last_update = time.Now()
+        }
     }
 }
 	
@@ -1107,13 +1108,7 @@ func gen_rotate_shift(left string, reg_right string, ticks uint16, args uint16) 
 
 	case "CCF":
 		lambda = func(c *CPU) {
-			if (c.reg8[FL_C] == 1) {
-
-				c.reg8[FL_C] = 0
-			}else {
-
-				c.reg8[FL_C] = 1
-			}
+			c.reg8[FL_C] = ^c.reg8[FL_C] &0x1
 			c.reg8[FL_H] = 0
 			c.reg8[FL_N] = 0
 
@@ -1265,18 +1260,10 @@ func gen_ldh(reg_left string, reg_right string, ticks uint16, args uint16) Actio
 
 
 func NewCpu() *CPU {
-	return BuildCpu()
+	return buildCpu()
 }
 
-func BuildCpu() *CPU {
-	c := new(CPU)
-
-	c.gpu = NewGPU()
-	c.gp = NewGP(c)
-	c.mmu = NewMMU(c)
-    c.timer = NewTimer()
-    c.ic = NewIC()
-
+func createOps(c *CPU ) {
 	//Init registers
 	/////////////////
 	c.reg8[A] = 0
@@ -1870,6 +1857,17 @@ func BuildCpu() *CPU {
 	c.ops[0x3f] =  gen_rotate_shift("CCF", "A", 4, 1)
 
 	//c.ops[0x27] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
+}
+
+func buildCpu() *CPU {
+	c := new(CPU)
+
+	c.gpu = NewGPU()
+	c.gp = NewGP(c)
+	c.mmu = NewMMU(c)
+    c.timer = NewTimer()
+    c.ic = NewIC()
+    createOps(c)
 
 	return c
 }

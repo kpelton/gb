@@ -97,6 +97,8 @@ func (g *GP) Update(){
 	
 	for {
 		ev := sdl.PollEvent()
+    
+        //fmt.Println(ev)
 		switch e := ev.(type) {			
 			
 		case *sdl.KeyboardEvent:
