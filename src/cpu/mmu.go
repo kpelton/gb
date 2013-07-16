@@ -182,7 +182,8 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 
     } else if addr >= 0x4000 && addr < 0x8000  {
        // fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
-        return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
+        //return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
+     return m.cart[addr]
  
     } else if addr <= 0x100 && !m.inbios {
         return m.cart[addr]  
@@ -222,12 +223,13 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
         m.cpu.gpu.mem_written = true
             m.vm[addr & 0x1fff] = val
         return
-    }else if addr >=0x100 && addr < 0x8000 {
+  
+ /* } else if addr >=0x100 && addr < 0x8000 {
         //m.cart[addr] =val
         if addr < 0x4000 && addr < 0x6000{
             if (val >1){
                fmt.Printf("B:%04x->%04x\n",m.bank,val)
-                m.bank = uint16(val-1)
+               //m.bank = uint16(val-1)
             }else{
                 m.bank = uint16(0)
             }
@@ -242,6 +244,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
 
 
         return 
+    */
     }else if addr <= 0x100 && !m.inbios{      
        m.cart[addr] = val
         return 
