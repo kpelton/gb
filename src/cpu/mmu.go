@@ -53,7 +53,7 @@ func (m* MMU) exec_dma(addr uint8) () {
 	var real_addr uint16 
 	var i uint16
 	real_addr = uint16(addr) *0x100
-	
+	m.cpu.Dump()
 	for i = 0; i < 160; i++ {
 		m.oam[i] = m.read_b(real_addr+i)
 	}
@@ -84,12 +84,15 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
             m.cpu.timer.TIMA = val
         case 0xff06:
             m.cpu.timer.TMA = val
+
         case 0xff07:
+                    		fmt.Printf("VAL:%04X\n",val)
+
             m.cpu.timer.TAC = val
         case 0xff40:
             m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
-		//	fmt.Printf("->LCDC:%04X\n",val)
+		 fmt.Printf("->LCDC:%04X\n",val)
 
         case 0xff41:
             m.cpu.gpu.STAT = val

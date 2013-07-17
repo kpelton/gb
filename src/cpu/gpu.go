@@ -142,6 +142,18 @@ func (g *GPU) output_pixel(val uint8, x uint16, y uint16) {
             }
 }
 
+func (g *GPU) output_pixel_sprite(val uint8, x uint16, y uint16) {
+
+	switch (val) {
+               case 1:
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0xaaaaaa))
+                case 2:
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0x555555))
+                 case 3:
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0x0))
+
+            }
+}
 
 
 func (g *GPU) print_tile(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16,xflip bool) {
@@ -158,6 +170,24 @@ func (g *GPU) print_tile(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint1
 	}else{
 		for i=0; i<8; i++ { 
 			g.output_pixel(tile[i][ytoff],uint16(i)+xoff,yoff) 
+		}
+	}
+}
+
+func (g *GPU) print_tile_sprite(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16,xflip bool) {
+    var i int16
+	var j uint16
+    tile := g.get_tile_val(m,addr)
+
+	if xflip  {
+		j=0
+		for i=7; i>=0; i-- {
+			g.output_pixel_sprite(tile[i][ytoff],uint16(j)+xoff,yoff) 
+			j++
+		}
+	}else{
+		for i=0; i<8; i++ { 
+			g.output_pixel_sprite(tile[i][ytoff],uint16(i)+xoff,yoff) 
 		}
 	}
 }
@@ -355,14 +385,14 @@ func (g *GPU) print_sprites(m *MMU) {
 		sp.fl_x_flip = (m.oam[i+3] &0x20) >>5
 		sp.fl_pal = (m.oam[i+3] &0x10) >>4
 		yoff = sp.y - 16
+			fmt.Println(sp)
 
 		
 		if yoff >  g.LY-8 && yoff <=g.LY  {
 			ytoff = (g.LY - yoff)
 			if sp.fl_y_flip == 1 { ytoff = (^ytoff) & 0x07 }
 			if sp.fl_x_flip == 1 { xflip = true }
-			//fmt.Println(sp)
-			g.print_tile(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip)
+			g.print_tile_sprite(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip)
 		}
 	}
 
@@ -370,7 +400,7 @@ func (g *GPU) print_sprites(m *MMU) {
 }
 
 func (g *GPU) hblank(m *MMU,clocks uint16) {
-    if g.hblank_cycle_count <100 {  
+    if g.hblank_cycle_count <50 {  
         g.hblank_cycle_count+=clocks
         
     }else{
@@ -406,7 +436,7 @@ func (g *GPU) vblank(m *MMU,clocks uint16) {
         
 	}
 
-    if g.vblank_cycle_count < 4560 {      
+    if g.vblank_cycle_count < 60000 {      
         g.vblank_cycle_count+=clocks
         g.LY+=1
         if g.LY  < 153 {
@@ -431,6 +461,7 @@ func (g *GPU) oam_dma(m *MMU,clocks uint16) {
         g.STAT &= ^uint8(0x2)
 
     }
+
 }
 func (g *GPU)  Update(m *MMU,clocks uint16) {
 

@@ -155,6 +155,10 @@ func (c *CPU) handleInterrupts() {
     
     }
 }
+
+func (c *CPU) Dump() {
+    fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
+}
 func (c *CPU) Exec() {
 
 	c.load_bios()
@@ -168,7 +172,7 @@ func (c *CPU) Exec() {
 
 	for {
 
-        c.last_instr = 1
+        c.last_instr = 4
 		op = uint16(c.mmu.read_w(c.reg16[PC]))
 	    //fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
         //fmt.Println(c.gpu.LY)

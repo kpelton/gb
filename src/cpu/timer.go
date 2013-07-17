@@ -16,8 +16,8 @@ const (
    HZ_262_144 = 1
    HZ_65_536 = 2
    HZ_16_384 = 3
-   START_TIMER = 0x3
-   HZ_4096_t = 1024
+   START_TIMER = 0x4
+   HZ_4096_t = 20
    HZ_262_144_t = 30
    HZ_65_536_t = 64
    HZ_16_384_t = 256
@@ -40,13 +40,18 @@ func (timer *Timer) update_regs(ic *IC) {
 
 }
 func (timer *Timer) Update(ic *IC, cycles uint64) {
+            
+
     if timer.TAC & START_TIMER == START_TIMER {
         timer.last_update +=cycles
+
         switch (timer.TAC & 0x3) {
             case HZ_4096:
+               // fmt.Println("WAIT")
                 if  timer.last_update >= HZ_4096_t  {
+
                     timer.update_regs(ic);
-                    fmt.Println("4096",timer.last_update,timer.TMA,timer.TIMA)
+                 //   fmt.Println("4096",timer.last_update,timer.TMA,timer.TIMA)
                 }
              case HZ_16_384:
                 if   timer.last_update  >= HZ_16_384_t  {

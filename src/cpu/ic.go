@@ -52,6 +52,7 @@ func (i *IC)  Handle() uint16 {
 
         case (i.IF & TIMER == TIMER) && (i.IE & TIMER == TIMER) :
             i.Disassert(TIMER)
+
             return(0x50)
 
         case (i.IF & GAME == GAME) && (i.IE & GAME == GAME) :
