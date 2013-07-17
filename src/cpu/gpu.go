@@ -23,8 +23,9 @@ func (s *Screen) initSDL() () {
     if sdl.Init(sdl.INIT_EVERYTHING) != 0 {
 		fmt.Println(sdl.GetError())
 	}
-    //s.screen = sdl.SetVideoMode(320, 288, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)    
-    s.screen = sdl.SetVideoMode(640, 576, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
+    //s.screen = sdl.SetVideoMode(320, 288, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
+     s.screen = sdl.SetVideoMode(640, 576, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)   
+    //s.screen = sdl.SetVideoMode(1280, 1152, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
 
 	if s.screen == nil {
 		fmt.Println(sdl.GetError())
@@ -400,7 +401,7 @@ func (g *GPU) print_sprites(m *MMU) {
 }
 
 func (g *GPU) hblank(m *MMU,clocks uint16) {
-    if g.hblank_cycle_count <50 {  
+    if g.hblank_cycle_count <207 {  
         g.hblank_cycle_count+=clocks
         
     }else{
@@ -436,9 +437,9 @@ func (g *GPU) vblank(m *MMU,clocks uint16) {
         
 	}
 
-    if g.vblank_cycle_count < 60000 {      
+    if g.vblank_cycle_count < 4500 {      
         g.vblank_cycle_count+=clocks
-        g.LY+=1
+         
         if g.LY  < 153 {
             g.LY+=1
      

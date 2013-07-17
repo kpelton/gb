@@ -142,8 +142,10 @@ func  get_reg_id(reg string) (int) {
 func (c *CPU) handleInterrupts() {
 
     f := gen_push_pop("PUSH", "PC")
-    if c.ic.IF != 0  {   
+    if c.is_halted && c.ic.IF & c.ic.IE != 0  {   
         c.is_halted = false
+        fmt.Println("CORE UNHALTED",c.ic.IF,c.ic.IE)
+        
 
     }
 
@@ -173,10 +175,10 @@ func (c *CPU) Exec() {
     defer fo.Close()
 //	pprof.StartCPUProfile(fo) 
     //last_update := time.Now()
-
+   // count :=uint(0)
 	for {
 
-        c.last_instr = 4
+        //c.last_instr = 4
 		op = uint16(c.mmu.read_w(c.reg16[PC]))
 	    //fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x,EI:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H],c.reg8[EI]);
         //fmt.Println(c.gpu.LY)
@@ -194,8 +196,8 @@ func (c *CPU) Exec() {
 		    c.ops[op](c)
 
         }
-   
-
+        //count += uint(1)
+        //fmt.Println(count)
 		//Update gamepad/buttons
 
 		c.gp.Update()
@@ -266,7 +268,7 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
 	//if !c.mmu.inbios   {
-//	fmt.Printf("%s\n",desc)
+	//fmt.Printf("%s\n",desc)
 	//fmt.Printf("PC:%04",c.reg16[PC])
     //  c.Print_dump()
 //	}
