@@ -46,6 +46,8 @@ func (i *IC)  Handle() uint16 {
   
         case (i.IF & V_BLANK == V_BLANK) && (i.IE & V_BLANK == V_BLANK) :
             i.Disassert(V_BLANK)
+              //          fmt.Println("X")
+
             return(0x40)
 
         case (i.IF & TIMER == TIMER) && (i.IE & TIMER == TIMER) :

@@ -46,7 +46,7 @@ func (timer *Timer) Update(ic *IC, cycles uint64) {
             case HZ_4096:
                 if  timer.last_update >= HZ_4096_t  {
                     timer.update_regs(ic);
-                   // fmt.Println("4096",timer.last_update,timer.TMA,timer.TIMA)
+                    fmt.Println("4096",timer.last_update,timer.TMA,timer.TIMA)
                 }
              case HZ_16_384:
                 if   timer.last_update  >= HZ_16_384_t  {
@@ -62,7 +62,7 @@ func (timer *Timer) Update(ic *IC, cycles uint64) {
             case HZ_262_144:
                 if   timer.last_update  >= HZ_262_144_t {
                     timer.update_regs(ic);
-                     //fmt.Println("262144",timer.last_update,timer.TMA,timer.TIMA)
+                     fmt.Println("262144",timer.last_update,timer.TMA,timer.TIMA)
                 }
 
             default:

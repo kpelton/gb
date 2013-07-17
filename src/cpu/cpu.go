@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 //	"runtime/pprof"
-    "time"
+  //  "time"
 )
 const (
 	PC = iota
@@ -160,19 +160,18 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 
-	count :=0
 	fo, err := os.Create("output.txt")
     if err != nil { panic(err) }
     defer fo.Close()
 //	pprof.StartCPUProfile(fo) 
-    last_update := time.Now()
+    //last_update := time.Now()
 
 	for {
 
         c.last_instr = 1
 		op = uint16(c.mmu.read_w(c.reg16[PC]))
-	 	//fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
-
+	    //fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
+        //fmt.Println(c.gpu.LY)
 		
 	
 		if op&0x00ff != 0xcb {
@@ -187,7 +186,6 @@ func (c *CPU) Exec() {
 		    c.ops[op](c)
 
         }
-        count +=int(c.last_instr)
    
 
 		//Update gamepad/buttons
@@ -195,20 +193,18 @@ func (c *CPU) Exec() {
 		c.gp.Update()
    
         c.timer.Update(c.ic,uint64(c.last_instr))
-        if count >= 50 {
-			c.gpu.print_tile_map(c.mmu)
-   			c.DIV++
-            count = 0
-
-        }
+	    c.gpu.Update(c.mmu,c.last_instr)
+        c.DIV++
     
         c.handleInterrupts()
-        if c.reg16[PC] == 0x40 {
-        elapsed := time.Since(last_update)
-         elapsed+=1//   fmt.Println(elapsed)
+/*        if c.reg16[PC] == 0x40 {
+         elapsed+=1
+          fmt.Println(elapsed)
             last_update = time.Now()
         }
+*/
     }
+
 }
 	
 func (c *CPU) tick(val uint16) {

@@ -57,6 +57,7 @@ func (m* MMU) exec_dma(addr uint8) () {
 	for i = 0; i < 160; i++ {
 		m.oam[i] = m.read_b(real_addr+i)
 	}
+    m.cpu.gpu.STAT |=2
 }
 
 func (m* MMU) write_mmio(addr uint16,val uint8) () {
@@ -88,7 +89,7 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff40:
             m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
-			fmt.Printf("->LCDC:%04X\n",val)
+		//	fmt.Printf("->LCDC:%04X\n",val)
 
         case 0xff41:
             m.cpu.gpu.STAT = val
@@ -126,7 +127,7 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
 		case 0xff00:
            val=m.cpu.gp.P1 		
 		
-		fmt.Printf("<-P1:%04X\n",val)
+		//fmt.Printf("<-P1:%04X\n",val)
 
 		case 0xff04:
 	 	    val = m.cpu.DIV
@@ -142,7 +143,7 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
 
         case 0xff41:
             val=m.cpu.gpu.STAT
-	//			fmt.Printf("<-STAT:%04X\n",val)
+			//	fmt.Printf("<-STAT:%04X\n",val)
 
         case 0xff42:
             val=m.cpu.gpu.SCY
@@ -181,9 +182,9 @@ func (m *MMU)read_b(addr uint16) (uint8) {
         return m.cart[addr]
 
     } else if addr >= 0x4000 && addr < 0x8000  {
-       // fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
-        //return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
-     return m.cart[addr]
+      //  fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
+       return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
+     //return m.cart[addr]
  
     } else if addr <= 0x100 && !m.inbios {
         return m.cart[addr]  
@@ -224,12 +225,12 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
             m.vm[addr & 0x1fff] = val
         return
   
- /* } else if addr >=0x100 && addr < 0x8000 {
+  } else if addr >=0x100 && addr < 0x8000 {
         //m.cart[addr] =val
         if addr < 0x4000 && addr < 0x6000{
             if (val >1){
                fmt.Printf("B:%04x->%04x\n",m.bank,val)
-               //m.bank = uint16(val-1)
+               m.bank = uint16(val-1)
             }else{
                 m.bank = uint16(0)
             }
@@ -244,7 +245,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
 
 
         return 
-    */
+    
     }else if addr <= 0x100 && !m.inbios{      
        m.cart[addr] = val
         return 
