@@ -142,6 +142,10 @@ func  get_reg_id(reg string) (int) {
 func (c *CPU) handleInterrupts() {
 
     f := gen_push_pop("PUSH", "PC")
+    if c.ic.IF != 0  {   
+        c.is_halted = false
+
+    }
 
     if c.reg8[EI] == 1 {
         vector := c.ic.Handle()
@@ -151,13 +155,13 @@ func (c *CPU) handleInterrupts() {
             f(c) //push pc on stack
             c.is_halted = false
     	    c.reg16[PC] = vector
-        }
+      }
     
     }
 }
 
 func (c *CPU) Dump() {
-    fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
+  //  fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
 }
 func (c *CPU) Exec() {
 
@@ -174,7 +178,7 @@ func (c *CPU) Exec() {
 
         c.last_instr = 4
 		op = uint16(c.mmu.read_w(c.reg16[PC]))
-	    //fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
+	    //fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x,EI:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H],c.reg8[EI]);
         //fmt.Println(c.gpu.LY)
 		
 	
@@ -262,7 +266,7 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
 	//if !c.mmu.inbios   {
-	//fmt.Printf("%s\n",desc)
+//	fmt.Printf("%s\n",desc)
 	//fmt.Printf("PC:%04",c.reg16[PC])
     //  c.Print_dump()
 //	}
@@ -987,12 +991,12 @@ func gen_rotate_shift(left string, reg_right string, ticks uint16, args uint16) 
 		lambda = func(c *CPU) {
 			prev := uint8(f_left_get_val(c))
 			c.reg8[FL_C]  = (prev & 0x80) >> 7
-		//	fmt.Println("Before",prev,(prev << 1))
+			//fmt.Println("Before",prev,(prev << 1))
 
 			f_set_val(c, uint16((prev << 1) +c.reg8[FL_C]))
 
 			if f_left_get_val(c) ==0 { c.reg8[FL_Z] = 1} else { c.reg8[FL_Z] = 0}
-		//	fmt.Println("After",f_left_get_val(c))
+			//fmt.Println("After",f_left_get_val(c))
 			c.reg8[FL_H] = 0
 			c.reg8[FL_N] = 0
 
@@ -1717,9 +1721,11 @@ func createOps(c *CPU ) {
 	c.ops[0xCBFD] = gen_set_bit(7, "L", 8, 2)
 	c.ops[0xCBFE] = gen_set_bit(7, "(HL)", 16, 2)
 	c.ops[0xCBFF] = gen_set_bit(7, "A", 8, 2)
+	f_rlc:=  gen_rotate_shift("RLC", "A", 4, 1)
+    f_rl :=  gen_rotate_shift("RL", "A", 4, 1)
 
-	c.ops[0x07] = gen_rotate_shift("RLC", "A", 8, 1)
-	c.ops[0x17] = gen_rotate_shift("RL", "A", 8, 1)
+	c.ops[0x07] = func(c *CPU) {f_rlc(c);c.reg8[FL_Z] = 0}
+	c.ops[0x17] = func(c *CPU) {f_rl(c);c.reg8[FL_Z] = 0}
 	c.ops[0xCB17] = gen_rotate_shift("RL", "A", 8, 2)
 	c.ops[0xCB10] = gen_rotate_shift("RL", "B", 8, 2)
 	c.ops[0xCB11] = gen_rotate_shift("RL", "C", 8, 2)
@@ -1730,9 +1736,12 @@ func createOps(c *CPU ) {
 	c.ops[0xCB16] = gen_rotate_shift("RL", "(HL)", 16, 2)
 	c.ops[0xCB19]  = gen_rotate_shift("RR" ,"C",8,2)
 
+	f_rrc:=  gen_rotate_shift("RRC", "A", 4, 1)
+    f_rr :=  gen_rotate_shift("RR", "A", 4, 1)
 
 	
-	c.ops[0x0f] = gen_rotate_shift("RRC", "A", 8, 1) 
+	c.ops[0x0f] = func(c *CPU) {f_rrc(c);c.reg8[FL_Z] = 0}
+    c.ops[0x1F] =  func(c *CPU) {f_rr(c);c.reg8[FL_Z] = 0}
 	c.ops[0xCB0f] = gen_rotate_shift("RRC", "A", 8, 2) 
 	c.ops[0xCB08] = gen_rotate_shift("RRC", "B", 8, 2) 
 	c.ops[0xCB09] = gen_rotate_shift("RRC", "C", 8, 2) 
@@ -1743,7 +1752,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB0E] = gen_rotate_shift("RRC", "(HL)", 16, 2) 
 
 
-	c.ops[0x1F] = gen_rotate_shift("RR", "A", 8, 1) 
+
 	c.ops[0xCB1F] = gen_rotate_shift("RR", "A", 8, 2) 
 	c.ops[0xCB18] = gen_rotate_shift("RR", "B", 8, 2) 
 	c.ops[0xCB19] = gen_rotate_shift("RR", "C", 8, 2) 

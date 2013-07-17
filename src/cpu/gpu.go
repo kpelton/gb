@@ -385,7 +385,7 @@ func (g *GPU) print_sprites(m *MMU) {
 		sp.fl_x_flip = (m.oam[i+3] &0x20) >>5
 		sp.fl_pal = (m.oam[i+3] &0x10) >>4
 		yoff = sp.y - 16
-			fmt.Println(sp)
+			//fmt.Println(sp)
 
 		
 		if yoff >  g.LY-8 && yoff <=g.LY  {

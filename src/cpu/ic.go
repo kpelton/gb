@@ -42,6 +42,7 @@ func (i *IC)  Handle() uint16 {
     if (i.IE & GAME == GAME) {
         fmt.Println("I STATUS:",i.IE,i.IF)
     }
+    //fmt.Println("IF",i.IF,i.IE)
      switch {
   
         case (i.IF & V_BLANK == V_BLANK) && (i.IE & V_BLANK == V_BLANK) :

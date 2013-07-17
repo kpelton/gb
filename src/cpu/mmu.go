@@ -120,6 +120,8 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
 	    case 0xffff:
             m.cpu.ic.IE = val
         case 0xff0F:
+           fmt.Printf("->IF:%04X\n",val)
+
             m.cpu.ic.IF = val
     }
 
@@ -171,6 +173,8 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
             val = m.cpu.ic.IE
         case 0xff0F:
             val = m.cpu.ic.IF
+            fmt.Printf("<-IF:%04X\n",val)
+
     }
 
     return val

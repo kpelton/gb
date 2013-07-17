@@ -17,8 +17,8 @@ const (
    HZ_65_536 = 2
    HZ_16_384 = 3
    START_TIMER = 0x4
-   HZ_4096_t = 20
-   HZ_262_144_t = 30
+   HZ_4096_t = 256
+   HZ_262_144_t = 10
    HZ_65_536_t = 64
    HZ_16_384_t = 256
 
@@ -51,7 +51,7 @@ func (timer *Timer) Update(ic *IC, cycles uint64) {
                 if  timer.last_update >= HZ_4096_t  {
 
                     timer.update_regs(ic);
-                 //   fmt.Println("4096",timer.last_update,timer.TMA,timer.TIMA)
+                    fmt.Println("4096",timer.last_update,timer.TMA,timer.TIMA)
                 }
              case HZ_16_384:
                 if   timer.last_update  >= HZ_16_384_t  {
@@ -67,6 +67,8 @@ func (timer *Timer) Update(ic *IC, cycles uint64) {
             case HZ_262_144:
                 if   timer.last_update  >= HZ_262_144_t {
                     timer.update_regs(ic);
+                     
+
                      fmt.Println("262144",timer.last_update,timer.TMA,timer.TIMA)
                 }
 
