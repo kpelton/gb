@@ -74,7 +74,7 @@ type CPU struct {
 func (c *CPU) load_bios() {
 
 	fi, err := os.Open(os.Args[1])
-	buf := make([]uint8, 0x10000)
+	buf := make([]uint8, 0x20000)
 
 	n,err := fi.Read(buf)
 
@@ -82,10 +82,7 @@ func (c *CPU) load_bios() {
 		panic(err)
 	}
 
-	for i := 0; i < n; i++ {
-		c.mmu.load_cart(uint16(i), buf[i])
-	}
-
+    c.mmu.create_new_cart(buf,n)
 
 	c.reg16[PC] = 0x100
 	c.reg16[SP] = 0xfffe
@@ -163,7 +160,7 @@ func (c *CPU) handleInterrupts() {
 }
 
 func (c *CPU) Dump() {
-  //  fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
+    fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
 }
 func (c *CPU) Exec() {
 
@@ -180,7 +177,7 @@ func (c *CPU) Exec() {
 
         //c.last_instr = 4
 		op = uint16(c.mmu.read_w(c.reg16[PC]))
-	    //fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x,EI:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H],c.reg8[EI]);
+	    //.Dump()
         //fmt.Println(c.gpu.LY)
 		
 	

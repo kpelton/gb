@@ -437,7 +437,7 @@ func (g *GPU) vblank(m *MMU,clocks uint16) {
         
 	}
 
-    if g.vblank_cycle_count < 4500 {      
+    if g.vblank_cycle_count < 2500 {      
         g.vblank_cycle_count+=clocks
          
         if g.LY  < 153 {

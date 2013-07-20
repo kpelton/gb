@@ -4,11 +4,11 @@ import "fmt"
 type MMU struct {
 
     mem [0x10000]uint8
-    cart [0x10000]uint8
+//    cart [0x10000]uint8
+    cart Cart
     vm  [0x2000] uint8
 	oam [0xA0] uint8
 	cpu *CPU
-    bank uint16
     block uint16
     inbios bool
 }
@@ -16,9 +16,57 @@ func NewMMU(cpu *CPU)(*MMU) {
     m :=new(MMU)
     m.inbios = false
 	m.cpu = cpu
-    m.bank = 0
     m.block = 0
 	return m
+}
+
+const (
+    REG_CART_TYPE = 0x147 
+    REG_CART_SIZE = 0x148
+    REG_RAM_SIZE = 0x148   
+
+	C_ROM_ONLY = 0
+    C_ROM_MBC1 = 1
+    C_ROM_MBC1_RAM = 2
+    C_ROM_MBC1_RAM_BATT= 3
+    C_ROM_MBC2 = 5
+    C_ROM_MBC2_BATT = 6
+    C_ROM_RAM = 8
+)
+
+func (m *MMU) create_new_cart(data []uint8 , size int) {
+    fmt.Printf("Cart Type:0%02x\n:",data[REG_CART_TYPE])
+    fmt.Printf("Cart Size:0%02x:\n",data[REG_CART_SIZE])
+    fmt.Printf("Ram Size:0%02x:\n",data[REG_RAM_SIZE])
+
+    cart_type := data[REG_CART_TYPE]
+    fmt.Printf("Cart Type:")
+    switch cart_type {
+        case C_ROM_ONLY:
+            fmt.Printf("ROM_ONLY\n")
+            m.cart = NewMBC0(data[:0x8000])
+        case C_ROM_MBC1:
+           fmt.Printf("ROM_MBC1\n")
+           m.cart = NewROM_MBC1(data,size)
+
+
+        case C_ROM_MBC1_RAM:
+           fmt.Printf("ROM_MBC1_RAM\n")
+        case C_ROM_MBC1_RAM_BATT:
+           fmt.Printf("ROM_MBC1_RAM_BATT\n")
+        case C_ROM_MBC2:
+           fmt.Printf("ROM_MBC2\n")
+        case C_ROM_MBC2_BATT:
+           m.cart = NewROM_MBC2(data,size)
+
+           fmt.Printf("ROM_MBC2_BATT\n")
+        case C_ROM_RAM:
+           fmt.Printf("ROM_RAM\n")
+        default:
+           fmt.Printf("Unknown!\n")
+           panic("Unsupported cart!!!!")
+    }
+
 }
 
 func (m *MMU) Dump_mem() {
@@ -160,7 +208,8 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
             val=m.cpu.gpu.LYC
 	        //fmt.Printf("->LYC:%04X\n",val)
 	    case 0xff46:
-             panic("DMA register is not readable!")
+            val=0xff
+             //panic("DMA register is not readable!")
 	    case 0xff47:
 	        val= m.cpu.gpu.BGP
         case 0xff4A:
@@ -186,15 +235,16 @@ func (m *MMU)read_b(addr uint16) (uint8) {
 
     } else if addr >= 0x100 && addr < 0x4000  {
         //always ROM bank #0
-        return m.cart[addr]
+        return m.cart.Read_b(addr)
 
     } else if addr >= 0x4000 && addr < 0x8000  {
       //  fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
-       return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
+       //return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
+       return m.cart.Read_b(addr)
      //return m.cart[addr]
  
     } else if addr <= 0x100 && !m.inbios {
-        return m.cart[addr]  
+       return m.cart.Read_b(addr)
 
 	} else if (addr >= 0xfe00 && addr <= 0xfe9f){
 		fmt.Printf("%x\n",addr)
@@ -215,11 +265,6 @@ func (m *MMU)read_w(addr uint16) (uint16) {
     return uint16(m.read_b(addr)) | uint16((m.read_b(addr+1))) << 8
 }
 
-func (m *MMU)load_cart(addr uint16,val uint8) () {
-
-	m.cart[addr] = val
-
-}
 
 func (m *MMU)write_b(addr uint16,val uint8) () {
 
@@ -235,27 +280,11 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
   } else if addr >=0x100 && addr < 0x8000 {
         //m.cart[addr] =val
         if addr < 0x4000 && addr < 0x6000{
-            if (val >1){
-               fmt.Printf("B:%04x->%04x\n",m.bank,val)
-               m.bank = uint16(val-1)
-            }else{
-                m.bank = uint16(0)
-            }
-        }  else {
-
-
+            m.cart.Write_b(addr,val)
+            return 
         }
-
-
-    	    fmt.Printf("BANK write:%04x:%04x\n",addr,val)
-
-
-
-        return 
-    
     }else if addr <= 0x100 && !m.inbios{      
-       m.cart[addr] = val
-        return 
+       //panic("Writing to CART!!!")
 
     } else if addr == 0xff00 ||   addr == 0xff02 ||  (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <=0xff4B) || addr == 0xff0f || addr == 0xffff{
         m.write_mmio(addr,val)
