@@ -69,6 +69,7 @@ type CPU struct {
     is_halted bool
 	DIV uint8
     last_instr uint16
+
 }
 
 func (c *CPU) load_bios() {
@@ -99,6 +100,8 @@ func (c *CPU) load_bios() {
 	c.reg8[FL_H] = 0x0
 	c.reg8[FL_N] = 0x0
     c.reg8[EI] = 0x0
+    c.gpu.STAT = 0x85
+    
 }
 
 func  get_reg_id(reg string) (int) {
@@ -141,7 +144,7 @@ func (c *CPU) handleInterrupts() {
     f := gen_push_pop("PUSH", "PC")
     if c.is_halted && c.ic.IF & c.ic.IE != 0  {   
         c.is_halted = false
-        fmt.Println("CORE UNHALTED",c.ic.IF,c.ic.IE)
+        //fmt.Println("CORE UNHALTED",c.ic.IF,c.ic.IE)
         
 
     }
@@ -160,7 +163,7 @@ func (c *CPU) handleInterrupts() {
 }
 
 func (c *CPU) Dump() {
-    fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H]);//,c.reg8[FL_N]);
+    fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x TIMA:%02x ->%v\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H],c.timer.TIMA,c.last_instr);//,c.reg8[FL_N]);
 }
 func (c *CPU) Exec() {
 
@@ -173,24 +176,31 @@ func (c *CPU) Exec() {
 //	pprof.StartCPUProfile(fo) 
     //last_update := time.Now()
    // count :=uint(0)
+
 	for {
+          
+   
 
         //c.last_instr = 4
-		op = uint16(c.mmu.read_w(c.reg16[PC]))
-	    //.Dump()
-        //fmt.Println(c.gpu.LY)
-		
 	
-		if op&0x00ff != 0xcb {
-			op &= 0xff
-
-		} else {
-			op = 0xcb00 | ((op & 0xff00) >> 8)
-		}
-		
 		//run op
         if !c.is_halted {
+            op = uint16(c.mmu.read_w(c.reg16[PC]))
+	        //c.Dump()
+            //fmt.Println(c.gpu.LY)
+		
+	
+		    if op&0x00ff != 0xcb {
+			    op &= 0xff
+
+		    } else {
+			    op = 0xcb00 | ((op & 0xff00) >> 8)
+		    }
+	        c.Dump()		
 		    c.ops[op](c)
+	        c.Dump()		
+
+            fmt.Printf("OP:%X\n",op)
 
         }
         //count += uint(1)
@@ -199,10 +209,11 @@ func (c *CPU) Exec() {
 
 		c.gp.Update()
    
-        c.timer.Update(c.ic,uint64(c.last_instr))
 	    c.gpu.Update(c.mmu,c.last_instr)
+     
+     c.timer.Update(c.ic,uint64(c.last_instr))       
         c.DIV++
-    
+
         c.handleInterrupts()
 /*        if c.reg16[PC] == 0x40 {
          elapsed+=1
@@ -211,6 +222,8 @@ func (c *CPU) Exec() {
         }
 */
     }
+
+  
 
 }
 	
@@ -265,7 +278,7 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 	//c.tick(ticks)
 	//time.Sleep(time.Microsecond)
 	//if !c.mmu.inbios   {
-	//fmt.Printf("%s\n",desc)
+	//fmt.Println(desc,ticks)
 	//fmt.Printf("PC:%04",c.reg16[PC])
     //  c.Print_dump()
 //	}
@@ -796,7 +809,7 @@ func gen_push_pop(left string, reg_right string) Action {
 			c.mmu.write_w(c.reg16[SP], f_get_val(c))
 			
 			//fmt.Printf("0x%04x",c.reg16[SP])
-			c.do_instr(desc, 20, 1)
+			c.do_instr(desc, 16, 1)
 
 			//fmt.Println(c.reg8,c.reg16)
 		}
@@ -842,7 +855,7 @@ func gen_push_pop(left string, reg_right string) Action {
 			c.reg16[SP] += 2
 			f_set_val(c, val)
 
-			c.do_instr(desc, 20, 1)
+			c.do_instr(desc, 12, 1)
 
 		}
 	}
@@ -850,7 +863,7 @@ func gen_push_pop(left string, reg_right string) Action {
 
 }
 
-func gen_jmp(left string, reg_right string, skip_flags uint8, signed uint8, mask uint8, check uint8, ticks uint16, args uint16) Action {
+func gen_jmp(left string, reg_right string, skip_flags uint8, signed uint8, mask uint8, check uint8, ticks uint16, ticks_taken uint16, args uint16) Action {
 
 	type_right := get_ld_type(reg_right)
 
@@ -910,7 +923,7 @@ func gen_jmp(left string, reg_right string, skip_flags uint8, signed uint8, mask
 			}
 		//	fmt.Println("o Jump")
 
-			c.do_instr(desc, ticks, 0) //skip args if we are acutally doing jump
+			c.do_instr(desc, ticks_taken, 0) //skip args if we are acutally doing jump
 		} else {
 		//	fmt.Println("Mo Jump")
 			c.do_instr(desc, ticks, args)
@@ -920,10 +933,10 @@ func gen_jmp(left string, reg_right string, skip_flags uint8, signed uint8, mask
 
 	return lambda
 }
-func gen_call(left string, reg_right string, skip_flags uint8, signed uint8, mask uint8, check uint8, ticks uint16, args uint16) Action {
+func gen_call(left string, reg_right string, skip_flags uint8, signed uint8, mask uint8, check uint8, ticks uint16,ticks_taken uint16, args uint16) Action {
 
 	p_func := gen_push_pop("PUSH", "PC")
-	jmp_func := gen_jmp("CJMP", reg_right, skip_flags, 0, mask, check, 8, 3) //signed
+	jmp_func := gen_jmp("CJMP", reg_right, skip_flags, 0, mask, check, 8,16, 3) //signed
 
 	lambda := func(c *CPU) {
 		prev := c.reg16[PC]
@@ -935,15 +948,19 @@ func gen_call(left string, reg_right string, skip_flags uint8, signed uint8, mas
 			c.reg16[PC] = 3+prev
 			p_func(c)
 			c.reg16[PC] = jmp_val
-		}
+            c.do_instr("CALL", ticks_taken, 0)
+		}else{
+            c.do_instr("CALL", ticks, 0)
 
-		c.do_instr("CALL", 0, 0)
-	}
+        }
+        }
+    //hack to fix ticks		
+
 
 	return lambda
 }
 
-func gen_ret(left string, skip_flag uint8, mask uint8, check uint8) Action {
+func gen_ret(left string, skip_flag uint8, mask uint8, check uint8,ticks uint16,ticks_taken uint16) Action {
 
 	f_get_val := gen_get_val(memreg16, "SP")
 	f_set_val := gen_set_val(reg16, "PC")
@@ -966,13 +983,12 @@ func gen_ret(left string, skip_flag uint8, mask uint8, check uint8) Action {
 			if left == "RETI" {
 					c.reg8[EI] = 1
 			}
-			c.do_instr(left, 8, 0)
+			c.do_instr(left, ticks_taken, 0)
 		} else {
-			c.do_instr(left, 8, 1)
+			c.do_instr(left, ticks, 1)
 		}
 
 	}
-
 	return lambda
 }
 
@@ -1299,10 +1315,10 @@ func createOps(c *CPU ) {
 	c.ops[0x0A] = gen_ld("A", "(BC)", 8, 1)
 	c.ops[0x1A] = gen_ld("A", "(DE)", 8, 1)
 	c.ops[0x7E] = gen_ld("A", "(HL)", 8, 1)
-	c.ops[0xFA] = gen_ld("A", "(nn)", 8, 3)
+	c.ops[0xFA] = gen_ld("A", "(nn)", 16, 3)
 	c.ops[0x3E] = gen_ld("A", "n", 8, 2)
 	c.ops[0xF2] = gen_ld("A", "(C)", 8, 1)
-	c.ops[0x79] = gen_ld("A", "C", 8, 1)
+	c.ops[0x79] = gen_ld("A", "C", 4, 1)
 
 	c.ops[0x06] = gen_ld("B", "n", 8, 2)
 	c.ops[0x40] = gen_ld("B", "B", 4, 1)
@@ -1331,7 +1347,7 @@ func createOps(c *CPU ) {
 	c.ops[0x55] = gen_ld("D", "L", 4, 1)
 	c.ops[0x56] = gen_ld("D", "(HL)", 8, 1)
 	c.ops[0x57] = gen_ld("D", "A", 4, 1)
-	c.ops[0x16] = gen_ld("D", "n", 4, 2)
+	c.ops[0x16] = gen_ld("D", "n", 8, 2)
 
 	c.ops[0x58] = gen_ld("E", "B", 4, 1)
 	c.ops[0x59] = gen_ld("E", "C", 4, 1)
@@ -1370,16 +1386,16 @@ func createOps(c *CPU ) {
 	c.ops[0x74] = gen_ld("(HL)", "H", 8, 1)
 	c.ops[0x75] = gen_ld("(HL)", "L", 8, 1)
 	c.ops[0x77] = gen_ld("(HL)", "A", 8, 1)
-	c.ops[0x36] = gen_ld("(HL)", "n", 8, 2)
+	c.ops[0x36] = gen_ld("(HL)", "n", 12, 2)
 
 	c.ops[0x02] = gen_ld("(BC)", "A", 8, 1)
 	c.ops[0x12] = gen_ld("(DE)", "A", 8, 1)
 	c.ops[0xEA] = gen_ld("(nn)8", "A", 16, 3)
 	c.ops[0xE2] = gen_ld("(C)", "A", 8, 1)
-	c.ops[0x3A] = gen_ld("A", "(HLD)", 12, 1)
-	c.ops[0x32] = gen_ld("(HLD)", "A", 12, 1)
-	c.ops[0x2A] = gen_ld("A", "(HLI)", 12, 1)
-	c.ops[0x22] = gen_ld("(HLI)", "A", 12, 1)
+	c.ops[0x3A] = gen_ld("A", "(HLD)", 8, 1)
+	c.ops[0x32] = gen_ld("(HLD)", "A", 8, 1)
+	c.ops[0x2A] = gen_ld("A", "(HLI)", 8, 1)
+	c.ops[0x22] = gen_ld("(HLI)", "A", 8, 1)
 	c.ops[0xE0] = gen_ldh("(n)", "A", 12, 2)
 	c.ops[0xF0] = gen_ldh("A", "(n)", 12, 2)
 
@@ -1433,7 +1449,7 @@ func createOps(c *CPU ) {
 	c.ops[0x8C] = gen_alu("ADC", "A", "H", 4, 1)
 	c.ops[0x8D] = gen_alu("ADC", "A", "L", 4, 1)
 	c.ops[0x8E] = gen_alu("ADC", "A", "(HL)", 8, 1)
-	c.ops[0xCE] = gen_alu("ADC", "A", "n", 4, 2)
+	c.ops[0xCE] = gen_alu("ADC", "A", "n", 8, 2)
 
 	c.ops[0x9] = gen_alu("ADD16", "HL", "BC", 8, 1)
 	c.ops[0x19] = gen_alu("ADD16", "HL", "DE", 8, 1)
@@ -1534,7 +1550,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB43] = gen_test_bit(0, "E", 8, 2)
 	c.ops[0xCB44] = gen_test_bit(0, "H", 8, 2)
 	c.ops[0xCB45] = gen_test_bit(0, "L", 8, 2)
-	c.ops[0xCB46] = gen_test_bit(0, "(HL)", 16, 2)
+	c.ops[0xCB46] = gen_test_bit(0, "(HL)", 12, 2)
 	c.ops[0xCB47] = gen_test_bit(0, "A", 8, 2)
 	c.ops[0xCB48] = gen_test_bit(1, "B", 8, 2)
 	c.ops[0xCB49] = gen_test_bit(1, "C", 8, 2)
@@ -1542,7 +1558,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB4B] = gen_test_bit(1, "E", 8, 2)
 	c.ops[0xCB4C] = gen_test_bit(1, "H", 8, 2)
 	c.ops[0xCB4D] = gen_test_bit(1, "L", 8, 2)
-	c.ops[0xCB4E] = gen_test_bit(1, "(HL)", 16, 2)
+	c.ops[0xCB4E] = gen_test_bit(1, "(HL)", 12, 2)
 	c.ops[0xCB4F] = gen_test_bit(1, "A", 8, 2)
 	c.ops[0xCB50] = gen_test_bit(2, "B", 8, 2)
 	c.ops[0xCB51] = gen_test_bit(2, "C", 8, 2)
@@ -1550,7 +1566,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB53] = gen_test_bit(2, "E", 8, 2)
 	c.ops[0xCB54] = gen_test_bit(2, "H", 8, 2)
 	c.ops[0xCB55] = gen_test_bit(2, "L", 8, 2)
-	c.ops[0xCB56] = gen_test_bit(2, "(HL)", 16, 2)
+	c.ops[0xCB56] = gen_test_bit(2, "(HL)", 12, 2)
 	c.ops[0xCB57] = gen_test_bit(2, "A", 8, 2)
 	c.ops[0xCB58] = gen_test_bit(3, "B", 8, 2)
 	c.ops[0xCB59] = gen_test_bit(3, "C", 8, 2)
@@ -1558,7 +1574,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB5B] = gen_test_bit(3, "E", 8, 2)
 	c.ops[0xCB5C] = gen_test_bit(3, "H", 8, 2)
 	c.ops[0xCB5D] = gen_test_bit(3, "L", 8, 2)
-	c.ops[0xCB5E] = gen_test_bit(3, "(HL)", 16, 2)
+	c.ops[0xCB5E] = gen_test_bit(3, "(HL)", 12, 2)
 	c.ops[0xCB5F] = gen_test_bit(3, "A", 8, 2)
 	c.ops[0xCB60] = gen_test_bit(4, "B", 8, 2)
 	c.ops[0xCB61] = gen_test_bit(4, "C", 8, 2)
@@ -1566,7 +1582,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB63] = gen_test_bit(4, "E", 8, 2)
 	c.ops[0xCB64] = gen_test_bit(4, "H", 8, 2)
 	c.ops[0xCB65] = gen_test_bit(4, "L", 8, 2)
-	c.ops[0xCB66] = gen_test_bit(4, "(HL)", 16, 2)
+	c.ops[0xCB66] = gen_test_bit(4, "(HL)", 12, 2)
 	c.ops[0xCB67] = gen_test_bit(4, "A", 8, 2)
 	c.ops[0xCB68] = gen_test_bit(5, "B", 8, 2)
 	c.ops[0xCB69] = gen_test_bit(5, "C", 8, 2)
@@ -1574,7 +1590,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB6B] = gen_test_bit(5, "E", 8, 2)
 	c.ops[0xCB6C] = gen_test_bit(5, "H", 8, 2)
 	c.ops[0xCB6D] = gen_test_bit(5, "L", 8, 2)
-	c.ops[0xCB6E] = gen_test_bit(5, "(HL)", 16, 2)
+	c.ops[0xCB6E] = gen_test_bit(5, "(HL)", 12, 2)
 	c.ops[0xCB6F] = gen_test_bit(5, "A", 8, 2)
 	c.ops[0xCB70] = gen_test_bit(6, "B", 8, 2)
 	c.ops[0xCB71] = gen_test_bit(6, "C", 8, 2)
@@ -1582,7 +1598,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB73] = gen_test_bit(6, "E", 8, 2)
 	c.ops[0xCB74] = gen_test_bit(6, "H", 8, 2)
 	c.ops[0xCB75] = gen_test_bit(6, "L", 8, 2)
-	c.ops[0xCB76] = gen_test_bit(6, "(HL)", 16, 2)
+	c.ops[0xCB76] = gen_test_bit(6, "(HL)", 12, 2)
 	c.ops[0xCB77] = gen_test_bit(6, "A", 8, 2)
 	c.ops[0xCB78] = gen_test_bit(7, "B", 8, 2)
 	c.ops[0xCB79] = gen_test_bit(7, "C", 8, 2)
@@ -1590,7 +1606,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB7B] = gen_test_bit(7, "E", 8, 2)
 	c.ops[0xCB7C] = gen_test_bit(7, "H", 8, 2)
 	c.ops[0xCB7D] = gen_test_bit(7, "L", 8, 2)
-	c.ops[0xCB7E] = gen_test_bit(7, "(HL)", 16, 2)
+	c.ops[0xCB7E] = gen_test_bit(7, "(HL)", 12, 2)
 	c.ops[0xCB7F] = gen_test_bit(7, "A", 8, 2)
 	c.ops[0xCB80] = gen_res_bit(0, "B", 8, 2)
 	c.ops[0xCB81] = gen_res_bit(0, "C", 8, 2)
@@ -1606,7 +1622,7 @@ func createOps(c *CPU ) {
 	c.ops[0xCB8B] = gen_res_bit(1, "E", 8, 2)
 	c.ops[0xCB8C] = gen_res_bit(1, "H", 8, 2)
 	c.ops[0xCB8D] = gen_res_bit(1, "L", 8, 2)
-	c.ops[0xCB8E] = gen_res_bit(1, "(HL)", 8, 2)
+	c.ops[0xCB8E] = gen_res_bit(1, "(HL)", 16, 2)
 	c.ops[0xCB8F] = gen_res_bit(1, "A", 8, 2)
 	c.ops[0xCB90] = gen_res_bit(2, "B", 8, 2)
 	c.ops[0xCB91] = gen_res_bit(2, "C", 8, 2)
@@ -1809,33 +1825,33 @@ func createOps(c *CPU ) {
 	c.ops[0xCB36] = gen_rotate_shift("SWAP", "(HL)", 16, 2) 
 
 	//ABS JUMPS
-	c.ops[0xc3] = gen_jmp("JPA", "nn", 1, 0, 0, 0, 12, 3) //no args always jump
-	c.ops[0xc2] = gen_jmp("JPNZ", "nn", 0, 0, 0x80, 0, 12, 3)
-	c.ops[0xcA] = gen_jmp("JPZ", "nn", 0, 0, 0x80, 1, 12, 3)
-	c.ops[0xD2] = gen_jmp("JPNC", "nn", 0, 0, 0x10, 0, 12, 3)
-	c.ops[0xDA] = gen_jmp("JPC", "nn", 0, 0, 0x10, 1, 12, 3)
-	c.ops[0xE9] = gen_jmp("JP", "HL", 1, 0, 0, 0, 4, 1)
+	c.ops[0xc3] = gen_jmp("JPA", "nn", 1, 0, 0, 0, 16,16, 3) //no args always jump
+	c.ops[0xc2] = gen_jmp("JPNZ", "nn", 0, 0, 0x80, 0, 12,16, 3)
+	c.ops[0xcA] = gen_jmp("JPZ", "nn", 0, 0, 0x80, 1, 12,16, 3)
+	c.ops[0xD2] = gen_jmp("JPNC", "nn", 0, 0, 0x10, 0, 12,16, 3)
+	c.ops[0xDA] = gen_jmp("JPC", "nn", 0, 0, 0x10, 1, 12,16, 3)
+	c.ops[0xE9] = gen_jmp("JP", "HL", 1, 0, 0, 0, 4,4, 1)
 	//Relative jmp
-	c.ops[0x20] = gen_jmp("JPNZ REL", "n", 0, 1, 0x80, 0, 8, 2)
-	c.ops[0x28] = gen_jmp("JPZ REL", "n", 0, 1, 0x80, 1, 8, 2)
-	c.ops[0x30] = gen_jmp("JPNC REL", "n", 0, 1, 0x10, 0, 8, 2)
-	c.ops[0x38] = gen_jmp("JPC REL", "n", 0, 1, 0x10, 1, 8, 2)
-	c.ops[0x18] = gen_jmp("JP", "n",      1, 1, 0, 0, 8, 2)      //signed
-	c.ops[0xCD] = gen_call("CALL", "nn", 1, 0, 0, 0, 12, 3)
-	c.ops[0xC4] = gen_call("CALLNZ", "nn", 0, 0, 0x80, 0, 12, 3)
-	c.ops[0xCC] = gen_call("CALLZ", "nn", 0, 0, 0x80, 1, 12, 3)
-	c.ops[0xD4] = gen_call("CALLNC", "nn", 0, 0, 0x10, 0, 12, 3)
-	c.ops[0xDC] = gen_call("CALLC", "nn", 0, 0, 0x10, 1, 12, 3)
+	c.ops[0x20] = gen_jmp("JPNZ REL", "n", 0, 1, 0x80, 0, 8,12, 2)
+	c.ops[0x28] = gen_jmp("JPZ REL", "n", 0, 1, 0x80, 1, 8,12, 2)
+	c.ops[0x30] = gen_jmp("JPNC REL", "n", 0, 1, 0x10, 0, 8,12, 2)
+	c.ops[0x38] = gen_jmp("JPC REL", "n", 0, 1, 0x10, 1, 8,12, 2)
+	c.ops[0x18] = gen_jmp("JP", "n",      1, 1, 0, 0, 12,12, 2)      //signed
+	c.ops[0xCD] = gen_call("CALL", "nn", 1, 0, 0, 0, 24,24, 3)
+	c.ops[0xC4] = gen_call("CALLNZ", "nn", 0, 0, 0x80, 0, 12,24, 3)
+	c.ops[0xCC] = gen_call("CALLZ", "nn", 0, 0, 0x80, 1, 12,24, 3)
+	c.ops[0xD4] = gen_call("CALLNC", "nn", 0, 0, 0x10, 0, 12,24, 3)
+	c.ops[0xDC] = gen_call("CALLC", "nn", 0, 0, 0x10, 1, 12,24, 3)
 
-	c.ops[0xC9] = gen_ret("RET", 1, 0, 0)
-	c.ops[0xC0] = gen_ret("RET NZ", 0, 0x80, 0)
-	c.ops[0xC8] = gen_ret("RET Z", 0, 0x80, 1)
-	c.ops[0xD0] = gen_ret("RET NC", 0, 0x10, 0)
-	c.ops[0xD8] = gen_ret("RET C", 0, 0x10, 1)
+	c.ops[0xC9] = gen_ret("RET", 1, 0, 0,16,16)
+	c.ops[0xC0] = gen_ret("RET NZ", 0, 0x80, 0,8,20)
+	c.ops[0xC8] = gen_ret("RET Z", 0, 0x80, 1,8,20)
+	c.ops[0xD0] = gen_ret("RET NC", 0, 0x10, 0,8,20)
+	c.ops[0xD8] = gen_ret("RET C", 0, 0x10, 1,8,20)
 
-	f_reti:= gen_ret("RETI", 1, 0, 0)
+	f_reti:= gen_ret("RETI", 1, 0, 0,16,16)
     //enable EI and return
-	c.ops[0xD9] = func(c *CPU) {c.reg8[EI] = 1 ; f_reti(c); c.do_instr("RST", 4, 0)}
+	c.ops[0xD9] = func(c *CPU) {c.reg8[EI] = 1 ; f_reti(c); c.do_instr("RST", 16, 0)}
 
 
 	c.ops[0x0] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
@@ -1853,14 +1869,14 @@ func createOps(c *CPU ) {
 
 	f := gen_push_pop("PUSH", "PC")
 
-	c.ops[0xc7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0; c.do_instr("RST", 4, 0) }
-	c.ops[0xCF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x8; c.do_instr("RST", 4, 0) }
-	c.ops[0xD7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x16 ; c.do_instr("RST", 4, 0)}
-	c.ops[0xDF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x18; c.do_instr("RST", 4, 0) }
-	c.ops[0xE7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x20; c.do_instr("RST", 4, 0) }
-	c.ops[0xEF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x28; c.do_instr("RST", 4, 0) }
-	c.ops[0xF7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x30; c.do_instr("RST", 4, 0) }
-	c.ops[0xFF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x38; c.do_instr("RST", 4, 0) }
+	c.ops[0xc7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0; c.do_instr("RST", 16, 0) }
+	c.ops[0xCF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x8; c.do_instr("RST", 16, 0) }
+	c.ops[0xD7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x10 ;  c.do_instr("RST", 16, 0) }
+	c.ops[0xDF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x18; c.do_instr("RST", 16, 0) }
+	c.ops[0xE7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x20; c.do_instr("RST", 16, 0) }
+	c.ops[0xEF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x28; c.do_instr("RST", 16, 0) }
+	c.ops[0xF7] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x30; c.do_instr("RST", 16, 0) }
+	c.ops[0xFF] = func(c *CPU) {c.reg16[PC]++; f(c); c.reg16[PC] = 0x38; c.do_instr("RST", 16, 0) }
 
 	c.ops[0x76] = func(c *CPU) { c.is_halted=true; c.do_instr("HALT", 4, 1) }
 	c.ops[0x37] =  gen_rotate_shift("SCF", "A", 4, 1)

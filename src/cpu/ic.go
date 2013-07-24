@@ -50,6 +50,9 @@ func (i *IC)  Handle() uint16 {
               //          fmt.Println("X")
 
             return(0x40)
+        case (i.IF & LCDC == LCDC) && (i.IE & LCDC == LCDC):
+            i.Disassert(LCDC)
+            return(0x48)
 
         case (i.IF & TIMER == TIMER) && (i.IE & TIMER == TIMER) :
             i.Disassert(TIMER)

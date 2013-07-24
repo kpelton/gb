@@ -101,11 +101,9 @@ func (m* MMU) exec_dma(addr uint8) () {
 	var real_addr uint16 
 	var i uint16
 	real_addr = uint16(addr) *0x100
-	m.cpu.Dump()
 	for i = 0; i < 160; i++ {
 		m.oam[i] = m.read_b(real_addr+i)
 	}
-    m.cpu.gpu.STAT |=2
 }
 
 func (m* MMU) write_mmio(addr uint16,val uint8) () {
@@ -130,21 +128,29 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
 
         case 0xff05:
             m.cpu.timer.TIMA = val
+          //  fmt.Println("SET CYCLE 0")
+                   //     m.cpu.timer.last_update = 16
+
         case 0xff06:
+               fmt.Println("STARTED TIMER")
+               m.cpu.timer.last_update = 0
             m.cpu.timer.TMA = val
 
         case 0xff07:
                     		fmt.Printf("VAL:%04X\n",val)
+               m.cpu.timer.last_update = 0
 
             m.cpu.timer.TAC = val
         case 0xff40:
             m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
-		 fmt.Printf("->LCDC:%04X\n",val)
+		 //fmt.Printf("->LCDC:%04X\n",val)
 
         case 0xff41:
-            m.cpu.gpu.STAT = val
-		//	fmt.Printf("->STAT:%04X\n",val)
+            m.cpu.gpu.STAT |= val & 0xf8
+            //m.cpu.Dump()
+			//fmt.Printf("->STAT:%04X\n",m.cpu.gpu.STAT)
+            
 
         case 0xff42:
             m.cpu.gpu.SCY = val
@@ -167,6 +173,8 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
             m.cpu.gpu.WX = val
 	    case 0xffff:
             m.cpu.ic.IE = val
+           fmt.Printf("->IE:%04X\n",val)
+
         case 0xff0F:
            fmt.Printf("->IF:%04X\n",val)
 
@@ -187,16 +195,20 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
         case 0xff05:
            val =  m.cpu.timer.TIMA 
         case 0xff06:
+
            val = m.cpu.timer.TMA 
         case 0xff07:
            val =  m.cpu.timer.TAC
         case 0xff40:
+       
             val= m.cpu.gpu.LCDC
-		//		fmt.Printf("<-LCDC:%04X\n",val)
+			//fmt.Printf("<-LCDC:%04X\n",val)
 
         case 0xff41:
             val=m.cpu.gpu.STAT
-			//	fmt.Printf("<-STAT:%04X\n",val)
+			//m.cpu.Dump()
+            //fmt.Printf("<-STAT:%04X\n",val)
+            
 
         case 0xff42:
             val=m.cpu.gpu.SCY
@@ -220,6 +232,7 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
             val = m.cpu.gpu.WX
         case 0xffff:
             val = m.cpu.ic.IE
+            
         case 0xff0F:
             val = m.cpu.ic.IF
             fmt.Printf("<-IF:%04X\n",val)
@@ -277,15 +290,9 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
             m.vm[addr & 0x1fff] = val
         return
   
-  } else if addr >=0x100 && addr < 0x8000 {
-        //m.cart[addr] =val
-        if addr < 0x4000 && addr < 0x6000{
+    } else if addr < 0x8000 || addr >=0xA000  && addr < 0xC000 {
             m.cart.Write_b(addr,val)
             return 
-        }
-    }else if addr <= 0x100 && !m.inbios{      
-       //panic("Writing to CART!!!")
-
     } else if addr == 0xff00 ||   addr == 0xff02 ||  (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <=0xff4B) || addr == 0xff0f || addr == 0xffff{
         m.write_mmio(addr,val)
         return

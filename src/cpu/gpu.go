@@ -3,12 +3,15 @@ package cpu
 import (
 	"fmt"
     "github.com/banthar/Go-SDL/sdl"
+    "time"
+
 )
 
 
 type Screen struct {
     screen *sdl.Surface 
 }
+
 
 
 
@@ -45,6 +48,7 @@ func (s *Screen) PutPixel(x int16,y int16,color uint32) {
        s.screen.FillRect(&sdl.Rect{x*2,y*2,2,2},color)
 } 
 */
+
     if x == 0 && y == 0 {
         s.screen.FillRect(&sdl.Rect{x,y,4,4},color)
     } else{
@@ -75,10 +79,11 @@ type GPU struct {
     oam_cycle_count uint16
     hblank_cycle_count uint16
     vblank_cycle_count uint16
-    
+    last_update time.Time
     currline uint8
     bg_tmap TileMap
 	w_tmap TileMap
+    frames uint16
     
 }
 
@@ -98,7 +103,7 @@ func NewGPU() *GPU {
     g.screen = newScreen()
 	g.t_screen = newScreen()
     g.mem_written = false
- 
+    g.last_update = time.Now()
 
     return g
 }
@@ -147,9 +152,9 @@ func (g *GPU) output_pixel_sprite(val uint8, x uint16, y uint16) {
 
 	switch (val) {
                case 1:
-                    g.screen.PutPixel(int16(x),int16(y),uint32(0xaaaaaa))
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0xaafaaa))
                 case 2:
-                    g.screen.PutPixel(int16(x),int16(y),uint32(0x555555))
+                    g.screen.PutPixel(int16(x),int16(y),uint32(0x55c555))
                  case 3:
                     g.screen.PutPixel(int16(x),int16(y),uint32(0x0))
 
@@ -198,8 +203,8 @@ func (g *GPU) get_tile_map(m *MMU)  {
 
     var map_base uint16
     var map_limit uint16
-	//var w_map_base uint16
-	//var w_map_limit uint16
+	var w_map_base uint16
+	var w_map_limit uint16
 	var i int
 	var j int
     var tile_base uint16
@@ -226,7 +231,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
 		//fmt.Println("!!!!!!!!!!!!!NOT IMPLEMENTED!!!!!!!!!!!!!!!\n")
         //tile_limit = 0x97FF
     }
-/*
+
     //Bit3 Tile map base
     if (g.LCDC & 0x40 == 0x40) {
         w_map_base = 0x9c00
@@ -235,7 +240,7 @@ func (g *GPU) get_tile_map(m *MMU)  {
         w_map_base = 0x9800
         w_map_limit = 0x9Bff
     }
-*/
+
   //b:=0
 		for offset:=map_base; offset<=map_limit; offset++ {
   	    	b:=m.read_b(offset)
@@ -272,35 +277,40 @@ func (g *GPU) get_tile_map(m *MMU)  {
 		
 	i= 0
 	j=0
-/*
-	if (g.LCDC & 0x10 == 0x10){
+    //fmt.Printf("0x%x\n",g.LCDC)
+	if (g.LCDC & 0x20 == 0x20){
+    		
+    		for offset:=w_map_base; offset<=w_map_limit; offset++ {
+    	b:=m.read_b(offset)
 
-	
-	for offset:=w_map_base; offset<=w_map_limit; offset++ {
-		b:=m.read_b(offset)
-			 if tile_base == 0x8800 { 
-			//signed case
-			if b > 127 {
-				b -= 128
-			} else {
-				
-			}
-			
-			tile = tile_base+(uint16((b)*16))
-		}else {
-			
-			//unsigned
-			tile = tile_base+(uint16(b)*16)
-		}		
-		g.w_tmap[i][j] =g.get_tile_val(m,tile)
-		i++
-		if i == 32 {
-			i=0
-			j++
-		}
-	}	
+    	    if tile_base == 0x8800 { 
+    			//signed case
+    		    if int8(b) >= 0 {
+          	    	tile = 0x9000+ uint16(int(int8(b))*16)
+                    //fmt.Println(int8(b))
+            	    //fmt.Printf("%x,%x,\n",b,tile)
+                 }else{
+           		    tile = tile_base+ uint16((128+int(int8(b))) * 16)
+                    //fmt.Println(int8(b))
+                    //fmt.Println((128+int(int8(b))) )
+                    //fmt.Printf("%x,%x,\n",b,tile)
+                 }    
+      
+		    }else {
+    			
+    			//unsigned
+
+    			tile = tile_base+(uint16(b)*16)
+    		}			
+    			g.w_tmap[i][j] =g.get_tile_val(m,tile)
+
+    			i++
+    			if i == 32 {
+    				i=0
+    				j++
+    			}
+    }
 }
-*/
 
 
 }
@@ -337,28 +347,35 @@ func (g *GPU) print_tile_line(line uint,) {
 	
 }
 func (g *GPU) print_tile_line_w(line uint,) {
-    tile_line := (uint8(line)+g.WY) & 7
-    map_line := (uint8(line)+g.WX) >>3 
-    j:=g.WX &7
-    i:= g.WX >>3
+    if g.WY <= 0|| g.WY >= 144 || uint8(line) < g.WY{
+
+        return
+    }
+    tile_line := (uint8(line)+g.WY+16) & 7
+    map_line := (uint8(line)+g.WY+16)  >>3
+    j:=(g.WX-7) &7
+    i:= (g.WX-7) >>3
+   // fmt.Println(g.WX,g.WY)
     for x:=0; x<160; {
         
         for j<8 {
+            //fmt.Println(i,map_line,j,tile_line)
             switch (g.w_tmap[i][map_line][j][tile_line]) {
-
+                case 0: 
+    	            g.screen.PutPixel(int16(x),int16(line),uint32(0xffffff))
                 case 1:
-                    g.screen.PutPixel(int16(x),int16(line),uint32(0xc0c0c0))
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0xaaaaaa))
                 case 2:
-                    g.screen.PutPixel(int16(x),int16(line),uint32(0x606060))
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x555555))
                 case 3:
-                    g.screen.PutPixel(int16(x),int16(line),uint32(0x00ff000))
-            
+                    g.screen.PutPixel(int16(x),int16(line),uint32(0x0000000))
+    				
             }
             j++
-           x++
+			x++
         }
-         j=0
-         i=(1+i) &31
+        j=0
+        i=(1+i) &31
         
     }    
 
@@ -386,11 +403,12 @@ func (g *GPU) print_sprites(m *MMU) {
 		sp.fl_x_flip = (m.oam[i+3] &0x20) >>5
 		sp.fl_pal = (m.oam[i+3] &0x10) >>4
 		yoff = sp.y - 16
-			//fmt.Println(sp)
+	    
 
 		
 		if yoff >  g.LY-8 && yoff <=g.LY  {
-			ytoff = (g.LY - yoff)
+		//fmt.Println(sp)
+        	ytoff = (g.LY - yoff)
 			if sp.fl_y_flip == 1 { ytoff = (^ytoff) & 0x07 }
 			if sp.fl_x_flip == 1 { xflip = true }
 			g.print_tile_sprite(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip)
@@ -401,7 +419,7 @@ func (g *GPU) print_sprites(m *MMU) {
 }
 
 func (g *GPU) hblank(m *MMU,clocks uint16) {
-    if g.hblank_cycle_count <207 {  
+    if g.hblank_cycle_count <207{  
         g.hblank_cycle_count+=clocks
         
     }else{
@@ -411,13 +429,22 @@ func (g *GPU) hblank(m *MMU,clocks uint16) {
         }
         
         if (g.LCDC & 0x81 == 0x81){
-            g.print_tile_line(uint(g.LY))
+
+                            g.print_tile_line(uint(g.LY))
+
+              if (g.LCDC & 0x20 == 0x20){
+
+              g.print_tile_line_w(uint(g.LY))
+             }            
+
+
+
+
             	if (g.LCDC & 0x02 == 0x02){
 	                g.print_sprites(m)
                                            
 
 	            }
-        g.STAT=0
 
 	    }
         g.hblank_cycle_count = 0
@@ -426,18 +453,40 @@ func (g *GPU) hblank(m *MMU,clocks uint16) {
     }
   
 }
+
+func (g *GPU) check_stat_int(m *MMU) {
+
+   //Check LYC FLAg
+    if g.LY == g.LYC {
+        g.STAT |= 0x04
+        if g.STAT & 0x40 == 0x40   {
+            m.cpu.ic.Assert(LCDC) 
+   
+        }
+       //fmt.Println("LYC",g.LYC)
+    } else {
+        g.STAT &= ^uint8(0x4)
+    }
+}
 func (g *GPU) vblank(m *MMU,clocks uint16) {
 
      if (g.LY==144) {
 		//V-BLANK
-		g.STAT = 0x01
+		g.STAT |= 0x01
         //ASSERT vblank int
 		m.cpu.ic.Assert(V_BLANK) 
-       g.screen.screen.Flip()
+        g.screen.screen.Flip()
+        g.frames+=1
+        if time.Since(g.last_update) > time.Second {
+            fmt.Println("FPS",int(g.frames))
+            g.frames=0
+            g.last_update = time.Now()
+    }
+
         
 	}
 
-    if g.vblank_cycle_count < 2500 {      
+    if g.vblank_cycle_count < 4500 {      
         g.vblank_cycle_count+=clocks
          
         if g.LY  < 153 {
@@ -453,29 +502,32 @@ func (g *GPU) vblank(m *MMU,clocks uint16) {
 
   
 }
-func (g *GPU) oam_dma(m *MMU,clocks uint16) {
+func (g *GPU) oam_mode( m*MMU,clocks uint16) {
 
-    if g.oam_cycle_count <200 {      
+    if g.oam_cycle_count <50{      
         g.oam_cycle_count+=clocks
+        g.STAT |= uint8(0x2)
     }else{
         g.oam_cycle_count = 0
-        g.STAT &= ^uint8(0x2)
+       g.STAT &= ^uint8(0x2)
+      
 
     }
 
 }
 func (g *GPU)  Update(m *MMU,clocks uint16) {
+    before:= g.LY
+    for i:=0; i<int(clocks); i++ {
+        g.oam_mode(m,1)
+        if g.LY < 144{
+            g.hblank(m,1)
+        } else {
+            g.vblank(m,1)  
 
-    if g.STAT & 0x2 == 0x2 {
-        g.oam_dma(m,clocks)
+    	}
+        after := g.LY
+        if before != after { g.check_stat_int(m) }
     }
-    if g.LY < 144 && g.STAT == 0x0 {
-        g.hblank(m,clocks)
-    } else {
-        
-        g.vblank(m,clocks)  
-
-	}
 
 }
 
