@@ -196,11 +196,11 @@ func (c *CPU) Exec() {
 		    } else {
 			    op = 0xcb00 | ((op & 0xff00) >> 8)
 		    }
-	        c.Dump()		
+	        //c.Dump()		
 		    c.ops[op](c)
-	        c.Dump()		
+	        //c.Dump()		
 
-            fmt.Printf("OP:%X\n",op)
+            //fmt.Printf("OP:%X\n",op)
 
         }
         //count += uint(1)

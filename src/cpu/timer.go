@@ -7,8 +7,6 @@ import (
 type Timer struct {
     TAC uint8 // Timer Control (R/W)
     TMA uint8 // Timer Modulo (R/W)
-
-    overflow uint8
 	TIMA uint8 // Timer counter (R/W)
     last_update  int // in clock cycles
 }
@@ -33,13 +31,11 @@ func NewTimer() *Timer {
 }
 func (timer *Timer) update_regs(ic *IC) {
        timer.TIMA +=1
-       fmt.Println("TIMA",timer.TIMA,timer.last_update)
+       //fmt.Println("TIMA",timer.TIMA,timer.last_update)
        if (timer.TIMA == 0) { 
-            timer.overflow =1
             timer.TIMA = timer.TMA
             ic.Assert(TIMER)
             fmt.Println("ASSERTED TIMER")
-            timer.overflow = 0
        }
      
 
@@ -51,45 +47,27 @@ func (timer *Timer) Update(ic *IC, cycles uint64) {
     if timer.TAC & START_TIMER == START_TIMER {
      // fmt.Printf("CYLCES PASSED :%x\n",cycles)
                     // fmt.Println("CYCLES:",timer.last_update)
-
+        t_type := 0
         switch (timer.TAC & 0x3) {
             case HZ_4096:
-               // fmt.Println("WAIT")
-                if  timer.last_update >= HZ_4096_t  {
-                                  //  fmt.Println("4096",timer.last_update,cycles,timer.TMA,timer.TIMA)
-
-                                        timer.update_regs(ic);
-                }
-
+               t_type = HZ_4096_t
              case HZ_16_384:
-                if   timer.last_update  >= HZ_16_384_t  {
-                    timer.update_regs(ic);
-
-                    //fmt.Println("16384",timer.last_update,timer.TMA,timer.TIMA)
-                }
-            
+                t_type =  HZ_16_384_t
             case HZ_65_536:
-                if  timer.last_update  >= HZ_65_536_t  {
-                    timer.update_regs(ic);
-                    fmt.Println("65536",timer.last_update,timer.TMA,timer.TIMA)
-                }
+                t_type = HZ_65_536_t
             case HZ_262_144:
-                                timer.last_update -=int(cycles)
-
-                for int(timer.last_update) < 1{
+                t_type = HZ_262_144_t
+            default:
+                panic("Unsupported timer frequency!\n")
+        }
+        timer.last_update -= int(cycles)
+        for int(timer.last_update) < 1{
 
                     timer.update_regs(ic) 
-                    fmt.Println(timer.last_update)
-                    timer.last_update += 16    
+                    //fmt.Println(timer.last_update)
+                    timer.last_update += t_type
                 }
                 
-                
-                    fmt.Println("out",timer.last_update)
-
-            default:
-                fmt.Printf("Unsupported timer frequency!\n")
-        }
-
     } else{
                         timer.last_update =0
 }
