@@ -66,8 +66,9 @@ func (m * ROM_MBC1 )Write_b(addr uint16,val uint8)() {
                 m.bank = uint16(0)
             }
     } else if addr < 0x2000 {
+
         m.ram_enabled = true
-        fmt.Println("RAM enabled" )
+        //fmt.Println("RAM enabled",val )
 
     }else if addr >= 0x4000 && addr < 0x6000{
         m.ram_bank = val

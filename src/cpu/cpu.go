@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 //	"runtime/pprof"
-  //  "time"
+// "time"
 )
 const (
 	PC = iota
@@ -69,6 +69,7 @@ type CPU struct {
     is_halted bool
 	DIV uint8
     last_instr uint16
+    push_pc Action
 
 }
 
@@ -141,7 +142,7 @@ func  get_reg_id(reg string) (int) {
 }
 func (c *CPU) handleInterrupts() {
 
-    f := gen_push_pop("PUSH", "PC")
+
     if c.is_halted && c.ic.IF & c.ic.IE != 0  {   
         c.is_halted = false
         //fmt.Println("CORE UNHALTED",c.ic.IF,c.ic.IE)
@@ -153,15 +154,13 @@ func (c *CPU) handleInterrupts() {
         vector := c.ic.Handle()
         //Handle will Dissassert interrupt
         if vector >0 {
-           
-            f(c) //push pc on stack
+            c.push_pc(c) //push pc on stack
             c.is_halted = false
     	    c.reg16[PC] = vector
       }
     
     }
 }
-
 func (c *CPU) Dump() {
     fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x TIMA:%02x ->%v\n",c.reg16[PC],c.reg16[SP],c.reg8[A],c.reg8[B],c.reg8[C],c.reg8[D],c.reg8[E],c.reg8[H],c.reg8[L],c.reg8[FL_Z],c.reg8[FL_C],c.reg8[FL_H],c.timer.TIMA,c.last_instr);//,c.reg8[FL_N]);
 }
@@ -170,11 +169,11 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 
-	fo, err := os.Create("output.txt")
-    if err != nil { panic(err) }
-    defer fo.Close()
+//	fo, err := os.Create("output.txt")
+   // if err != nil { panic(err) }
+  //  defer fo.Close()
 //	pprof.StartCPUProfile(fo) 
-    //last_update := time.Now()
+  //  last_update := time.Now()
    // count :=uint(0)
 
 	for {
@@ -210,24 +209,24 @@ func (c *CPU) Exec() {
 		c.gp.Update()
         for i:=0; i<int(c.last_instr); i++ {
 	        c.gpu.Update(c.mmu,1)
-    }   
+            }   
      
      c.timer.Update(c.ic,uint64(c.last_instr))       
         c.DIV++
+      
 
         c.handleInterrupts()
-/*        if c.reg16[PC] == 0x40 {
-         elapsed+=1
-          fmt.Println(elapsed)
-            last_update = time.Now()
-        }
-*/
+     //  if time.Since(last_update) > 600 *time.Second {
+
+       // pprof.StopCPUProfile()
+      //  fmt.Println("STOPPED")
+    //} 
     }
 
-  
+     
 
 }
-	
+
 func (c *CPU) tick(val uint16) {
 //	time.Sleep(time.Duratio(val) *time.Microsecond)
 }
@@ -1301,6 +1300,7 @@ func createOps(c *CPU ) {
 	c.reg8[FL_C] = 0
 	c.reg8[FL_N] = 0
 	c.reg8[FL_H] = 0
+    c.push_pc = gen_push_pop("PUSH", "PC")           
 
 
 	/////////////////

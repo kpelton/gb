@@ -53,6 +53,8 @@ func (m *MMU) create_new_cart(data []uint8 , size int) {
         case C_ROM_MBC1_RAM:
            fmt.Printf("ROM_MBC1_RAM\n")
         case C_ROM_MBC1_RAM_BATT:
+           m.cart = NewROM_MBC1(data,size)
+
            fmt.Printf("ROM_MBC1_RAM_BATT\n")
         case C_ROM_MBC2:
            fmt.Printf("ROM_MBC2\n")
@@ -145,7 +147,7 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
             m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
 		 //fmt.Printf("->LCDC:%04X\n",val)
-
+           m.cpu.gpu.mem_written = true
         case 0xff41:
             m.cpu.gpu.STAT |= val & 0xf8
             //m.cpu.Dump()
@@ -155,6 +157,8 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff42:
             m.cpu.gpu.SCY = val
         case 0xff43:
+		  fmt.Printf("->SCX:%04X\n",val)
+            //m.cpu.Dump()
             m.cpu.gpu.SCX = val
         case 0xff44:
             m.cpu.gpu.LY = 0
@@ -166,7 +170,8 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
 	        m.exec_dma(val)
         case 0xff47:
             m.cpu.gpu.BGP=val 
-          //fmt.Printf("->BGP:%04X\n",val)
+            m.cpu.gpu.update_bgb_palette()  
+          fmt.Printf("->BGP:%04X\n",val)
     	case 0xff4A:
             m.cpu.gpu.WY = val
 	    case 0xff4B:
@@ -202,7 +207,7 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
         case 0xff40:
        
             val= m.cpu.gpu.LCDC
-			//fmt.Printf("<-LCDC:%04X\n",val)
+			fmt.Printf("<-LCDC:%04X\n",val)
 
         case 0xff41:
             val=m.cpu.gpu.STAT
@@ -286,7 +291,7 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
     if addr >= 0x8000 && addr < 0xA000{
         m.vm[addr & 0x1fff] = val
        // fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
-        m.cpu.gpu.mem_written = true
+        //m.cpu.gpu.mem_written = true
             m.vm[addr & 0x1fff] = val
         return
   

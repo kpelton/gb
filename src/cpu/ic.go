@@ -39,9 +39,7 @@ func (i *IC) Disassert(signal uint8) {
 
 func (i *IC)  Handle() uint16 {
     var value uint16 = 0
-    if (i.IE & GAME == GAME) {
-        fmt.Println("I STATUS:",i.IE,i.IF)
-    }
+ 
     //fmt.Println("IF",i.IF,i.IE)
      switch {
   
