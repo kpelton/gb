@@ -1,7 +1,7 @@
 package cpu
 
 import (
-      "fmt"
+//      "fmt"
 )
 
 type Timer struct {
@@ -35,7 +35,7 @@ func (timer *Timer) update_regs(ic *IC) {
        if (timer.TIMA == 0) { 
             timer.TIMA = timer.TMA
             ic.Assert(TIMER)
-            fmt.Println("ASSERTED TIMER")
+            //fmt.Println("ASSERTED TIMER")
        }
      
 

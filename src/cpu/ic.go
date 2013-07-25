@@ -25,7 +25,7 @@ func NewIC() *IC {
 
 func (i *IC) Assert(signal uint8) {
     //check to see if it is masked off
-    //fmt.Println("ASSERT",signal,i.IE,i.IF)
+    fmt.Println("ASSERT",signal,i.IE,i.IF)
 
     i.IF |= signal
 }

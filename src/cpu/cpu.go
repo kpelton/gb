@@ -208,8 +208,9 @@ func (c *CPU) Exec() {
 		//Update gamepad/buttons
 
 		c.gp.Update()
-   
-	    c.gpu.Update(c.mmu,c.last_instr)
+        for i:=0; i<int(c.last_instr); i++ {
+	        c.gpu.Update(c.mmu,1)
+    }   
      
      c.timer.Update(c.ic,uint64(c.last_instr))       
         c.DIV++

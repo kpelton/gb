@@ -79,10 +79,12 @@ type GPU struct {
     oam_cycle_count uint16
     hblank_cycle_count uint16
     vblank_cycle_count uint16
+    cycle_count uint16
     last_update time.Time
     currline uint8
     bg_tmap TileMap
 	w_tmap TileMap
+    line_done uint8
     frames uint16
     
 }
@@ -419,22 +421,21 @@ func (g *GPU) print_sprites(m *MMU) {
 }
 
 func (g *GPU) hblank(m *MMU,clocks uint16) {
-    if g.hblank_cycle_count <207{  
-        g.hblank_cycle_count+=clocks
-        
-    }else{
         if (g.LY==0 ) {
             g.get_tile_map(m)
             g.mem_written = false
-        }
+        }        
+
+        g.STAT =  0
+
         
         if (g.LCDC & 0x81 == 0x81){
 
-                            g.print_tile_line(uint(g.LY))
+               g.print_tile_line(uint(g.LY))
 
               if (g.LCDC & 0x20 == 0x20){
 
-              g.print_tile_line_w(uint(g.LY))
+              //g.print_tile_line_w(uint(g.LY))
              }            
 
 
@@ -447,11 +448,9 @@ func (g *GPU) hblank(m *MMU,clocks uint16) {
 	            }
 
 	    }
-        g.hblank_cycle_count = 0
             g.LY++
-
-    }
-  
+            g.line_done = 1
+             g.check_stat_int(m) 
 }
 
 func (g *GPU) check_stat_int(m *MMU) {
@@ -463,16 +462,16 @@ func (g *GPU) check_stat_int(m *MMU) {
             m.cpu.ic.Assert(LCDC) 
    
         }
-       //fmt.Println("LYC",g.LYC)
+       fmt.Println("LYC",g.LYC)
     } else {
         g.STAT &= ^uint8(0x4)
     }
 }
 func (g *GPU) vblank(m *MMU,clocks uint16) {
 
-     if (g.LY==144) {
+     if (g.LY==144 && g.STAT == 0) {
 		//V-BLANK
-		g.STAT |= 0x01
+		g.STAT = 0x01
         //ASSERT vblank int
 		m.cpu.ic.Assert(V_BLANK) 
         g.screen.screen.Flip()
@@ -485,18 +484,19 @@ func (g *GPU) vblank(m *MMU,clocks uint16) {
 
         
 	}
+    g.vblank_cycle_count +=clocks
+    //fmt.Println(g.vblank_cycle_count)        
 
-    if g.vblank_cycle_count < 4500 {      
-        g.vblank_cycle_count+=clocks
-         
-        if g.LY  < 153 {
+    if g.vblank_cycle_count >= 456 && g.LY <= 153 {      
+        g.vblank_cycle_count = 0
             g.LY+=1
-     
-        }
-    }else{
+        //fmt.Println(g.vblank_cycle_count)        
+   }else if g.LY > 153{
         g.vblank_cycle_count=0
-        g.STAT &= ^uint8(0x1)
+        g.cycle_count = 0
         g.LY=0
+        g.line_done = 0
+        g.STAT = 0
         
     }
 
@@ -504,31 +504,36 @@ func (g *GPU) vblank(m *MMU,clocks uint16) {
 }
 func (g *GPU) oam_mode( m*MMU,clocks uint16) {
 
-    if g.oam_cycle_count <50{      
+    if g.oam_cycle_count <80{      
         g.oam_cycle_count+=clocks
         g.STAT |= uint8(0x2)
     }else{
         g.oam_cycle_count = 0
-       g.STAT &= ^uint8(0x2)
+       g.STAT = 0  
       
 
     }
 
 }
 func (g *GPU)  Update(m *MMU,clocks uint16) {
-    before:= g.LY
+ 
     for i:=0; i<int(clocks); i++ {
-        g.oam_mode(m,1)
-        if g.LY < 144{
-            g.hblank(m,1)
-        } else {
-            g.vblank(m,1)  
-
-    	}
-        after := g.LY
-        if before != after { g.check_stat_int(m) }
+        g.cycle_count +=1
+        if g.LY >= 144 {
+            g.vblank(m,clocks)  
+        }else if g.cycle_count < 204 && g.line_done == 0 {
+            g.hblank(m,clocks)
+            g.STAT = 0
+        }else if g.cycle_count > 204   &&  g.cycle_count < 204+80{
+            g.STAT |=  2
+        }else if g.cycle_count > 204+80 && g.cycle_count < 204+80+172 {
+            g.STAT |=  3 
+        }else if g.cycle_count > 204+80+172 {
+            g.cycle_count =0
+            g.line_done = 0
+        }   
+        //fmt.Println(g.cycle_count,g.STAT,g.LY,g.LYC)
     }
-
 }
 
 
