@@ -153,7 +153,7 @@ func (c *CPU) handleInterrupts() {
         vector := c.ic.Handle()
         //Handle will Dissassert interrupt
         if vector >0 {
-            //fmt.Println("INT")
+           
             f(c) //push pc on stack
             c.is_halted = false
     	    c.reg16[PC] = vector
@@ -196,7 +196,7 @@ func (c *CPU) Exec() {
 		    } else {
 			    op = 0xcb00 | ((op & 0xff00) >> 8)
 		    }
-	        //c.Dump()		
+	       // c.Dump()		
 		    c.ops[op](c)
 	        //c.Dump()		
 

@@ -25,7 +25,7 @@ func NewIC() *IC {
 
 func (i *IC) Assert(signal uint8) {
     //check to see if it is masked off
-    fmt.Println("ASSERT",signal,i.IE,i.IF)
+    //fmt.Println("ASSERT",signal,i.IE,i.IF)
 
     i.IF |= signal
 }
@@ -52,8 +52,9 @@ func (i *IC)  Handle() uint16 {
             return(0x40)
         case (i.IF & LCDC == LCDC) && (i.IE & LCDC == LCDC):
             i.Disassert(LCDC)
+           // fmt.Println("INT","LCDC")
             return(0x48)
-
+            
         case (i.IF & TIMER == TIMER) && (i.IE & TIMER == TIMER) :
             i.Disassert(TIMER)
 

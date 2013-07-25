@@ -1,7 +1,7 @@
 package cpu
 
 import (
-//      "fmt"
+  //    "fmt"
 )
 
 type Timer struct {

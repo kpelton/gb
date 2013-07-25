@@ -426,8 +426,6 @@ func (g *GPU) hblank(m *MMU,clocks uint16) {
             g.mem_written = false
         }        
 
-        g.STAT =  0
-
         
         if (g.LCDC & 0x81 == 0x81){
 
@@ -450,7 +448,6 @@ func (g *GPU) hblank(m *MMU,clocks uint16) {
 	    }
             g.LY++
             g.line_done = 1
-             g.check_stat_int(m) 
 }
 
 func (g *GPU) check_stat_int(m *MMU) {
@@ -460,18 +457,19 @@ func (g *GPU) check_stat_int(m *MMU) {
         g.STAT |= 0x04
         if g.STAT & 0x40 == 0x40   {
             m.cpu.ic.Assert(LCDC) 
-   
+           
         }
-       fmt.Println("LYC",g.LYC)
+       
     } else {
         g.STAT &= ^uint8(0x4)
     }
 }
 func (g *GPU) vblank(m *MMU,clocks uint16) {
 
-     if (g.LY==144 && g.STAT == 0) {
+     if (g.LY==144 && g.STAT & 0x1 == 0) {
 		//V-BLANK
-		g.STAT = 0x01
+         
+		g.STAT = (g.STAT & 0xfc) |0x01
         //ASSERT vblank int
 		m.cpu.ic.Assert(V_BLANK) 
         g.screen.screen.Flip()
@@ -496,7 +494,7 @@ func (g *GPU) vblank(m *MMU,clocks uint16) {
         g.cycle_count = 0
         g.LY=0
         g.line_done = 0
-        g.STAT = 0
+        g.STAT &= 0xfc 
         
     }
 
@@ -517,23 +515,29 @@ func (g *GPU) oam_mode( m*MMU,clocks uint16) {
 }
 func (g *GPU)  Update(m *MMU,clocks uint16) {
  
-    for i:=0; i<int(clocks); i++ {
         g.cycle_count +=1
         if g.LY >= 144 {
             g.vblank(m,clocks)  
         }else if g.cycle_count < 204 && g.line_done == 0 {
-            g.hblank(m,clocks)
-            g.STAT = 0
-        }else if g.cycle_count > 204   &&  g.cycle_count < 204+80{
-            g.STAT |=  2
-        }else if g.cycle_count > 204+80 && g.cycle_count < 204+80+172 {
+             g.STAT &= 0xfc
+             g.hblank(m,clocks)
+             g.check_stat_int(m) 
+        }else if g.cycle_count >= 204   && g.cycle_count < 204+80{
+            g.STAT |=  2   
+
+        }else if g.cycle_count >= 204+80 && g.cycle_count < 204+80+172 {
             g.STAT |=  3 
-        }else if g.cycle_count > 204+80+172 {
+        }else if g.cycle_count >= 204+80+172 {
             g.cycle_count =0
             g.line_done = 0
         }   
-        //fmt.Println(g.cycle_count,g.STAT,g.LY,g.LYC)
-    }
+            
+      
+        
+    
+            
+
+    
 }
 
 

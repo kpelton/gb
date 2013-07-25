@@ -149,7 +149,7 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff41:
             m.cpu.gpu.STAT |= val & 0xf8
             //m.cpu.Dump()
-			//fmt.Printf("->STAT:%04X\n",m.cpu.gpu.STAT)
+		fmt.Printf("->STAT:%04X\n",m.cpu.gpu.STAT)
             
 
         case 0xff42:
