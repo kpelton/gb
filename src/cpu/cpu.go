@@ -76,7 +76,7 @@ type CPU struct {
 func (c *CPU) load_bios() {
 
 	fi, err := os.Open(os.Args[1])
-	buf := make([]uint8, 0x20000)
+	buf := make([]uint8, 0x400000)
 
 	n,err := fi.Read(buf)
 
@@ -195,9 +195,9 @@ func (c *CPU) Exec() {
 		    } else {
 			    op = 0xcb00 | ((op & 0xff00) >> 8)
 		    }
-	       // c.Dump()		
+//	        //c.Dump()		
 		    c.ops[op](c)
-	        //c.Dump()		
+	       //c.Dump()		
 
             //fmt.Printf("OP:%X\n",op)
 
@@ -215,7 +215,7 @@ func (c *CPU) Exec() {
         c.DIV++
       
 
-        c.handleInterrupts()
+     c.handleInterrupts()
      //  if time.Since(last_update) > 600 *time.Second {
 
        // pprof.StopCPUProfile()

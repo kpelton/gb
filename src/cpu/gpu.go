@@ -540,7 +540,7 @@ func (g *GPU) hblank(m *MMU,clocks uint16) {
     
               if (g.LCDC & 0x20 == 0x20){
 
-             // g.print_tile_line_w(uint(g.LY))
+             g.print_tile_line_w(uint(g.LY))
              }            
 
 
@@ -633,12 +633,12 @@ func (g *GPU)  Update(m *MMU,clocks uint16) {
            g.check_stat_int(m) 
         }else if g.STAT & 0x2 != 0x2 && g.cycle_count >= 204   && g.cycle_count < 204+80{
             g.STAT |=  2   
-            g.check_stat_int(m) 
+       //     g.check_stat_int(m) 
 
         }else if g.STAT & 0x3 != 0x3 && g.cycle_count >= 204+80 && g.cycle_count < 204+80+172 {
             g.STAT |=  3 
  
-                   g.check_stat_int(m) 
+              //     g.check_stat_int(m) 
 
         }else if g.cycle_count >= 204+80+172 {
             g.cycle_count =0

@@ -104,7 +104,10 @@ func (g *GP) Update(){
 		case *sdl.KeyboardEvent:
 			if e.Type == sdl.KEYDOWN{
 				//fmt.Printf("%+v\n",e)
-				g.handleKeyDown(e)
+				g.handleKeyDown(e)				
+                g.cpu.ic.Assert(GAME)
+
+                
 				//fmt.Printf("%+v\n",e)
 				//fmt.Printf("P1:0x%x,PAD:0x%0x,OTHER:0x%0x\n",g.P1,g.pad,g.other)
 			}else{

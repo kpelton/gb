@@ -31,7 +31,9 @@ const (
     C_ROM_MBC1_RAM_BATT= 3
     C_ROM_MBC2 = 5
     C_ROM_MBC2_BATT = 6
+    C_ROM_MBC3_RAM_BATT = 13
     C_ROM_RAM = 8
+
 )
 
 func (m *MMU) create_new_cart(data []uint8 , size int) {
@@ -52,6 +54,8 @@ func (m *MMU) create_new_cart(data []uint8 , size int) {
 
         case C_ROM_MBC1_RAM:
            fmt.Printf("ROM_MBC1_RAM\n")
+           m.cart = NewROM_MBC1(data,size)
+
         case C_ROM_MBC1_RAM_BATT:
            m.cart = NewROM_MBC1(data,size)
 
@@ -60,13 +64,17 @@ func (m *MMU) create_new_cart(data []uint8 , size int) {
            fmt.Printf("ROM_MBC2\n")
         case C_ROM_MBC2_BATT:
            m.cart = NewROM_MBC2(data,size)
+        case C_ROM_MBC3_RAM_BATT:
+          m.cart = NewROM_MBC1(data,size)
 
-           fmt.Printf("ROM_MBC2_BATT\n")
         case C_ROM_RAM:
            fmt.Printf("ROM_RAM\n")
         default:
+
            fmt.Printf("Unknown!\n")
-           panic("Unsupported cart!!!!")
+         //  panic("Unsupported cart!!!!")
+                      m.cart = NewROM_MBC1(data,size)
+
     }
 
 }
@@ -157,7 +165,7 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff42:
             m.cpu.gpu.SCY = val
         case 0xff43:
-		  fmt.Printf("->SCX:%04X\n",val)
+		  //fmt.Printf("->SCX:%04X\n",val)
             //m.cpu.Dump()
             m.cpu.gpu.SCX = val
         case 0xff44:
@@ -221,6 +229,8 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
             val=m.cpu.gpu.SCX
         case 0xff44:
             val=m.cpu.gpu.LY
+	       //fmt.Printf("->LY,%04X\n",val)
+
         case 0xff45:
             val=m.cpu.gpu.LYC
 	        //fmt.Printf("->LYC:%04X\n",val)
@@ -255,7 +265,7 @@ func (m *MMU)read_b(addr uint16) (uint8) {
         //always ROM bank #0
         return m.cart.Read_b(addr)
 
-    } else if addr >= 0x4000 && addr < 0x8000  {
+    } else if addr >= 0x4000 && addr < 0x8000 || addr >=0xA000  && addr < 0xC000 {
       //  fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
        //return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
        return m.cart.Read_b(addr)

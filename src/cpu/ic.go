@@ -60,7 +60,6 @@ func (i *IC)  Handle() uint16 {
 
         case (i.IF & GAME == GAME) && (i.IE & GAME == GAME) :
             i.Disassert(GAME)
-            fmt.Println("X")
             return(0x60)
         case (i.IF & SERIAL == SERIAL) && (i.IE & SERIAL == SERIAL) :
             i.Disassert(SERIAL)
