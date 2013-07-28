@@ -1,4 +1,4 @@
-package cpu
+package gp
 
 import (
 	//	"fmt"
@@ -8,7 +8,6 @@ import (
 
 type GP struct {
 	P1      uint8
-	cpu     *CPU
 	K_LEFT  uint8
 	K_RIGHT uint8
 	K_UP    uint8
@@ -17,12 +16,11 @@ type GP struct {
 	other   uint8
 }
 
-func NewGP(cpu *CPU) *GP {
+func NewGP() *GP {
 	g := new(GP)
 	g.P1 = 0x0f
 	g.other = 0x0f
 	g.pad = 0x0f
-	g.cpu = cpu
 	sdl.EnableKeyRepeat(1, 1)
 
 	return g
@@ -30,7 +28,6 @@ func NewGP(cpu *CPU) *GP {
 
 func (g *GP) handleKeyDown(e *sdl.KeyboardEvent) {
 
-	//	if g.P1 &0x10 == 0x10  {
 	switch e.Keysym.Sym {
 	case sdl.K_RETURN:
 		g.other &= ^uint8(0x08)
@@ -43,8 +40,6 @@ func (g *GP) handleKeyDown(e *sdl.KeyboardEvent) {
 
 	}
 
-	//	}	
-	//	if g.P1 &0x20 == 0x20  {
 	switch e.Keysym.Sym {
 	case sdl.K_DOWN:
 		g.pad &= ^uint8(0x08)
@@ -55,12 +50,11 @@ func (g *GP) handleKeyDown(e *sdl.KeyboardEvent) {
 	case sdl.K_RIGHT:
 		g.pad &= ^uint8(0x01)
 	}
-	//	}
 }
 
 func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) {
 
-	//	if g.P1 &0x10 == 0x10  {
+
 	switch e.Keysym.Sym {
 	case sdl.K_RETURN:
 		g.other |= 0x08
@@ -71,10 +65,10 @@ func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) {
 	case sdl.K_z:
 		g.other |= 0x01
 
-		//	}	
+
 
 	}
-	//	if g.P1 &0x20 == 0x20  {
+
 	switch e.Keysym.Sym {
 	case sdl.K_DOWN:
 		g.pad |= 0x08
@@ -85,14 +79,14 @@ func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) {
 	case sdl.K_RIGHT:
 		g.pad |= 0x01
 
-		//	}
+
 	}
 
 	//fmt.Printf("P1:0x%02x\n",g.P1)
 }
 
-func (g *GP) Update() {
-
+func (g *GP) Update() (uint8) {
+    var int_raised uint8 = 0
 	for {
 		ev := sdl.PollEvent()
 
@@ -100,16 +94,11 @@ func (g *GP) Update() {
 		switch e := ev.(type) {
 
 		case *sdl.KeyboardEvent:
-			if e.Type == sdl.KEYDOWN {
-				//fmt.Printf("%+v\n",e)
+            int_raised = 0x10	    
+    		if e.Type == sdl.KEYDOWN {
 				g.handleKeyDown(e)
-				g.cpu.ic.Assert(GAME)
-
-				//fmt.Printf("%+v\n",e)
-				//fmt.Printf("P1:0x%x,PAD:0x%0x,OTHER:0x%0x\n",g.P1,g.pad,g.other)
 			} else {
 				g.handleKeyUp(e)
-				g.cpu.ic.Assert(GAME)
 			}
 
 		default:
@@ -124,7 +113,5 @@ func (g *GP) Update() {
 	if g.P1&0x10 == 0x10 {
 		g.P1 |= g.other
 	}
-	//g.P1|=g.old			
-	//	fmt.Printf("P1:0x%x,PAD:0x%0x,OTHER:0x%0x\n",g.P1,g.pad,g.other)
-
+    return int_raised
 }

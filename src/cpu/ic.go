@@ -18,6 +18,7 @@ const (
 	TIMER   = 0x4
 	SERIAL  = 0x8
 	GAME    = 0x10
+    NONE    =0x0
 )
 
 func NewIC() *IC {

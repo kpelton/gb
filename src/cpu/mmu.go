@@ -134,18 +134,9 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 
 	case 0xff05:
 		m.cpu.timer.TIMA = val
-		//  fmt.Println("SET CYCLE 0")
-		//     m.cpu.timer.last_update = 16
-
 	case 0xff06:
-		fmt.Println("STARTED TIMER")
-		m.cpu.timer.last_update = 0
 		m.cpu.timer.TMA = val
-
 	case 0xff07:
-		fmt.Printf("VAL:%04X\n", val)
-		m.cpu.timer.last_update = 0
-
 		m.cpu.timer.TAC = val
 	case 0xff40:
 		m.cpu.gpu.LCDC = val
@@ -171,7 +162,6 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		//fmt.Printf("->LYC:%04X\n",val)
 	case 0xff46:
 		// m.Dump_vm()
-
 		m.exec_dma(val)
 	case 0xff47:
 		if val != m.cpu.gpu.BGP {
@@ -191,7 +181,6 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		if val != m.cpu.gpu.OBP1 {
 			m.cpu.gpu.OBP1 = val
 			m.cpu.gpu.update_palette(&m.cpu.gpu.obp1_palette, val)
-
 		}
 	case 0xff4A:
 		m.cpu.gpu.WY = val
@@ -199,11 +188,9 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.gpu.WX = val
 	case 0xffff:
 		m.cpu.ic.IE = val
-		fmt.Printf("->IE:%04X\n", val)
-
+		//fmt.Printf("->IE:%04X\n", val)
 	case 0xff0F:
-		fmt.Printf("->IF:%04X\n", val)
-
+		//`fmt.Printf("->IF:%04X\n", val)
 		m.cpu.ic.IF = val
 	}
 
@@ -213,42 +200,30 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	switch addr {
 	case 0xff00:
 		val = m.cpu.gp.P1
-
 	//fmt.Printf("<-P1:%04X\n",val)
-
 	case 0xff04:
 		val = m.cpu.DIV
 	case 0xff05:
 		val = m.cpu.timer.TIMA
 	case 0xff06:
-
 		val = m.cpu.timer.TMA
 	case 0xff07:
 		val = m.cpu.timer.TAC
 	case 0xff40:
-
 		val = m.cpu.gpu.LCDC
-		fmt.Printf("<-LCDC:%04X\n", val)
-
 	case 0xff41:
 		val = m.cpu.gpu.STAT
-		//m.cpu.Dump()
-		fmt.Printf("<-STAT:%04X\n", val)
-
+		//fmt.Printf("<-STAT:%04X\n", val)
 	case 0xff42:
 		val = m.cpu.gpu.SCY
 	case 0xff43:
 		val = m.cpu.gpu.SCX
 	case 0xff44:
 		val = m.cpu.gpu.LY
-	//fmt.Printf("->LY,%04X\n",val)
-
 	case 0xff45:
 		val = m.cpu.gpu.LYC
-		//fmt.Printf("->LYC:%04X\n",val)
 	case 0xff46:
 		val = 0xff
-		//panic("DMA register is not readable!")
 	case 0xff47:
 		val = m.cpu.gpu.BGP
 	case 0xff48:
@@ -257,17 +232,12 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		val = m.cpu.gpu.OBP1
 	case 0xff4A:
 		val = m.cpu.gpu.WY
-	//	fmt.Printf("->WY:%04X\n",val)
 	case 0xff4B:
-		//	fmt.Printf("->WX:%04X\n",val)
 		val = m.cpu.gpu.WX
 	case 0xffff:
 		val = m.cpu.ic.IE
-
 	case 0xff0F:
 		val = m.cpu.ic.IF
-		fmt.Printf("<-IF:%04X\n", val)
-
 	}
 
 	return val

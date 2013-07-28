@@ -482,12 +482,13 @@ func (g *GPU) print_sprites(m *MMU) {
 		sp.fl_x_flip = (m.oam[i+3] & 0x20) >> 5
 		sp.fl_pal = (m.oam[i+3] & 0x10) >> 4
 
-		yoff = sp.y - 16
+		yoff = sp.y-size-1
 
 		xflip = false
-		//   fmt.Println(sp)	
-		if yoff > g.LY-size && yoff <= g.LY {
-			ytoff = (g.LY - yoff)
+		fmt.Println(sp)	
+		if yoff-g.LY < size{
+			ytoff = (size-1-(yoff-g.LY))
+            fmt.Println(ytoff,g.LY,yoff)
 			if sp.fl_y_flip == 1 {
 				ytoff = (^ytoff & yflip_mask)
 			}
@@ -509,7 +510,6 @@ func (g *GPU) print_sprites(m *MMU) {
 			}
 		}
 
-		// fmt.Println("DONE")
 	}
 
 }
