@@ -95,8 +95,7 @@ func (m *MMU) Dump_mem() {
     }
 func (m *MMU) Dump_vm() {
     j:=0;
-    fmt.Printf("\n0x8000:")
-    for i:=0x0000; i<0x20000; i++ {
+    for i:=0x0; i<0x2000; i++ {
         fmt.Printf("%02X ",m.vm[i])
         j++
         if j==16 {
@@ -113,7 +112,10 @@ func (m* MMU) exec_dma(addr uint8) () {
 	real_addr = uint16(addr) *0x100
 	for i = 0; i < 160; i++ {
 		m.oam[i] = m.read_b(real_addr+i)
+       
+
 	}
+  
 }
 
 func (m* MMU) write_mmio(addr uint16,val uint8) () {
@@ -154,7 +156,7 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
         case 0xff40:
             m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
-		 //fmt.Printf("->LCDC:%04X\n",val)
+		 fmt.Printf("->LCDC:%04X\n",val)
            m.cpu.gpu.mem_written = true
         case 0xff41:
             m.cpu.gpu.STAT |= val & 0xf8
@@ -175,11 +177,29 @@ func (m* MMU) write_mmio(addr uint16,val uint8) () {
             m.cpu.gpu.LYC = val
 			//fmt.Printf("->LYC:%04X\n",val)
         case 0xff46:
+           // m.Dump_vm()
+            
 	        m.exec_dma(val)
         case 0xff47:
-            m.cpu.gpu.BGP=val 
-            m.cpu.gpu.update_bgb_palette()  
-          fmt.Printf("->BGP:%04X\n",val)
+            if val != m.cpu.gpu.BGP {
+                m.cpu.gpu.update_palette(&m.cpu.gpu.bg_palette,val)
+                m.cpu.gpu.BGP =val
+                fmt.Println("BGP",val,m.cpu.gpu.obp0_palette)
+
+           } 
+        case 0xff48:
+            if val != m.cpu.gpu.OBP0 {
+                m.cpu.gpu.OBP0=val 
+                m.cpu.gpu.update_palette(&m.cpu.gpu.obp0_palette,val)
+                fmt.Println(m.cpu.gpu.obp0_palette)
+
+            }  
+         case 0xff49:
+            if val != m.cpu.gpu.OBP1 {
+                m.cpu.gpu.OBP1=val 
+                m.cpu.gpu.update_palette(&m.cpu.gpu.obp1_palette,val)
+  
+            }
     	case 0xff4A:
             m.cpu.gpu.WY = val
 	    case 0xff4B:
@@ -220,7 +240,7 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
         case 0xff41:
             val=m.cpu.gpu.STAT
 			//m.cpu.Dump()
-            //fmt.Printf("<-STAT:%04X\n",val)
+            fmt.Printf("<-STAT:%04X\n",val)
             
 
         case 0xff42:
@@ -239,6 +259,10 @@ func (m* MMU) read_mmio(addr uint16) (uint8) {
              //panic("DMA register is not readable!")
 	    case 0xff47:
 	        val= m.cpu.gpu.BGP
+        case 0xff48:
+	        val= m.cpu.gpu.OBP0
+        case 0xff49:
+	        val= m.cpu.gpu.OBP1
         case 0xff4A:
             val = m.cpu.gpu.WY 
 		//	fmt.Printf("->WY:%04X\n",val)
@@ -300,7 +324,8 @@ func (m *MMU)write_b(addr uint16,val uint8) () {
 
     if addr >= 0x8000 && addr < 0xA000{
         m.vm[addr & 0x1fff] = val
-       // fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
+        //m.cpu.Dump()
+       //fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
         //m.cpu.gpu.mem_written = true
             m.vm[addr & 0x1fff] = val
         return

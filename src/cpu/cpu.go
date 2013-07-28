@@ -102,6 +102,7 @@ func (c *CPU) load_bios() {
 	c.reg8[FL_N] = 0x0
     c.reg8[EI] = 0x0
     c.gpu.STAT = 0x85
+    c.gpu.LCDC = 0x91
     
 }
 
@@ -197,7 +198,7 @@ func (c *CPU) Exec() {
 		    }
 //	        //c.Dump()		
 		    c.ops[op](c)
-	       //c.Dump()		
+	  //     c.Dump()		
 
             //fmt.Printf("OP:%X\n",op)
 
@@ -212,7 +213,7 @@ func (c *CPU) Exec() {
             }   
      
      c.timer.Update(c.ic,uint64(c.last_instr))       
-        c.DIV++
+      c.DIV++
       
 
      c.handleInterrupts()

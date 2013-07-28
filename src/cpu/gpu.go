@@ -74,6 +74,7 @@ func (s *Screen) PutPixel(x int16,y int16,color uint32) {
 	//pix.SetUint(color)
 }
 
+type Palette [4]uint32
 
 type GPU struct {
     screen *Screen
@@ -87,6 +88,8 @@ type GPU struct {
     WX uint8
     WY uint8
     BGP uint8
+    OBP0 uint8
+    OBP1 uint8
     mem_written bool
     oam_cycle_count uint16
     hblank_cycle_count uint16
@@ -98,7 +101,11 @@ type GPU struct {
 	w_tmap TileMap
     line_done uint8
     frames uint16
-    bg_palette [4]uint32
+    //palettes
+    bg_palette Palette
+    obp0_palette Palette
+    obp1_palette Palette
+
     last_lcdc uint8
 }
 
@@ -129,13 +136,12 @@ func (g *GPU) get_palette_color(selection uint8) (uint32) {
        }
     return retval
   }
-func (g *GPU) update_bgb_palette()  {
+func (g *GPU) update_palette(p *Palette,val uint8)  {
   
-      g.bg_palette[0] = g.get_palette_color(g.BGP & 0x02)
-      g.bg_palette[1] = g.get_palette_color((g.BGP & 0x06)  >> 2)
-      g.bg_palette[2] = g.get_palette_color((g.BGP & 0x30) >> 4)
-      g.bg_palette[3] = g.get_palette_color( (g.BGP & 0xC0)  >> 6)
-      fmt.Println(g.bg_palette)
+      p[0] = g.get_palette_color(val & 0x03)
+      p[1] = g.get_palette_color((val & 0x0C)  >> 2)
+      p[2] = g.get_palette_color((val & 0x30) >> 4)
+      p[3] = g.get_palette_color( (val & 0xC0)  >> 6)
 }
 
 func NewGPU() *GPU {
@@ -151,6 +157,16 @@ func NewGPU() *GPU {
     g.bg_palette[2] = DARK
     g.bg_palette[3] = DARKEST
 
+    g.obp0_palette[0] = LIGHTEST
+    g.obp0_palette[1] = LIGHT
+    g.obp0_palette[2] = DARK
+    g.obp0_palette[3] = DARKEST
+ 
+    g.obp1_palette[0] = LIGHTEST
+    g.obp1_palette[1] = LIGHT
+    g.obp1_palette[2] = DARK
+    g.obp1_palette[3] = DARKEST
+    
 
     return g
 }
@@ -206,23 +222,15 @@ func (g *GPU) get_tile_val16(m *MMU,addr uint16) (Tile16) {
 
 
 func (g *GPU) output_pixel(val uint8, x uint16, y uint16) {
+
     g.screen.PutPixel(int16(x),int16(y),g.bg_palette[val])
+
 }
 
-func (g *GPU) output_pixel_sprite(val uint8, x uint16, y uint16) {
- 
-
-	switch (val) {
-              case 1:
-                    g.screen.PutPixel(int16(x),int16(y),uint32(0xaaaaaa))
-                case 2:
-                    g.screen.PutPixel(int16(x),int16(y),uint32(0x555555))
-                case 0:
-                //    g.screen.PutPixel(int16(x),int16(y),uint32(0xfffffff))
-                 case 3:
-                    g.screen.PutPixel(int16(x),int16(y),uint32(0x0))
- 
-            }
+func (g *GPU) output_pixel_sprite(val uint8, x uint16, y uint16,pal *Palette) {
+    if val != 0  {
+        g.screen.PutPixel(int16(x),int16(y),pal[val])
+    }
 }
 
 
@@ -245,7 +253,7 @@ func (g *GPU) print_tile(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint1
 	}
 }
 
-func (g *GPU) print_tile_sprite16(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16,xflip bool) {
+func (g *GPU) print_tile_sprite16(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16,xflip bool, pal *Palette) {
     var i int16
 	var j uint16
     tile:=g.get_tile_val16(m,addr)
@@ -254,19 +262,19 @@ func (g *GPU) print_tile_sprite16(m *MMU,addr uint16,xoff uint16, yoff uint16,yt
 	if xflip  {
 		j=0
 		for i=7; i>=0; i-- {
-			g.output_pixel_sprite(tile[i][ytoff],uint16(j)+xoff,yoff) 
+			g.output_pixel_sprite(tile[i][ytoff],uint16(j)+xoff,yoff,pal) 
 			j++
 		}
 	}else{
 		for i=0; i<8; i++ { 
-			g.output_pixel_sprite(tile[i][ytoff],uint16(i)+xoff,yoff) 
+			g.output_pixel_sprite(tile[i][ytoff],uint16(i)+xoff,yoff,pal) 
 		}
 	}
 }
 
 
 
-func (g *GPU) print_tile_sprite(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16,xflip bool) {
+func (g *GPU) print_tile_sprite(m *MMU,addr uint16,xoff uint16, yoff uint16,ytoff uint16,xflip bool, pal *Palette) {
     var i int16
 	var j uint16
     
@@ -275,12 +283,12 @@ func (g *GPU) print_tile_sprite(m *MMU,addr uint16,xoff uint16, yoff uint16,ytof
 	if xflip  {
 		j=0
 		for i=7; i>=0; i-- {
-			g.output_pixel_sprite(tile[i][ytoff],uint16(j)+xoff,yoff) 
+			g.output_pixel_sprite(tile[i][ytoff],uint16(j)+xoff,yoff,pal) 
 			j++
 		}
 	}else{
 		for i=0; i<8; i++ { 
-			g.output_pixel_sprite(tile[i][ytoff],uint16(i)+xoff,yoff) 
+			g.output_pixel_sprite(tile[i][ytoff],uint16(i)+xoff,yoff,pal) 
 		}
 	}
 }
@@ -464,13 +472,14 @@ func (g *GPU) print_sprites(m *MMU) {
 	var xflip bool = false
 	var mask uint8 = 0xff
     var yflip_mask uint8 = 0x7
+    var pal *Palette = &g.obp0_palette
 
     var size uint8 =8 
 
     if g.LCDC & 0x04 == 0x04 {
 		   mask =0xfe   
            yflip_mask  = 0xf
-
+           //on 8x16 least sig bit of num is 0
         
         }
 
@@ -488,6 +497,7 @@ func (g *GPU) print_sprites(m *MMU) {
 		    mask =0xfe
             size = 16
         }
+    
         sp.num = m.oam[i+2] & mask
             
 		//Flags
@@ -495,27 +505,32 @@ func (g *GPU) print_sprites(m *MMU) {
 		sp.fl_y_flip = (m.oam[i+3] &0x40) >>6
 		sp.fl_x_flip = (m.oam[i+3] &0x20) >>5
 		sp.fl_pal = (m.oam[i+3] &0x10) >>4
+        
 		yoff = sp.y - 16
 	    
         xflip = false
-		
+	    	 //   fmt.Println(sp)	
 		if yoff >  g.LY-size && yoff <=g.LY  {
-		//fmt.Println(sp)
         	ytoff = (g.LY - yoff)
 			if sp.fl_y_flip == 1 { 
                 ytoff = (^ytoff & yflip_mask)  
             }
-			  
+            if sp.fl_pal == 1 { pal = &g.obp1_palette }
+     			  
             if sp.fl_x_flip == 1 { xflip = true }
             if g.LCDC & 0x04 == 0x04 {
+	
+	    	   fmt.Println(sp)	
 
-                g.print_tile_sprite16(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip)
+                g.print_tile_sprite16(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip, pal)
             }else{
-                g.print_tile_sprite(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip)
+                g.print_tile_sprite(m,0x8000+(uint16(sp.num)*16),uint16((sp.x-8)+j),uint16(g.LY),uint16(ytoff),xflip,pal)
 
 
         }
 		}
+        
+       // fmt.Println("DONE")
 	}
 
 
@@ -623,6 +638,8 @@ func (g *GPU) oam_mode( m*MMU,clocks uint16) {
 }
 func (g *GPU)  Update(m *MMU,clocks uint16) {
  
+      if (g.LCDC & 0x80 == 0x80){
+
         g.cycle_count +=1
         if g.LY >= 144 {
             g.vblank(m,1) 
@@ -633,17 +650,27 @@ func (g *GPU)  Update(m *MMU,clocks uint16) {
            g.check_stat_int(m) 
         }else if g.STAT & 0x2 != 0x2 && g.cycle_count >= 204   && g.cycle_count < 204+80{
             g.STAT |=  2   
-       //     g.check_stat_int(m) 
+            g.check_stat_int(m) 
 
         }else if g.STAT & 0x3 != 0x3 && g.cycle_count >= 204+80 && g.cycle_count < 204+80+172 {
             g.STAT |=  3 
  
-              //     g.check_stat_int(m) 
+                   g.check_stat_int(m) 
 
         }else if g.cycle_count >= 204+80+172 {
             g.cycle_count =0
             g.line_done = 0
-        }
+    }
+
+
+    }else {
+      g.STAT &= 0xfc
+
+      g.LY = 0
+       g.cycle_count = 0        
+        g.vblank_cycle_count=0
+
+    }
            
 
 }
