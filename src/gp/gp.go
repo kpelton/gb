@@ -94,11 +94,13 @@ func (g *GP) Update() (uint8) {
 		switch e := ev.(type) {
 
 		case *sdl.KeyboardEvent:
-            int_raised = 0x10	    
     		if e.Type == sdl.KEYDOWN {
 				g.handleKeyDown(e)
+                int_raised = 0x10	    
 			} else {
 				g.handleKeyUp(e)
+                int_raised = 0x10	    
+
 			}
 
 		default:

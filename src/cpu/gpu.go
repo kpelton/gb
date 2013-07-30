@@ -219,37 +219,43 @@ func (g *GPU) output_pixel_sprite(val uint8, x uint16, y uint16, pal *Palette) {
 }
 
 func (g *GPU) print_tile(m *MMU, addr uint16, xoff uint16, yoff uint16, ytoff uint16, xflip bool) {
-	var i int16
-	var j uint16
+	var i uint8
+	var j uint8
 	tile := g.get_tile_val(m, addr)
 
 	if xflip {
 		j = 0
-		for i = 7; i >= 0; i-- {
-			g.output_pixel(tile[i][ytoff], uint16(j)+xoff, yoff)
+		for i = 7; i > 0; i-- {
+
+			g.output_pixel(tile[i][ytoff], uint16(uint8(i)+uint8(xoff)), yoff)
 			j++
 		}
 	} else {
 		for i = 0; i < 8; i++ {
-			g.output_pixel(tile[i][ytoff], uint16(i)+xoff, yoff)
+
+			g.output_pixel(tile[i][ytoff], uint16(uint8(i)+uint8(xoff)), yoff)
 		}
 	}
 }
 
 func (g *GPU) print_tile_sprite16(m *MMU, addr uint16, xoff uint16, yoff uint16, ytoff uint16, xflip bool, pal *Palette) {
 	var i int16
-	var j uint16
+	var j uint8
 	tile := g.get_tile_val16(m, addr)
+    if xoff < 7  {
 
+    }
 	if xflip {
 		j = 0
 		for i = 7; i >= 0; i-- {
-			g.output_pixel_sprite(tile[i][ytoff], uint16(j)+xoff, yoff, pal)
+
+			g.output_pixel_sprite(tile[i][ytoff], uint16(uint8(j)+uint8(xoff)), yoff, pal)
 			j++
 		}
 	} else {
-		for i = 0; i < 8; i++ {
-			g.output_pixel_sprite(tile[i][ytoff], uint16(i)+xoff, yoff, pal)
+		for i = 0 ; i < 8; i++ {
+
+			g.output_pixel_sprite(tile[i][ytoff], uint16(uint8(i)+uint8(xoff)), yoff, pal)
 		}
 	}
 }
@@ -262,13 +268,14 @@ func (g *GPU) print_tile_sprite(m *MMU, addr uint16, xoff uint16, yoff uint16, y
 
 	if xflip {
 		j = 0
-		for i = 7; i >= 0; i-- {
-			g.output_pixel_sprite(tile[i][ytoff], uint16(j)+xoff, yoff, pal)
+		for i = 7; i >=0; i-- {
+
+			g.output_pixel_sprite(tile[i][ytoff], uint16(uint8(j)+uint8(xoff)), yoff, pal)
 			j++
 		}
 	} else {
 		for i = 0; i < 8; i++ {
-			g.output_pixel_sprite(tile[i][ytoff], uint16(i)+xoff, yoff, pal)
+			g.output_pixel_sprite(tile[i][ytoff],uint16(uint8(i)+uint8(xoff)) , yoff, pal)
 		}
 	}
 }
@@ -482,13 +489,14 @@ func (g *GPU) print_sprites(m *MMU) {
 		sp.fl_x_flip = (m.oam[i+3] & 0x20) >> 5
 		sp.fl_pal = (m.oam[i+3] & 0x10) >> 4
 
-		yoff = sp.y-size-1
+		yoff = sp.y-16
+	    ytoff = (g.LY -yoff)
+            		//fmt.Println(sp,yoff,g.LY,ytoff)	
 
 		xflip = false
-		fmt.Println(sp)	
-		if yoff-g.LY < size{
-			ytoff = (size-1-(yoff-g.LY))
-            fmt.Println(ytoff,g.LY,yoff)
+         if ytoff <  size    {
+            	//fmt.Println(sp,yoff,g.LY,ytoff)	
+
 			if sp.fl_y_flip == 1 {
 				ytoff = (^ytoff & yflip_mask)
 			}
@@ -501,7 +509,7 @@ func (g *GPU) print_sprites(m *MMU) {
 			}
 			if g.LCDC&0x04 == 0x04 {
 
-				fmt.Println(sp)
+			//	fmt.Println(sp)
 
 				g.print_tile_sprite16(m, 0x8000+(uint16(sp.num)*16), uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, pal)
 			} else {
@@ -580,11 +588,11 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 	g.vblank_cycle_count += clocks
 	//fmt.Println(g.vblank_cycle_count)        
 
-	if g.vblank_cycle_count >= 456 && g.LY <= 153 {
+	if g.vblank_cycle_count >= 456 && g.LY <= 154 {
 		g.vblank_cycle_count = 0
 		g.LY += 1
 		//fmt.Println(g.vblank_cycle_count)        
-	} else if g.LY > 153 {
+	} else if g.LY > 154 {
 		g.vblank_cycle_count = 0
 		g.cycle_count = 0
 		g.LY = 0
@@ -594,25 +602,14 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 	}
 
 }
-func (g *GPU) oam_mode(m *MMU, clocks uint16) {
 
-	if g.oam_cycle_count < 80 {
-		g.oam_cycle_count += clocks
-		g.STAT |= uint8(0x2)
-	} else {
-		g.oam_cycle_count = 0
-		g.STAT = 0
-
-	}
-
-}
 func (g *GPU) Update(m *MMU, clocks uint16) {
 
 	if g.LCDC&0x80 == 0x80 {
 
-		g.cycle_count += 1
+		g.cycle_count += clocks
 		if g.LY >= 144 {
-			g.vblank(m, 1)
+			g.vblank(m, clocks)
 			g.check_stat_int(m)
 		} else if g.cycle_count < 204 && g.line_done == 0 {
 			g.STAT &= 0xfc
@@ -625,7 +622,6 @@ func (g *GPU) Update(m *MMU, clocks uint16) {
 		} else if g.STAT&0x3 != 0x3 && g.cycle_count >= 204+80 && g.cycle_count < 204+80+172 {
 			g.STAT |= 3
 
-			g.check_stat_int(m)
 
 		} else if g.cycle_count >= 204+80+172 {
 			g.cycle_count = 0
