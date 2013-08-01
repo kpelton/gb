@@ -423,12 +423,12 @@ func (g *GPU) print_tile_line_w(line uint) {
 
 		return
 	}
-	tile_line := (uint8(line) + g.WY + 16) & 7
-	map_line := (uint8(line) + g.WY + 16) >> 3
-	j := (g.WX - 7) & 7
-	i := (g.WX - 7) >> 3
-	// fmt.Println(g.WX,g.WY)
-	for x := 0; x < 160; {
+	tile_line := (uint8(line) - g.WY) & 7
+	map_line := (uint8(line) - g.WY) >> 3
+	j := 0
+	i := 0
+	fmt.Println(g.WX,g.WY,tile_line,map_line)
+	for x := g.WX-7; x < 166; {
 
 		for j < 8 {
 
@@ -443,9 +443,7 @@ func (g *GPU) print_tile_line_w(line uint) {
 		i = (1 + i) & 31
 
 	}
-
 }
-
 func (g *GPU) print_sprites(m *MMU) {
 
 	var sp sprite
@@ -469,6 +467,8 @@ func (g *GPU) print_sprites(m *MMU) {
 	for i := 0; i < 0xA0; i += 4 {
 		//Main attributes
 		sp.y = m.oam[i]
+        pal = &g.obp0_palette
+
 		if sp.y > 155 {
 			continue
 		}
@@ -527,7 +527,7 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 		g.get_tile_map(m)
 
 	} else {
-		if g.last_lcdc&0x18 != g.LCDC&0x18 {
+		if g.last_lcdc&0x58 != g.LCDC&0x58 {
 			g.get_tile_map(m)
 			fmt.Println("REFRESH")
 		}
@@ -606,23 +606,21 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 func (g *GPU) Update(m *MMU, clocks uint16) {
 
 	if g.LCDC&0x80 == 0x80 {
-
+        
 		g.cycle_count += clocks
 		if g.LY >= 144 {
 			g.vblank(m, clocks)
-			g.check_stat_int(m)
+                	g.check_stat_int(m)
+
 		} else if g.cycle_count < 204 && g.line_done == 0 {
 			g.STAT &= 0xfc
 			g.hblank(m, clocks)
-			g.check_stat_int(m)
+           	g.check_stat_int(m)
+
 		} else if g.STAT&0x2 != 0x2 && g.cycle_count >= 204 && g.cycle_count < 204+80 {
 			g.STAT |= 2
-			g.check_stat_int(m)
-
 		} else if g.STAT&0x3 != 0x3 && g.cycle_count >= 204+80 && g.cycle_count < 204+80+172 {
 			g.STAT |= 3
-
-
 		} else if g.cycle_count >= 204+80+172 {
 			g.cycle_count = 0
 			g.line_done = 0
