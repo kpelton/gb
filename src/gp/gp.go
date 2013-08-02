@@ -84,10 +84,13 @@ func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) {
 
 	//fmt.Printf("P1:0x%02x\n",g.P1)
 }
-
+func (g *GP) LoopUpdate() (uint8) {
+    for {
+    g.Update()
+    }
+}
 func (g *GP) Update() (uint8) {
     var int_raised uint8 = 0
-	for {
 		ev := sdl.PollEvent()
 
 		//fmt.Println(ev)
@@ -106,8 +109,7 @@ func (g *GP) Update() (uint8) {
 		default:
 			break
 		}
-		break
-	}
+
 
 	if g.P1&0x20 == 0x20 {
 		g.P1 |= g.pad

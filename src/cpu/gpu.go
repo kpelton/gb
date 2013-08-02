@@ -8,6 +8,7 @@ import (
 
 type Screen struct {
 	screen *sdl.Surface
+    rect sdl.Rect
 }
 
 const (
@@ -45,24 +46,11 @@ func (s *Screen) initSDL() {
 
 }
 func (s *Screen) PutPixel(x int16, y int16, color uint32) {
-	//Old Method
-	/*
-		    if x == 0 && y == 0 {
-		        s.screen.FillRect(&sdl.Rect{x,y,2,2},color)
-		    } else{
-		       s.screen.FillRect(&sdl.Rect{x*2,y*2,2,2},color)
-		} 
-	*/
-
-	if x == 0 && y == 0 {
-		s.screen.FillRect(&sdl.Rect{x, y, 4, 4}, color)
-	} else {
-		s.screen.FillRect(&sdl.Rect{x * 4, y * 4, 4, 4}, color)
-	}
-
-	//s.screen.Set(int(x),int(y),color)
-	//pix := s.pixPtr(x, y)
-	//pix.SetUint(color)
+    s.rect.H = 4
+    s.rect.W = 4
+    s.rect.X = x *4
+    s.rect.Y = y *4
+	s.screen.FillRect(&s.rect, color)
 }
 
 type Palette [4]uint32
@@ -604,10 +592,10 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 }
 
 func (g *GPU) Update(m *MMU, clocks uint16) {
-
+ 
 	if g.LCDC&0x80 == 0x80 {
 
-		g.cycle_count += clocks
+		g.cycle_count += clocks 
 		if g.LY >= 144 {
 			g.vblank(m, clocks)
 			g.check_stat_int(m)

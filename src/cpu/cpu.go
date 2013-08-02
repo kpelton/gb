@@ -6,8 +6,8 @@ import (
 	"gp"
     "timer"
 
-//	"runtime/pprof"
-// "time"
+"runtime/pprof"
+"time"
 )
 
 const (
@@ -166,13 +166,12 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 
-	//	fo, err := os.Create("output.txt")
-	// if err != nil { panic(err) }
-	//  defer fo.Close()
-	//	pprof.StartCPUProfile(fo) 
-	//  last_update := time.Now()
+		fo, err := os.Create("output.txt")
+	 if err != nil { panic(err) }
+	  defer fo.Close()
+		pprof.StartCPUProfile(fo) 
+	  last_update := time.Now()
 	// count :=uint(0)
-
 	for {
 
 		//c.last_instr = 4
@@ -200,10 +199,11 @@ func (c *CPU) Exec() {
 		//fmt.Println(count)
 		//Update gamepad/buttons
 
-        raise_int := c.gp.Update()
-   		if raise_int > 0  {
+       raise_int := c.gp.Update()
+  		if raise_int > 0  {
             c.ic.Assert(raise_int)
         }
+
         for i:=0; i< int(c.last_instr); i++ {
 	    c.gpu.Update(c.mmu,1)
 		}
@@ -215,11 +215,11 @@ func (c *CPU) Exec() {
 		c.DIV++
 
 		c.handleInterrupts()
-		//  if time.Since(last_update) > 600 *time.Second {
+		  if time.Since(last_update) > 20 *time.Second {
 
-		// pprof.StopCPUProfile()
-		//  fmt.Println("STOPPED")
-		//} 
+		 pprof.StopCPUProfile()
+		  fmt.Println("STOPPED")
+		} 
 	}
 
 }
