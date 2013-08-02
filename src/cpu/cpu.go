@@ -6,8 +6,8 @@ import (
 	"gp"
     "timer"
 
-"runtime/pprof"
-"time"
+//"runtime/pprof"
+//"time"
 )
 
 const (
@@ -166,12 +166,12 @@ func (c *CPU) Exec() {
 	c.load_bios()
 	var op uint16
 
-		fo, err := os.Create("output.txt")
-	 if err != nil { panic(err) }
-	  defer fo.Close()
-		pprof.StartCPUProfile(fo) 
-	  last_update := time.Now()
-	// count :=uint(0)
+	//	fo, err := os.Create("output.txt")
+	 //if err != nil { panic(err) }
+//	  defer fo.Close()
+	//	pprof.StartCPUProfile(fo) 
+	  //last_update := time.Now()
+	 count :=uint(0)
 	for {
 
 		//c.last_instr = 4
@@ -181,7 +181,6 @@ func (c *CPU) Exec() {
 			op = uint16(c.mmu.read_w(c.reg16[PC]))
 			//c.Dump()
 			//fmt.Println(c.gpu.LY)
-
 			if op&0x00ff != 0xcb {
 				op &= 0xff
 
@@ -193,21 +192,25 @@ func (c *CPU) Exec() {
 			//     c.Dump()		
 
 			//fmt.Printf("OP:%X\n",op)
+             count++
 
 		}
+
 		//count += uint(1)
 		//fmt.Println(count)
 		//Update gamepad/buttons
-
-       raise_int := c.gp.Update()
-  		if raise_int > 0  {
-            c.ic.Assert(raise_int)
+        if count == 2 {
+            raise_int := c.gp.Update()
+            count = 0
+            if raise_int > 0  {
+                c.ic.Assert(raise_int)
+            }
         }
-
+  	
         for i:=0; i< int(c.last_instr); i++ {
 	    c.gpu.Update(c.mmu,1)
 		}
-        raise_int = c.timer.Update(uint64(c.last_instr))
+        raise_int := c.timer.Update(uint64(c.last_instr))
         if raise_int > 0 {
             c.ic.Assert(raise_int)
         }      
@@ -215,11 +218,11 @@ func (c *CPU) Exec() {
 		c.DIV++
 
 		c.handleInterrupts()
-		  if time.Since(last_update) > 20 *time.Second {
+		 // if time.Since(last_update) > 20 *time.Second {
 
-		 pprof.StopCPUProfile()
-		  fmt.Println("STOPPED")
-		} 
+		 //pprof.StopCPUProfile()
+		 // fmt.Println("STOPPED")
+		//} 
 	}
 
 }

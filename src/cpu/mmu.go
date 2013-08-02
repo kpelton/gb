@@ -185,6 +185,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff4A:
 		m.cpu.gpu.WY = val
 	case 0xff4B:
+        fmt.Printf("->WX:%04X\n", val)
 		m.cpu.gpu.WX = val
 	case 0xffff:
 		m.cpu.ic.IE = val
