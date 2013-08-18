@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"gp"
+    "ic"
     "timer"
 
 //"runtime/pprof"
@@ -64,7 +65,7 @@ type CPU struct {
 	gpu        *GPU
 	gp         *gp.GP
 	timer      *timer.Timer
-	ic         *IC
+	ic         *ic.IC
 	is_halted  bool
 	DIV        uint8
 	last_instr uint16
@@ -1991,7 +1992,7 @@ func buildCpu() *CPU {
 	c.gp = gp.NewGP()
 	c.mmu = NewMMU(c)
 	c.timer = timer.NewTimer()
-	c.ic = NewIC()
+	c.ic = ic.NewIC()
 	createOps(c)
 
 	return c

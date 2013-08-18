@@ -1,6 +1,10 @@
 package cpu
 
-import "fmt"
+
+import (
+	"fmt"
+    "constants"
+)
 
 type MMU struct {
 	mem [0x10000]uint8
@@ -123,7 +127,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		fmt.Printf("->SERIAL:%04X\n", val)
 		if ((m.mem[0xff02] & 0x80) == 0x80) && ((m.mem[0xff02] & 0x1) == 0x1) {
 
-			m.cpu.ic.Assert(SERIAL)
+			m.cpu.ic.Assert(constants.SERIAL)
 			m.mem[0xff01] = 0xff
 			m.mem[0xff02] = val & (^uint8(0x80))
 
@@ -204,6 +208,8 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	//fmt.Printf("<-P1:%04X\n",val)
 	case 0xff04:
 		val = m.cpu.DIV
+        fmt.Printf("<-DIV:%04X\n",val)
+
 	case 0xff05:
 		val = m.cpu.timer.TIMA
 	case 0xff06:

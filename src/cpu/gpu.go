@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/banthar/Go-SDL/sdl"
 	"time"
+    "constants"
 )
 
 type Screen struct {
@@ -507,20 +508,20 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 	if g.LY == 0 {
 		g.get_tile_map(m)
 
-	} else {
-		if g.last_lcdc&0x58 != g.LCDC&0x58 {
+	}
+	
+
+
+
+	if g.LCDC&0x81 == 0x81 {
+	if g.last_lcdc&0x58 != g.LCDC&0x58 {
 			g.get_tile_map(m)
 			fmt.Println("REFRESH")
 		}
-
-	}
-
-	if g.LCDC&0x81 == 0x81 {
-
 		g.print_tile_line(uint(g.LY))
 
 		if g.LCDC&0x20 == 0x20 {
-        if  g.WX < 166 && g.LY > g.WY {
+        if  g.WX < 166 && g.LY >=g.WY {
 			g.print_tile_line_w(uint(g.LY))
 		}
     }
@@ -541,7 +542,7 @@ func (g *GPU) check_stat_int(m *MMU) {
 	if g.LY == g.LYC {
 		g.STAT |= 0x04
 		if g.STAT&0x40 == 0x40 {
-			m.cpu.ic.Assert(LCDC)
+			m.cpu.ic.Assert(constants.LCDC)
 
 		}
 
@@ -556,7 +557,7 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 
 		g.STAT = (g.STAT & 0xfc) | 0x01
 		//ASSERT vblank int
-		m.cpu.ic.Assert(V_BLANK)
+		m.cpu.ic.Assert(constants.V_BLANK)
 		g.screen.screen.Flip()
 		g.frames += 1
 		if time.Since(g.last_update) > time.Second {
