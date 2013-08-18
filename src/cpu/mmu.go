@@ -4,12 +4,13 @@ package cpu
 import (
 	"fmt"
     "constants"
+    "carts"
 )
 
 type MMU struct {
 	mem [0x10000]uint8
 	//    cart [0x10000]uint8
-	cart   Cart
+	cart   carts.Cart
 	vm     [0x2000]uint8
 	oam    [0xA0]uint8
 	cpu    *CPU
@@ -25,61 +26,9 @@ func NewMMU(cpu *CPU) *MMU {
 	return m
 }
 
-const (
-	REG_CART_TYPE = 0x147
-	REG_CART_SIZE = 0x148
-	REG_RAM_SIZE  = 0x148
-
-	C_ROM_ONLY          = 0
-	C_ROM_MBC1          = 1
-	C_ROM_MBC1_RAM      = 2
-	C_ROM_MBC1_RAM_BATT = 3
-	C_ROM_MBC2          = 5
-	C_ROM_MBC2_BATT     = 6
-	C_ROM_MBC3_RAM_BATT = 13
-	C_ROM_RAM           = 8
-)
 
 func (m *MMU) create_new_cart(data []uint8, size int) {
-	fmt.Printf("Cart Type:0%02x\n:", data[REG_CART_TYPE])
-	fmt.Printf("Cart Size:0%02x:\n", data[REG_CART_SIZE])
-	fmt.Printf("Ram Size:0%02x:\n", data[REG_RAM_SIZE])
-
-	cart_type := data[REG_CART_TYPE]
-	fmt.Printf("Cart Type:")
-	switch cart_type {
-	case C_ROM_ONLY:
-		fmt.Printf("ROM_ONLY\n")
-		m.cart = NewMBC0(data[:0x8000])
-	case C_ROM_MBC1:
-		fmt.Printf("ROM_MBC1\n")
-		m.cart = NewROM_MBC1(data, size)
-
-	case C_ROM_MBC1_RAM:
-		fmt.Printf("ROM_MBC1_RAM\n")
-		m.cart = NewROM_MBC1(data, size)
-
-	case C_ROM_MBC1_RAM_BATT:
-		m.cart = NewROM_MBC1(data, size)
-
-		fmt.Printf("ROM_MBC1_RAM_BATT\n")
-	case C_ROM_MBC2:
-		fmt.Printf("ROM_MBC2\n")
-	case C_ROM_MBC2_BATT:
-		m.cart = NewROM_MBC2(data, size)
-	case C_ROM_MBC3_RAM_BATT:
-		m.cart = NewROM_MBC1(data, size)
-
-	case C_ROM_RAM:
-		fmt.Printf("ROM_RAM\n")
-	default:
-
-		fmt.Printf("Unknown!\n")
-		//  panic("Unsupported cart!!!!")
-		m.cart = NewROM_MBC1(data, size)
-
-	}
-
+    m.cart = carts.Create_new_cart(data,size)
 }
 
 func (m *MMU) Dump_mem() {
