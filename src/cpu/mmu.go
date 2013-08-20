@@ -73,7 +73,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.gp.P1 = val
 		//		fmt.Printf("->P1:%04X\n",val)
 	case 0xff02:
-		fmt.Printf("->SERIAL:%04X\n", val)
+		//fmt.Printf("->SERIAL:%04X\n", val)
 		if ((m.mem[0xff02] & 0x80) == 0x80) && ((m.mem[0xff02] & 0x1) == 0x1) {
 
 			m.cpu.ic.Assert(constants.SERIAL)
@@ -94,7 +94,8 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff40:
 		m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
-		fmt.Printf("->LCDC:%04X\n", val)
+        //m.cpu.Dump()
+		//fmt.Printf("->LCDC:%04X,LY:0x%04X\n", val,m.cpu.gpu.LY)
 		m.cpu.gpu.mem_written = true
 	case 0xff41:
 		m.cpu.gpu.STAT |= val & 0xf8

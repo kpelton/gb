@@ -22,6 +22,9 @@ const (
 	DARK_SEL     = 2
 	LIGHT_SEL    = 1
 	LIGHTEST_SEL = 0
+    HBLANK_CYCLES = 150
+    OAM_CYCLES=80
+    RAM_CYCLES=172
 )
 
 func newScreen() *Screen {
@@ -572,7 +575,10 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 
 	if g.vblank_cycle_count >= 456 && g.LY <= 154 {
 		g.vblank_cycle_count = 0
-		g.LY += 1
+    g.check_stat_int(m)
+
+		g.LY += 1			
+        
 		//fmt.Println(g.vblank_cycle_count)        
 	} else if g.LY > 154 {
 		g.vblank_cycle_count = 0
@@ -592,18 +598,18 @@ func (g *GPU) Update(m *MMU, clocks uint16) {
 		g.cycle_count += clocks 
 		if g.LY >= 144 {
 			g.vblank(m, clocks)
-			g.check_stat_int(m)
 
-		} else if g.cycle_count < 204 && g.line_done == 0 {
+		} else if g.cycle_count <  HBLANK_CYCLES&& g.line_done == 0 {
+            			g.check_stat_int(m)
+
 			g.STAT &= 0xfc
 			g.hblank(m, clocks)
-			g.check_stat_int(m)
 
-		} else if g.STAT&0x2 != 0x2 && g.cycle_count >= 204 && g.cycle_count < 204+80 {
+		} else if g.STAT&0x2 != 0x2 && g.cycle_count >= HBLANK_CYCLES && g.cycle_count < HBLANK_CYCLES+OAM_CYCLES {
 			g.STAT |= 2
-		} else if g.STAT&0x3 != 0x3 && g.cycle_count >= 204+80 && g.cycle_count < 204+80+172 {
+		} else if g.STAT&0x3 != 0x3 && g.cycle_count >= HBLANK_CYCLES+OAM_CYCLES && g.cycle_count < HBLANK_CYCLES+OAM_CYCLES+RAM_CYCLES {
 			g.STAT |= 3
-		} else if g.cycle_count >= 204+80+172 {
+		} else if g.cycle_count >= HBLANK_CYCLES+OAM_CYCLES+RAM_CYCLES {
 			g.cycle_count = 0
 			g.line_done = 0
 		}
