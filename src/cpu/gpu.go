@@ -22,7 +22,7 @@ const (
 	DARK_SEL     = 2
 	LIGHT_SEL    = 1
 	LIGHTEST_SEL = 0
-    HBLANK_CYCLES = 150
+    HBLANK_CYCLES = 204
     OAM_CYCLES=80
     RAM_CYCLES=172
 )
@@ -85,6 +85,7 @@ type GPU struct {
 	line_done          uint8
 	frames             uint16
 	//palettes
+    win_palette Palette
 	bg_palette   Palette
 	obp0_palette Palette
 	obp1_palette Palette
@@ -133,21 +134,16 @@ func NewGPU() *GPU {
 	g.t_screen = newScreen()
 	g.mem_written = false
 	g.last_update = time.Now()
-
-	g.bg_palette[0] = LIGHTEST
+    g.bg_palette[0] = LIGHTEST
 	g.bg_palette[1] = LIGHT
 	g.bg_palette[2] = DARK
 	g.bg_palette[3] = DARKEST
 
-	g.obp0_palette[0] = LIGHTEST
-	g.obp0_palette[1] = LIGHT
-	g.obp0_palette[2] = DARK
-	g.obp0_palette[3] = DARKEST
+    g.win_palette = g.bg_palette
 
-	g.obp1_palette[0] = LIGHTEST
-	g.obp1_palette[1] = LIGHT
-	g.obp1_palette[2] = DARK
-	g.obp1_palette[3] = DARKEST
+	g.obp0_palette= g.bg_palette
+    g.obp1_palette= g.bg_palette
+
 
 	return g
 }
@@ -575,10 +571,10 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 
 	if g.vblank_cycle_count >= 456 && g.LY <= 154 {
 		g.vblank_cycle_count = 0
-    g.check_stat_int(m)
 
 		g.LY += 1			
-        
+            g.check_stat_int(m)
+
 		//fmt.Println(g.vblank_cycle_count)        
 	} else if g.LY > 154 {
 		g.vblank_cycle_count = 0

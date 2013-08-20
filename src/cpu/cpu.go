@@ -155,7 +155,7 @@ func (c *CPU) handleInterrupts() {
 			c.push_pc(c) //push pc on stack
 			c.is_halted = false
 			c.reg16[PC] = vector
-            //fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
+           // fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
 		}
 
 	}
@@ -209,9 +209,9 @@ func (c *CPU) Exec() {
             }
         }
   	
-        for i:=0; i< int(c.last_instr); i++ {
-	        c.gpu.Update(c.mmu,1)
-		}
+        //for i:=0; i< int(c.last_instr); i++ {
+	        c.gpu.Update(c.mmu,uint16(c.last_instr))
+	//	}
         raise_int := c.timer.Update(uint64(c.last_instr))
         if raise_int > 0 {
             c.ic.Assert(raise_int)
