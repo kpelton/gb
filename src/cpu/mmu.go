@@ -99,8 +99,8 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.gpu.mem_written = true
 	case 0xff41:
 		m.cpu.gpu.STAT |= val & 0xf8
-		//m.cpu.Dump()
-		fmt.Printf("->STAT:%04X\n", m.cpu.gpu.STAT)
+		m.cpu.Dump()
+		fmt.Printf("->STAT:%04X %04X\n", m.cpu.gpu.STAT,val)
 
 	case 0xff42:
 		m.cpu.gpu.SCY = val

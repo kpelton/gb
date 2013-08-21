@@ -1,15 +1,15 @@
 package cpu
 
 import (
+	"constants"
 	"fmt"
 	"github.com/banthar/Go-SDL/sdl"
 	"time"
-    "constants"
 )
 
 type Screen struct {
 	screen *sdl.Surface
-    rect sdl.Rect
+	rect   sdl.Rect
 }
 
 const (
@@ -18,13 +18,13 @@ const (
 	LIGHT    = 0xaaaaaaaa
 	LIGHTEST = 0xffffffff
 
-	DARKEST_SEL  = 3
-	DARK_SEL     = 2
-	LIGHT_SEL    = 1
-	LIGHTEST_SEL = 0
-    HBLANK_CYCLES = 204
-    OAM_CYCLES=80
-    RAM_CYCLES=172
+	DARKEST_SEL   = 3
+	DARK_SEL      = 2
+	LIGHT_SEL     = 1
+	LIGHTEST_SEL  = 0
+	HBLANK_CYCLES = 204
+	OAM_CYCLES    = 80
+	RAM_CYCLES    = 172
 )
 
 func newScreen() *Screen {
@@ -50,10 +50,10 @@ func (s *Screen) initSDL() {
 
 }
 func (s *Screen) PutPixel(x int16, y int16, color uint32) {
-    s.rect.H = 4
-    s.rect.W = 4
-    s.rect.X = x *4
-    s.rect.Y = y *4
+	s.rect.H = 4
+	s.rect.W = 4
+	s.rect.X = x * 4
+	s.rect.Y = y * 4
 	s.screen.FillRect(&s.rect, color)
 }
 
@@ -77,7 +77,7 @@ type GPU struct {
 	oam_cycle_count    uint16
 	hblank_cycle_count uint16
 	vblank_cycle_count uint16
-	cycle_count        uint16
+	cycle_count        int16
 	last_update        time.Time
 	currline           uint8
 	bg_tmap            TileMap
@@ -85,7 +85,7 @@ type GPU struct {
 	line_done          uint8
 	frames             uint16
 	//palettes
-    win_palette Palette
+	win_palette  Palette
 	bg_palette   Palette
 	obp0_palette Palette
 	obp1_palette Palette
@@ -134,16 +134,15 @@ func NewGPU() *GPU {
 	g.t_screen = newScreen()
 	g.mem_written = false
 	g.last_update = time.Now()
-    g.bg_palette[0] = LIGHTEST
+	g.bg_palette[0] = LIGHTEST
 	g.bg_palette[1] = LIGHT
 	g.bg_palette[2] = DARK
 	g.bg_palette[3] = DARKEST
 
-    g.win_palette = g.bg_palette
+	g.win_palette = g.bg_palette
 
-	g.obp0_palette= g.bg_palette
-    g.obp1_palette= g.bg_palette
-
+	g.obp0_palette = g.bg_palette
+	g.obp1_palette = g.bg_palette
 
 	return g
 }
@@ -350,10 +349,10 @@ func (g *GPU) get_tile_map(m *MMU) {
 
 		for offset := w_map_base; offset <= w_map_limit; offset++ {
 			b := m.read_b(offset)
-            //fmt.Printf("0x%x:0x%x\n",offset,b)
+			//fmt.Printf("0x%x:0x%x\n",offset,b)
 			if tile_base == 0x8800 {
 				//signed case
-                
+
 				if int8(b) >= 0 {
 					tile = 0x9000 + uint16(int(int8(b))*16)
 				} else {
@@ -366,7 +365,7 @@ func (g *GPU) get_tile_map(m *MMU) {
 				tile = tile_base + (uint16(b) * 16)
 			}
 			g.w_tmap[i][j] = g.get_tile_val(m, tile)
-            //fmt.Printf("0x%x:0x%x:0x%x\n",offset,b,tile)
+			//fmt.Printf("0x%x:0x%x:0x%x\n",offset,b,tile)
 
 			i++
 			if i == 32 {
@@ -403,18 +402,18 @@ func (g *GPU) print_tile_line(line uint) {
 
 }
 func (g *GPU) print_tile_line_w(line uint) {
-    var x uint8
+	var x uint8
 	tile_line := (uint8(line) - g.WY) & 7
 	map_line := (uint8(line) - g.WY) >> 3
-    j := 0
+	j := 0
 	i := 0
-    if g.WX < 7 {
-        x=0
-    }else{
-       x = g.WX -7
-    }
-	for  x < 166 {
-    	for j < 8 {
+	if g.WX < 7 {
+		x = 0
+	} else {
+		x = g.WX - 7
+	}
+	for x < 166 {
+		for j < 8 {
 			val := g.w_tmap[i][map_line][j][tile_line]
 			g.screen.PutPixel(int16(x), int16(line), g.bg_palette[val])
 			j++
@@ -508,29 +507,25 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 		g.get_tile_map(m)
 
 	}
-	
-
-
 
 	if g.LCDC&0x81 == 0x81 {
-	if g.last_lcdc&0x58 != g.LCDC&0x58 {
+		if g.last_lcdc&0x58 != g.LCDC&0x58 {
 			g.get_tile_map(m)
 			fmt.Println("REFRESH")
 		}
 		g.print_tile_line(uint(g.LY))
 
 		if g.LCDC&0x20 == 0x20 {
-        if  g.WX < 166 && g.LY >=g.WY {
-			g.print_tile_line_w(uint(g.LY))
+			if g.WX < 166 && g.LY >= g.WY {
+				g.print_tile_line_w(uint(g.LY))
+			}
 		}
-    }
 		if g.LCDC&0x82 == 0x82 {
 			g.print_sprites(m)
 
 		}
 
 	}
-	g.LY++
 	g.line_done = 1
 	g.last_lcdc = g.LCDC
 }
@@ -539,16 +534,33 @@ func (g *GPU) check_stat_int(m *MMU) {
 
 	//Check LYC FLAg
 	if g.LY == g.LYC {
-		g.STAT |= 0x04
-		if g.STAT&0x40 == 0x40 {
+		if g.STAT&0x04 != 0x04 && g.STAT&0x40 == 0x40 {
 			m.cpu.ic.Assert(constants.LCDC)
+			g.STAT |= 0x04
 
+			fmt.Println("Asserted lyc")
 		}
 
 	} else {
 		g.STAT &= ^uint8(0x4)
 	}
+
+	//	if g.STAT &0x010 == 0x10 && g.STAT &0x03 == 0 {
+	//			m.cpu.ic.Assert(constants.LCDC)
+	//         fmt.Println("Asserted hblank")
+
+	//	}
+
 }
+func (g *GPU) check_stat_int_hblank(m *MMU) {
+
+	if g.STAT&0x8 == 0x8 {
+		m.cpu.ic.Assert(constants.LCDC)
+		fmt.Println("Asserted hblank")
+
+	}
+}
+
 func (g *GPU) vblank(m *MMU, clocks uint16) {
 
 	if g.LY == 144 && g.STAT&0x1 == 0 {
@@ -572,8 +584,8 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 	if g.vblank_cycle_count >= 456 && g.LY <= 154 {
 		g.vblank_cycle_count = 0
 
-		g.LY += 1			
-            g.check_stat_int(m)
+		g.LY += 1
+		g.check_stat_int(m)
 
 		//fmt.Println(g.vblank_cycle_count)        
 	} else if g.LY > 154 {
@@ -582,6 +594,7 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 		g.LY = 0
 		g.line_done = 0
 		g.STAT &= 0xfc
+		time.Sleep(time.Duration(5) * time.Millisecond)
 
 	}
 
@@ -590,24 +603,34 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 func (g *GPU) Update(m *MMU, clocks uint16) {
 
 	if g.LCDC&0x80 == 0x80 {
-
-		g.cycle_count += clocks 
+		//fmt.Printf("STAT:0x%04u\n",g.LY)
+		g.cycle_count += int16(clocks)
 		if g.LY >= 144 {
 			g.vblank(m, clocks)
 
-		} else if g.cycle_count <  HBLANK_CYCLES&& g.line_done == 0 {
-            			g.check_stat_int(m)
-
+		} else if g.cycle_count < OAM_CYCLES {
 			g.STAT &= 0xfc
-			g.hblank(m, clocks)
-
-		} else if g.STAT&0x2 != 0x2 && g.cycle_count >= HBLANK_CYCLES && g.cycle_count < HBLANK_CYCLES+OAM_CYCLES {
 			g.STAT |= 2
-		} else if g.STAT&0x3 != 0x3 && g.cycle_count >= HBLANK_CYCLES+OAM_CYCLES && g.cycle_count < HBLANK_CYCLES+OAM_CYCLES+RAM_CYCLES {
+
+		} else if g.cycle_count < OAM_CYCLES+RAM_CYCLES {
 			g.STAT |= 3
-		} else if g.cycle_count >= HBLANK_CYCLES+OAM_CYCLES+RAM_CYCLES {
+
+		} else if g.cycle_count < HBLANK_CYCLES+OAM_CYCLES+RAM_CYCLES {
+			g.STAT &= 0xfc
+
+			if g.line_done == 0 {
+				g.check_stat_int(m)
+				g.hblank(m, clocks)
+				g.check_stat_int_hblank(m)
+
+			}
+
+		} else {
+			//fmt.Println(g.cycle_count,g.LY)
 			g.cycle_count = 0
 			g.line_done = 0
+			g.LY++
+
 		}
 
 	} else {
