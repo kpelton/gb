@@ -158,7 +158,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	//fmt.Printf("<-P1:%04X\n",val)
 	case 0xff04:
 		val = m.cpu.DIV
-        fmt.Printf("<-DIV:%04X\n",val)
+        //fmt.Printf("<-DIV:%04X\n",val)
 
 	case 0xff05:
 		val = m.cpu.timer.TIMA

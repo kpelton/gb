@@ -627,9 +627,10 @@ func (g *GPU) Update(m *MMU, clocks uint16) {
 
 		} else {
 			//fmt.Println(g.cycle_count,g.LY)
-			g.cycle_count = 0
+			g.cycle_count -= 456
 			g.line_done = 0
 			g.LY++
+				g.check_stat_int(m)
 
 		}
 

@@ -1,6 +1,7 @@
 package carts
 import (
 	"fmt"
+    "os"
 )
 
 type Cart interface {
@@ -101,6 +102,7 @@ type ROM_MBC1 struct {
     ram_bank uint8
     ram [0x8000]uint8
     memory_mode uint8
+    file os.File
    
 }
 func NewROM_MBC1(cart_data []uint8,size int)(*ROM_MBC1) {
@@ -108,7 +110,32 @@ func NewROM_MBC1(cart_data []uint8,size int)(*ROM_MBC1) {
     fmt.Println(size)
     copy(m.cart[:],cart_data)
     m.memory_mode = SIXTEEN_MB
+    m.Load_ram()
 	return m
+}
+func (m * ROM_MBC1)Load_ram() () {    
+
+    file, err := os.OpenFile("save.data",os.O_RDWR,666) // For read access.
+    if err != nil {
+        fmt.Println("Save does not exist")
+        file, err = os.Create("save.data") // For read access.
+    } else {
+        fmt.Println("Read save data")
+        file.Read(m.ram[0:])
+    }
+    
+    //fmt.Println(m.ram)
+
+  
+    m.file = *file
+
+
+}
+
+func (m * ROM_MBC1)Save_ram()  {    
+
+   
+    m.file.WriteAt(m.ram[0:],0)
 }
 
 func (m * ROM_MBC1)Read_b(addr uint16) (uint8) {    
@@ -172,6 +199,8 @@ func (m * ROM_MBC1 )Write_b(addr uint16,val uint8)() {
       bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
       fixed_addr := uint16(addr -0xa000) + bank_offset
       m.ram[fixed_addr] = val
+      m.Save_ram()
+
       fmt.Printf("RAM  BANK WRITE:%v  %04X->%04X:%x\n", m.ram_bank,addr,fixed_addr,val)
         } else {
             panic("Tried to read from ram that wasn't enabled!")
