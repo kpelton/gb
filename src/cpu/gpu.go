@@ -3,7 +3,7 @@ package cpu
 import (
 	"constants"
 	"fmt"
-	"github.com/banthar/Go-SDL/sdl"
+	"banthar/sdl"
 	"time"
 )
 
