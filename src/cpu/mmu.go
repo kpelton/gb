@@ -223,7 +223,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		fmt.Printf("%x\n", addr)
 		return m.oam[addr&0x00ff]
 
-	} else if addr == 0xff00 || (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <= 0xff4B) || addr == 0xff0f || addr == 0xffff {
+	} else if addr >= 0xff00  && addr <= 0xff4b || addr == 0xffff{
 		return m.read_mmio(addr)
 
 	} else if addr >= 0xe000 && addr < 0xfe00 {
@@ -252,7 +252,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 	} else if addr < 0x8000 || addr >= 0xA000 && addr < 0xC000 {
 		m.cart.Write_b(addr, val)
 		return
-	} else if addr == 0xff00 || addr == 0xff02 || (addr >= 0xff04 && addr <= 0xff07) || (addr >= 0xff40 && addr <= 0xff4B) || addr == 0xff0f || addr == 0xffff {
+	} else if addr >= 0xff00  && addr <= 0xff4b || addr == 0xffff {
 		m.write_mmio(addr, val)
 		return
 	} else if addr >= 0xfe00 && addr <= 0xfe9f {

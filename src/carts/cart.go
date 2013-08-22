@@ -114,7 +114,7 @@ type ROM_MBC1 struct {
     bank uint16
     ram_enabled  bool 
     ram_bank uint8
-    ram [0x8000]uint8
+    ram [0x20000]uint8
     memory_mode uint8
     file os.File
    
@@ -163,8 +163,9 @@ func (m * ROM_MBC1)Read_b(addr uint16) (uint8) {
        if (m.memory_mode == FOUR_MB && m.ram_enabled == true) || (m.memory_mode == SIXTEEN_MB) {      
             bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
             fixed_addr := uint16(addr -0xa000) + bank_offset
-            retval =       m.ram[fixed_addr]            
             fmt.Printf("RAM  BANK READ:%v  %04X->%04X:%x\n", m.ram_bank,addr,fixed_addr,retval)
+
+            retval =       m.ram[fixed_addr]            
         } else {
             panic("Tried to read from ram that wasn't enabled!")
         }
@@ -191,13 +192,12 @@ func (m * ROM_MBC1 )Write_b(addr uint16,val uint8)() {
                 fmt.Println("RAM Disabled",val ) 
                 m.ram_enabled = false
 
-            }
-        }
+            }        }
 
     }else if addr >= 0x4000 && addr < 0x6000{
 
-        fmt.Println("RAM bank", "from",m.ram_bank,"to",val)
-        m.ram_bank = (val) 
+        fmt.Println("RAM bank", "from",m.ram_bank,"to",val&0xf)
+        m.ram_bank = (val &0xf) 
     }else if addr >= 0x6000 && addr < 0x7000{
         if val >0  {
             m.memory_mode = SIXTEEN_MB
@@ -212,10 +212,11 @@ func (m * ROM_MBC1 )Write_b(addr uint16,val uint8)() {
 
       bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
       fixed_addr := uint16(addr -0xa000) + bank_offset
+              fmt.Printf("RAM  BANK WRITE:%v  %04X->%04X:%x\n", m.ram_bank,addr,fixed_addr,val)
+
       m.ram[fixed_addr] = val
       m.Save_ram()
 
-      fmt.Printf("RAM  BANK WRITE:%v  %04X->%04X:%x\n", m.ram_bank,addr,fixed_addr,val)
         } else {
             panic("Tried to read from ram that wasn't enabled!")
         }
