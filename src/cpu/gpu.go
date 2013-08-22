@@ -79,6 +79,9 @@ type GPU struct {
 	vblank_cycle_count uint16
 	cycle_count        int16
 	last_update        time.Time
+    frame_time        time.Time
+
+
 	currline           uint8
 	bg_tmap            TileMap
 	w_tmap             TileMap
@@ -134,6 +137,8 @@ func NewGPU() *GPU {
 	g.t_screen = newScreen()
 	g.mem_written = false
 	g.last_update = time.Now()
+    g.frame_time = time.Now()
+
 	g.bg_palette[0] = LIGHTEST
 	g.bg_palette[1] = LIGHT
 	g.bg_palette[2] = DARK
@@ -143,7 +148,7 @@ func NewGPU() *GPU {
 
 	g.obp0_palette = g.bg_palette
 	g.obp1_palette = g.bg_palette
-
+    g.cycle_count =456
 	return g
 }
 
@@ -159,9 +164,9 @@ func (g *GPU) get_tile_val(m *MMU, addr uint16) Tile {
 	var tile Tile
 
 	for k = 0; k < 8; k++ {
-		var off = uint16(k)
-		bl := m.read_b(addr + (off * 2))
-		bh := m.read_b(addr + 1 + (off * 2))
+		var off uint16 = addr+uint16(k*2)
+		bl := m.vm[off & 0x1fff]
+		bh := m.vm[(off+1)  & 0x1fff]
 		i = 7
 		for j = 0; j < 8; j++ {
 			val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
@@ -180,9 +185,9 @@ func (g *GPU) get_tile_val16(m *MMU, addr uint16) Tile16 {
 	var tile Tile16
 
 	for k = 0; k < 16; k++ {
-		var off = uint16(k)
-		bl := m.read_b(addr + (off * 2))
-		bh := m.read_b(addr + 1 + (off * 2))
+			var off uint16 = addr+uint16(k*2)
+		bl := m.vm[off & 0x1fff]
+		bh := m.vm[(off+1)  & 0x1fff]
 		i = 7
 		for j = 0; j < 8; j++ {
 			val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
@@ -511,7 +516,7 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 	if g.LCDC&0x81 == 0x81 {
 		if g.last_lcdc&0x58 != g.LCDC&0x58 {
 			g.get_tile_map(m)
-			fmt.Println("REFRESH")
+		//	fmt.Println("REFRESH")
 		}
 		g.print_tile_line(uint(g.LY))
 
@@ -538,7 +543,7 @@ func (g *GPU) check_stat_int(m *MMU) {
 			m.cpu.ic.Assert(constants.LCDC)
 			g.STAT |= 0x04
 
-			fmt.Println("Asserted lyc")
+			//fmt.Println("Asserted lyc")
 		}
 
 	} else {
@@ -571,31 +576,29 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 		m.cpu.ic.Assert(constants.V_BLANK)
 		g.screen.screen.Flip()
 		g.frames += 1
+        if time.Since(g.frame_time) < time.Duration(17) * time.Millisecond {
+           time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
+
+
+        }
 		if time.Since(g.last_update) > time.Second {
 			fmt.Println("FPS", int(g.frames))
 			g.frames = 0
 			g.last_update = time.Now()
 		}
+			g.frame_time = time.Now()
 
 	}
-	g.vblank_cycle_count += clocks
 	//fmt.Println(g.vblank_cycle_count)        
 
-	if g.vblank_cycle_count >= 456 && g.LY <= 154 {
-		g.vblank_cycle_count = 0
-
-		g.LY += 1
-		g.check_stat_int(m)
 
 		//fmt.Println(g.vblank_cycle_count)        
-	} else if g.LY > 154 {
-		g.vblank_cycle_count = 0
-		g.cycle_count = 0
+	if g.LY > 153 {
 		g.LY = 0
 		g.line_done = 0
-		g.STAT &= 0xfc
-		time.Sleep(time.Duration(5) * time.Millisecond)
-
+        g.cycle_count +=456
+		//fmt.Println(g.cycle_count)        
+	//	time.Sleep(time.Duration(5) * time.Millisecond)
 	}
 
 }
@@ -603,44 +606,45 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 func (g *GPU) Update(m *MMU, clocks uint16) {
 
 	if g.LCDC&0x80 == 0x80 {
-		//fmt.Printf("STAT:0x%04u\n",g.LY)
-		g.cycle_count += int16(clocks)
+	//	fmt.Printf("STAT:0x%04u\n",g.LY)
+
+
 		if g.LY >= 144 {
 			g.vblank(m, clocks)
 
-		} else if g.cycle_count < OAM_CYCLES {
+		} else if g.cycle_count >=456-OAM_CYCLES {
 			g.STAT &= 0xfc
 			g.STAT |= 2
 
-		} else if g.cycle_count < OAM_CYCLES+RAM_CYCLES {
+		} else if g.cycle_count >=456-OAM_CYCLES-RAM_CYCLES {
 			g.STAT |= 3
 
-		} else if g.cycle_count < HBLANK_CYCLES+OAM_CYCLES+RAM_CYCLES {
+		} else if g.cycle_count >= 456-HBLANK_CYCLES-OAM_CYCLES-RAM_CYCLES {
 			g.STAT &= 0xfc
 
 			if g.line_done == 0 {
-				g.check_stat_int(m)
 				g.hblank(m, clocks)
 				g.check_stat_int_hblank(m)
 
 			}
 
-		} else {
+		} 
+        if g.cycle_count <=0  {
 			//fmt.Println(g.cycle_count,g.LY)
-			g.cycle_count -= 456
+			g.cycle_count +=456
 			g.line_done = 0
-			g.LY++
-				g.check_stat_int(m)
+			g.LY++	
+                    g.check_stat_int(m)
 
+           
 		}
+                    g.check_stat_int(m)
 
+		g.cycle_count -= int16(clocks)
 	} else {
 		g.STAT &= 0xfc
-
-		g.LY = 0
-		g.cycle_count = 0
-		g.vblank_cycle_count = 0
-
+	    g.cycle_count =456
+        g.LY = 0
 	}
 
 }

@@ -27,8 +27,8 @@ func NewMMU(cpu *CPU) *MMU {
 }
 
 
-func (m *MMU) create_new_cart(data []uint8, size int) {
-    m.cart = carts.Create_new_cart(data,size)
+func (m *MMU) Create_new_cart(filename string) {
+    m.cart = carts.Load_cart(filename)
 }
 
 func (m *MMU) Dump_mem() {
@@ -105,15 +105,17 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff42:
 		m.cpu.gpu.SCY = val
 	case 0xff43:
-		//fmt.Printf("->SCX:%04X\n",val)
+		//fmt.Printf("->SCX:%04X\n",val)x
 		//m.cpu.Dump()
 		m.cpu.gpu.SCX = val
 	case 0xff44:
 		m.cpu.gpu.LY = 0
 		//fmt.Printf("->LY:%04X\n",val)
 	case 0xff45:
+            //		m.cpu.Dump()
+
 		m.cpu.gpu.LYC = val
-		//fmt.Printf("->LYC:%04X\n",val)
+		//fmt.Printf("->LYC:%04X %04X \n",val,m.cpu.gpu.cycle_count)
 	case 0xff46:
 		// m.Dump_vm()
 		m.exec_dma(val)
@@ -121,14 +123,14 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		if val != m.cpu.gpu.BGP {
 			m.cpu.gpu.update_palette(&m.cpu.gpu.bg_palette, val)
 			m.cpu.gpu.BGP = val
-			fmt.Println("BGP", val, m.cpu.gpu.obp0_palette)
+			//fmt.Println("BGP", val, m.cpu.gpu.obp0_palette)
 
 		}
 	case 0xff48:
 		if val != m.cpu.gpu.OBP0 {
 			m.cpu.gpu.OBP0 = val
 			m.cpu.gpu.update_palette(&m.cpu.gpu.obp0_palette, val)
-			fmt.Println(m.cpu.gpu.obp0_palette)
+			//fmt.Println(m.cpu.gpu.obp0_palette)
 
 		}
 	case 0xff49:
@@ -139,7 +141,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff4A:
 		m.cpu.gpu.WY = val
 	case 0xff4B:
-        fmt.Printf("->WX:%04X\n", val)
+        //fmt.Printf("->WX:%04X\n", val)
 		m.cpu.gpu.WX = val
 	case 0xffff:
 		m.cpu.ic.IE = val

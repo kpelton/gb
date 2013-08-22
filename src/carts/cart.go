@@ -23,8 +23,22 @@ const (
 	C_ROM_MBC3_RAM_BATT = 13
 	C_ROM_RAM           = 8
 )
+func Load_cart(filename string) Cart {
+	fi, err := os.Open(filename)
+	buf := make([]uint8, 0x400000)
 
-func Create_new_cart(data []uint8, size int) Cart {
+	n, err := fi.Read(buf)
+
+	if err != nil || n == 0 {
+		panic(err)
+	}
+    return create_new_cart(buf,n)
+}
+
+
+func create_new_cart(data []uint8, size int) Cart {
+
+
 	fmt.Printf("Cart Type:0%02x\n:", data[REG_CART_TYPE])
 	fmt.Printf("Cart Size:0%02x:\n", data[REG_CART_SIZE])
 	fmt.Printf("Ram Size:0%02x:\n", data[REG_RAM_SIZE])

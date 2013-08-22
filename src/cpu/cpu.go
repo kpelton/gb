@@ -74,16 +74,7 @@ type CPU struct {
 
 func (c *CPU) load_bios() {
 
-	fi, err := os.Open(os.Args[1])
-	buf := make([]uint8, 0x400000)
-
-	n, err := fi.Read(buf)
-
-	if err != nil || n == 0 {
-		panic(err)
-	}
-
-	c.mmu.create_new_cart(buf, n)
+	c.mmu.Create_new_cart(os.Args[1])
 
 	c.reg16[PC] = 0x100
 	c.reg16[SP] = 0xfffe
@@ -152,16 +143,20 @@ func (c *CPU) handleInterrupts() {
 		vector := c.ic.Handle()
 		//Handle will Dissassert interrupt
 		if vector > 0 {
+            c.reg8[EI] = 0
 			c.push_pc(c) //push pc on stack
 			c.is_halted = false
-			c.reg16[PC] = vector
+           
            // fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
+            
+			c.reg16[PC] = vector
+
 		}
 
 	}
 }
 func (c *CPU) Dump() {
-	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x TIMA:%02x ->%v\n", c.reg16[PC], c.reg16[SP], c.reg8[A], c.reg8[B], c.reg8[C], c.reg8[D], c.reg8[E], c.reg8[H], c.reg8[L], c.reg8[FL_Z], c.reg8[FL_C], c.reg8[FL_H], c.timer.TIMA, c.last_instr) //,c.reg8[FL_N]);
+	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x LY:%02x  g_clocks:%d \n", c.reg16[PC], c.reg16[SP], c.reg8[A], c.reg8[B], c.reg8[C], c.reg8[D], c.reg8[E], c.reg8[H], c.reg8[L], c.reg8[FL_Z], c.reg8[FL_C], c.reg8[FL_H], c.gpu.LY, c.gpu.cycle_count) //,c.reg8[FL_N]);
 }
 func (c *CPU) Exec() {
 
@@ -177,6 +172,7 @@ func (c *CPU) Exec() {
 	for {
 
 		//c.last_instr = 4
+        		c.handleInterrupts()
 
 		//run op
 		if !c.is_halted {
@@ -189,16 +185,13 @@ func (c *CPU) Exec() {
 			} else {
 				op = 0xcb00 | ((op & 0xff00) >> 8)
 			}
-				        //c.Dump()		
+				      //  c.Dump()		
 			c.ops[op](c)
-			//    c.Dump()		
-
-			//fmt.Printf("OP:%X\n",op)
              count++
 
 		}
+        //c.Dump()		
 
-		//count += uint(1)
 		//fmt.Println(count)
 		//Update gamepad/buttons
         if count == 2 {
@@ -219,7 +212,6 @@ func (c *CPU) Exec() {
 		
 		c.DIV++
 
-		c.handleInterrupts()
 		 // if time.Since(last_update) > 20 *time.Second {
 
 		 //pprof.StopCPUProfile()
