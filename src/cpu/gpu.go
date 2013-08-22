@@ -449,15 +449,15 @@ func (g *GPU) print_sprites(m *MMU) {
 
 	}
 
-	for i := 0; i < 0xA0; i += 4 {
+	for i := 0x9f; i >0 ; i -= 4 {
 		//Main attributes
-		sp.y = m.oam[i]
+		sp.y = m.oam[i-3]
 		pal = &g.obp0_palette
 
 		if sp.y > 155 {
 			continue
 		}
-		sp.x = m.oam[i+1]
+		sp.x = m.oam[i-2]
 
 		//tile number is uint
 
@@ -466,13 +466,13 @@ func (g *GPU) print_sprites(m *MMU) {
 			size = 16
 		}
 
-		sp.num = m.oam[i+2] & mask
+		sp.num = m.oam[i-1] & mask
 
 		//Flags
-		sp.fl_pri = m.oam[i+3] >> 7
-		sp.fl_y_flip = (m.oam[i+3] & 0x40) >> 6
-		sp.fl_x_flip = (m.oam[i+3] & 0x20) >> 5
-		sp.fl_pal = (m.oam[i+3] & 0x10) >> 4
+		sp.fl_pri = m.oam[i] >> 7
+		sp.fl_y_flip = (m.oam[i] & 0x40) >> 6
+		sp.fl_x_flip = (m.oam[i] & 0x20) >> 5
+		sp.fl_pal = (m.oam[i] & 0x10) >> 4
 
 		yoff = sp.y - 16
 		ytoff = (g.LY - yoff)
@@ -543,7 +543,7 @@ func (g *GPU) check_stat_int(m *MMU) {
 			m.cpu.ic.Assert(constants.LCDC)
 			g.STAT |= 0x04
 
-			//fmt.Println("Asserted lyc")
+			//fmt.Println("Asserted lyc",g.LY,g.LYC)
 		}
 
 	} else {
@@ -578,6 +578,7 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 		g.frames += 1
         if time.Since(g.frame_time) < time.Duration(17) * time.Millisecond {
            time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
+          // time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
 
 
         }
