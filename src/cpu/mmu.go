@@ -1,10 +1,9 @@
 package cpu
 
-
 import (
+	"carts"
+	"constants"
 	"fmt"
-    "constants"
-    "carts"
 )
 
 type MMU struct {
@@ -26,9 +25,8 @@ func NewMMU(cpu *CPU) *MMU {
 	return m
 }
 
-
 func (m *MMU) Create_new_cart(filename string) {
-    m.cart = carts.Load_cart(filename)
+	m.cart = carts.Load_cart(filename)
 }
 
 func (m *MMU) Dump_mem() {
@@ -94,13 +92,13 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff40:
 		m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
-        //m.cpu.Dump()
+		//m.cpu.Dump()
 		//fmt.Printf("->LCDC:%04X,LY:0x%04X\n", val,m.cpu.gpu.LY)
 		m.cpu.gpu.mem_written = true
 	case 0xff41:
 		m.cpu.gpu.STAT |= val & 0xf8
 		m.cpu.Dump()
-		fmt.Printf("->STAT:%04X %04X\n", m.cpu.gpu.STAT,val)
+		fmt.Printf("->STAT:%04X %04X\n", m.cpu.gpu.STAT, val)
 
 	case 0xff42:
 		m.cpu.gpu.SCY = val
@@ -112,7 +110,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.gpu.LY = 0
 		//fmt.Printf("->LY:%04X\n",val)
 	case 0xff45:
-            //		m.cpu.Dump()
+		//		m.cpu.Dump()
 
 		m.cpu.gpu.LYC = val
 		//fmt.Printf("->LYC:%04X %04X \n",val,m.cpu.gpu.cycle_count)
@@ -141,7 +139,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff4A:
 		m.cpu.gpu.WY = val
 	case 0xff4B:
-        //fmt.Printf("->WX:%04X\n", val)
+		//fmt.Printf("->WX:%04X\n", val)
 		m.cpu.gpu.WX = val
 	case 0xffff:
 		m.cpu.ic.IE = val
@@ -160,7 +158,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	//fmt.Printf("<-P1:%04X\n",val)
 	case 0xff04:
 		val = m.cpu.DIV
-        //fmt.Printf("<-DIV:%04X\n",val)
+		//fmt.Printf("<-DIV:%04X\n",val)
 
 	case 0xff05:
 		val = m.cpu.timer.TIMA
@@ -223,7 +221,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		fmt.Printf("%x\n", addr)
 		return m.oam[addr&0x00ff]
 
-	} else if addr >= 0xff00  && addr <= 0xff4b || addr == 0xffff{
+	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
 		return m.read_mmio(addr)
 
 	} else if addr >= 0xe000 && addr < 0xfe00 {
@@ -252,7 +250,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 	} else if addr < 0x8000 || addr >= 0xA000 && addr < 0xC000 {
 		m.cart.Write_b(addr, val)
 		return
-	} else if addr >= 0xff00  && addr <= 0xff4b || addr == 0xffff {
+	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
 		m.write_mmio(addr, val)
 		return
 	} else if addr >= 0xfe00 && addr <= 0xfe9f {

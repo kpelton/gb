@@ -2,10 +2,10 @@ package cpu
 
 import (
 	"fmt"
-	"os"
 	"gp"
-    "ic"
-    "timer"
+	"ic"
+	"os"
+	"timer"
 
 //"runtime/pprof"
 //"time"
@@ -143,12 +143,12 @@ func (c *CPU) handleInterrupts() {
 		vector := c.ic.Handle()
 		//Handle will Dissassert interrupt
 		if vector > 0 {
-            c.reg8[EI] = 0
+			c.reg8[EI] = 0
 			c.push_pc(c) //push pc on stack
 			c.is_halted = false
-           
-           // fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
-            
+
+			// fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
+
 			c.reg16[PC] = vector
 
 		}
@@ -164,15 +164,15 @@ func (c *CPU) Exec() {
 	var op uint16
 
 	//	fo, err := os.Create("output.txt")
-	 //if err != nil { panic(err) }
-//	  defer fo.Close()
+	//if err != nil { panic(err) }
+	//	  defer fo.Close()
 	//	pprof.StartCPUProfile(fo) 
-	  //last_update := time.Now()
-	 count :=uint(0)
+	//last_update := time.Now()
+	count := uint(0)
 	for {
 
 		//c.last_instr = 4
-        		c.handleInterrupts()
+		c.handleInterrupts()
 
 		//run op
 		if !c.is_halted {
@@ -185,37 +185,37 @@ func (c *CPU) Exec() {
 			} else {
 				op = 0xcb00 | ((op & 0xff00) >> 8)
 			}
-				      //  c.Dump()		
+			//  c.Dump()		
 			c.ops[op](c)
-             count++
+			count++
 
 		}
-        //c.Dump()		
+		//c.Dump()		
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
-        if count == 2 {
-            raise_int := c.gp.Update()
-            count = 0
-            if raise_int > 0  {
-                c.ic.Assert(raise_int)
-            }
-        }
-  	
-        //for i:=0; i< int(c.last_instr); i++ {
-	        c.gpu.Update(c.mmu,uint16(c.last_instr))
-	//	}
-        raise_int := c.timer.Update(uint64(c.last_instr))
-        if raise_int > 0 {
-            c.ic.Assert(raise_int)
-        }      
-		
+		if count == 2 {
+			raise_int := c.gp.Update()
+			count = 0
+			if raise_int > 0 {
+				c.ic.Assert(raise_int)
+			}
+		}
+
+		//for i:=0; i< int(c.last_instr); i++ {
+		c.gpu.Update(c.mmu, uint16(c.last_instr))
+		//	}
+		raise_int := c.timer.Update(uint64(c.last_instr))
+		if raise_int > 0 {
+			c.ic.Assert(raise_int)
+		}
+
 		c.DIV++
 
-		 // if time.Since(last_update) > 20 *time.Second {
+		// if time.Since(last_update) > 20 *time.Second {
 
-		 //pprof.StopCPUProfile()
-		 // fmt.Println("STOPPED")
+		//pprof.StopCPUProfile()
+		// fmt.Println("STOPPED")
 		//} 
 	}
 

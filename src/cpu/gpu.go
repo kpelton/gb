@@ -1,9 +1,9 @@
 package cpu
 
 import (
+	"banthar/sdl"
 	"constants"
 	"fmt"
-	"banthar/sdl"
 	"time"
 )
 
@@ -79,14 +79,13 @@ type GPU struct {
 	vblank_cycle_count uint16
 	cycle_count        int16
 	last_update        time.Time
-    frame_time        time.Time
+	frame_time         time.Time
 
-
-	currline           uint8
-	bg_tmap            TileMap
-	w_tmap             TileMap
-	line_done          uint8
-	frames             uint16
+	currline  uint8
+	bg_tmap   TileMap
+	w_tmap    TileMap
+	line_done uint8
+	frames    uint16
 	//palettes
 	win_palette  Palette
 	bg_palette   Palette
@@ -137,7 +136,7 @@ func NewGPU() *GPU {
 	g.t_screen = newScreen()
 	g.mem_written = false
 	g.last_update = time.Now()
-    g.frame_time = time.Now()
+	g.frame_time = time.Now()
 
 	g.bg_palette[0] = LIGHTEST
 	g.bg_palette[1] = LIGHT
@@ -148,7 +147,7 @@ func NewGPU() *GPU {
 
 	g.obp0_palette = g.bg_palette
 	g.obp1_palette = g.bg_palette
-    g.cycle_count =456
+	g.cycle_count = 456
 	return g
 }
 
@@ -164,9 +163,9 @@ func (g *GPU) get_tile_val(m *MMU, addr uint16) Tile {
 	var tile Tile
 
 	for k = 0; k < 8; k++ {
-		var off uint16 = addr+uint16(k*2)
-		bl := m.vm[off & 0x1fff]
-		bh := m.vm[(off+1)  & 0x1fff]
+		var off uint16 = addr + uint16(k*2)
+		bl := m.vm[off&0x1fff]
+		bh := m.vm[(off+1)&0x1fff]
 		i = 7
 		for j = 0; j < 8; j++ {
 			val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
@@ -185,9 +184,9 @@ func (g *GPU) get_tile_val16(m *MMU, addr uint16) Tile16 {
 	var tile Tile16
 
 	for k = 0; k < 16; k++ {
-			var off uint16 = addr+uint16(k*2)
-		bl := m.vm[off & 0x1fff]
-		bh := m.vm[(off+1)  & 0x1fff]
+		var off uint16 = addr + uint16(k*2)
+		bl := m.vm[off&0x1fff]
+		bh := m.vm[(off+1)&0x1fff]
 		i = 7
 		for j = 0; j < 8; j++ {
 			val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
@@ -449,7 +448,7 @@ func (g *GPU) print_sprites(m *MMU) {
 
 	}
 
-	for i := 0x9f; i >0 ; i -= 4 {
+	for i := 0x9f; i > 0; i -= 4 {
 		//Main attributes
 		sp.y = m.oam[i-3]
 		pal = &g.obp0_palette
@@ -516,7 +515,7 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 	if g.LCDC&0x81 == 0x81 {
 		if g.last_lcdc&0x58 != g.LCDC&0x58 {
 			g.get_tile_map(m)
-		//	fmt.Println("REFRESH")
+			//	fmt.Println("REFRESH")
 		}
 		g.print_tile_line(uint(g.LY))
 
@@ -576,30 +575,28 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 		m.cpu.ic.Assert(constants.V_BLANK)
 		g.screen.screen.Flip()
 		g.frames += 1
-        if time.Since(g.frame_time) < time.Duration(17) * time.Millisecond {
-          // time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
-          // time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
+		if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
+			// time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
+			// time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
 
-
-        }
+		}
 		if time.Since(g.last_update) > time.Second {
 			fmt.Println("FPS", int(g.frames))
 			g.frames = 0
 			g.last_update = time.Now()
 		}
-			g.frame_time = time.Now()
+		g.frame_time = time.Now()
 
 	}
 	//fmt.Println(g.vblank_cycle_count)        
 
-
-		//fmt.Println(g.vblank_cycle_count)        
+	//fmt.Println(g.vblank_cycle_count)        
 	if g.LY > 153 {
 		g.LY = 0
 		g.line_done = 0
-        g.cycle_count +=456
+		g.cycle_count += 456
 		//fmt.Println(g.cycle_count)        
-	//	time.Sleep(time.Duration(5) * time.Millisecond)
+		//	time.Sleep(time.Duration(5) * time.Millisecond)
 	}
 
 }
@@ -607,17 +604,16 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 func (g *GPU) Update(m *MMU, clocks uint16) {
 
 	if g.LCDC&0x80 == 0x80 {
-	//	fmt.Printf("STAT:0x%04u\n",g.LY)
-
+		//	fmt.Printf("STAT:0x%04u\n",g.LY)
 
 		if g.LY >= 144 {
 			g.vblank(m, clocks)
 
-		} else if g.cycle_count >=456-OAM_CYCLES {
+		} else if g.cycle_count >= 456-OAM_CYCLES {
 			g.STAT &= 0xfc
 			g.STAT |= 2
 
-		} else if g.cycle_count >=456-OAM_CYCLES-RAM_CYCLES {
+		} else if g.cycle_count >= 456-OAM_CYCLES-RAM_CYCLES {
 			g.STAT |= 3
 
 		} else if g.cycle_count >= 456-HBLANK_CYCLES-OAM_CYCLES-RAM_CYCLES {
@@ -629,23 +625,22 @@ func (g *GPU) Update(m *MMU, clocks uint16) {
 
 			}
 
-		} 
-        if g.cycle_count <=0  {
-			//fmt.Println(g.cycle_count,g.LY)
-			g.cycle_count +=456
-			g.line_done = 0
-			g.LY++	
-                    g.check_stat_int(m)
-
-           
 		}
-                    g.check_stat_int(m)
+		if g.cycle_count <= 0 {
+			//fmt.Println(g.cycle_count,g.LY)
+			g.cycle_count += 456
+			g.line_done = 0
+			g.LY++
+//			g.check_stat_int(m)
+
+		}
+		g.check_stat_int(m)
 
 		g.cycle_count -= int16(clocks)
 	} else {
 		g.STAT &= 0xfc
-	    g.cycle_count =456
-        g.LY = 0
+		g.cycle_count = 456
+		g.LY = 0
 	}
 
 }
