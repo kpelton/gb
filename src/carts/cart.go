@@ -2,6 +2,7 @@ package carts
 import (
 	"fmt"
     "os"
+    "strings"
 )
 
 type Cart interface {
@@ -13,7 +14,8 @@ const (
 	REG_CART_TYPE = 0x147
 	REG_CART_SIZE = 0x148
 	REG_RAM_SIZE  = 0x148
-
+    REG_CART_NAME = 0x134
+    REG_CART_NAME_SIZE = 16
 	C_ROM_ONLY          = 0
 	C_ROM_MBC1          = 1
 	C_ROM_MBC1_RAM      = 2
@@ -45,6 +47,17 @@ func create_new_cart(data []uint8, size int) Cart {
     var cart Cart
 
 	cart_type := data[REG_CART_TYPE]
+    var name [16]uint8
+    length :=0
+    for offset := REG_CART_NAME; offset-REG_CART_NAME < REG_CART_NAME_SIZE; offset++   {
+            if data[offset] == 0 {
+                break
+            }
+                name[offset-REG_CART_NAME]=data[offset]
+            length++
+        }
+        cart_name:=strings.ToLower(fmt.Sprintf("%s",name[0:length]))
+        fmt.Printf("Cart Name:%s\n",cart_name)
 
 	fmt.Printf("Cart Type:")
 	switch cart_type {
@@ -53,14 +66,14 @@ func create_new_cart(data []uint8, size int) Cart {
 		cart = NewMBC0(data[:0x8000])
 	case C_ROM_MBC1:
 		fmt.Printf("ROM_MBC1\n")
-		cart = NewROM_MBC1(data, size)
+		cart = NewROM_MBC1(cart_name,data, size,false)
 
 	case C_ROM_MBC1_RAM:
 		fmt.Printf("ROM_MBC1_RAM\n")
-		cart = NewROM_MBC1(data, size)
+		cart = NewROM_MBC1(cart_name,data, size,false)
 
 	case C_ROM_MBC1_RAM_BATT:
-		cart = NewROM_MBC1(data, size)
+		cart = NewROM_MBC1(cart_name,data, size,true)
 
 		fmt.Printf("ROM_MBC1_RAM_BATT\n")
 	case C_ROM_MBC2:
@@ -68,7 +81,7 @@ func create_new_cart(data []uint8, size int) Cart {
 	case C_ROM_MBC2_BATT:
 		cart = NewROM_MBC2(data, size)
 	case C_ROM_MBC3_RAM_BATT:
-		cart = NewROM_MBC1(data, size)
+		cart = NewROM_MBC1(cart_name,data, size,true)
 
 	case C_ROM_RAM:
 		fmt.Printf("ROM_RAM\n")
@@ -76,7 +89,7 @@ func create_new_cart(data []uint8, size int) Cart {
 
 		fmt.Printf("Unknown!\n")
 		//  panic("Unsupported cart!!!!")
-		cart = NewROM_MBC1(data, size)
+		cart = NewROM_MBC1(cart_name,data, size,true)
 
 	}
     return cart
@@ -117,29 +130,34 @@ type ROM_MBC1 struct {
     ram [0x20000]uint8
     memory_mode uint8
     file os.File
+    name string
+    has_battery bool
    
 }
-func NewROM_MBC1(cart_data []uint8,size int)(*ROM_MBC1) {
+func NewROM_MBC1(name string,cart_data []uint8,size int,has_battery bool)(*ROM_MBC1) {
     m :=new(ROM_MBC1)
     fmt.Println(size)
     copy(m.cart[:],cart_data)
     m.memory_mode = SIXTEEN_MB
-    m.Load_ram()
+    m.name = name
+    m.has_battery = has_battery
+    if has_battery == true  {
+        m.Load_ram()
+    }
 	return m
 }
 func (m * ROM_MBC1)Load_ram() () {    
+    save_name := m.name +".data"
 
-    file, err := os.OpenFile("save.data",os.O_RDWR,666) // For read access.
+    file, err := os.OpenFile(save_name,os.O_RDWR,666) // For read access.
     if err != nil {
-        fmt.Println("Save does not exist")
-        file, err = os.Create("save.data") // For read access.
+        //fmt.Println(err)
+        file, err = os.Create(save_name) // For read access.
     } else {
         fmt.Println("Read save data")
         file.Read(m.ram[0:])
     }
     
-    //fmt.Println(m.ram)
-
   
     m.file = *file
 
@@ -215,8 +233,9 @@ func (m * ROM_MBC1 )Write_b(addr uint16,val uint8)() {
               fmt.Printf("RAM  BANK WRITE:%v  %04X->%04X:%x\n", m.ram_bank,addr,fixed_addr,val)
 
       m.ram[fixed_addr] = val
-      m.Save_ram()
-
+     if m.has_battery{ 
+     m.Save_ram()
+}
         } else {
             panic("Tried to read from ram that wasn't enabled!")
         }
