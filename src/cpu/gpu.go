@@ -328,8 +328,7 @@ func (g *GPU) get_tile_map(m *MMU) {
 
 	//b:=0
 	for offset := map_base; offset <= map_limit; offset++ {
-		b := m.read_b(offset)
-
+		b := m.vm[offset&0x1fff]
 		if tile_base == 0x8800 {
 			//signed case
 			if int8(b) >= 0 {
@@ -365,7 +364,8 @@ func (g *GPU) get_tile_map(m *MMU) {
 	if g.LCDC&0x20 == 0x20 {
 
 		for offset := w_map_base; offset <= w_map_limit; offset++ {
-			b := m.read_b(offset)
+		    b := m.vm[offset&0x1fff]
+
 			//fmt.Printf("0x%x:0x%x\n",offset,b)
 			if tile_base == 0x8800 {
 				//signed case
@@ -618,7 +618,7 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 		g.frames += 1
 		if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
 			 time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
-			// time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
+			 time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
 
 		}
 		if time.Since(g.last_update) > time.Second {

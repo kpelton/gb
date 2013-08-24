@@ -164,16 +164,17 @@ func (c *CPU) Exec() {
 	var op uint16
 
 	//	fo, err := os.Create("output.txt")
-	//if err != nil { panic(err) }
-	//	  defer fo.Close()
-	//	pprof.StartCPUProfile(fo) 
-	//last_update := time.Now()
+//	if err != nil { panic(err) }
+////		  defer fo.Close()
+//		pprof.StartCPUProfile(fo) 
+//	last_update := time.Now()
 	count := uint(0)
 	for {
 
 		//c.last_instr = 4
-		c.handleInterrupts()
-
+        if c.ic.IF > 0{
+		    c.handleInterrupts()
+        }
 		//run op
 		if !c.is_halted {
 			op = uint16(c.mmu.read_w(c.reg16[PC]))
@@ -212,11 +213,11 @@ func (c *CPU) Exec() {
 
 		c.DIV++
 
-		// if time.Since(last_update) > 20 *time.Second {
+	//	 if time.Since(last_update) > 20 *time.Second {
 
-		//pprof.StopCPUProfile()
-		// fmt.Println("STOPPED")
-		//} 
+	//	pprof.StopCPUProfile()
+	//	 fmt.Println("STOPPED")
+	//	} 
 	}
 
 }
@@ -872,10 +873,9 @@ func gen_push_pop(left string, reg_right string) Action {
 	lambda := func(c *CPU) { fmt.Println("Undefined PUSH op" + left) }
 
 	if left == "PUSH" {
-		lambda = func(c *CPU) {
-			//write word to mem
-
 			f_get_val := gen_get_val(type_right, reg_right)
+        lambda = func(c *CPU) {
+			//write word to mem
 
 			if reg_right == "AF" {
 				c.reg8[F] = 0
