@@ -202,48 +202,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	return val
 }
 
-/*
-func (m *MMU) read_b(addr uint16) uint8 {
 
-
-	if addr < 0x4000 {
-		//always ROM bank #0
-		return m.cart.Read_b(addr)
-
-
-	} else if addr < 0x8000  {
-		//  fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
-		//return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
-		return m.cart.Read_b(addr)
-		//return m.cart[addr]
-
-	}else if addr >= 0x8000 && addr < 0xa000 {
-		return m.vm[addr&0x1fff]
-
-
-	} else if addr < 0xC000 {
-		//  fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
-		//return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
-		return m.cart.Read_b(addr)
-		//return m.cart[addr]
-
-	} else if addr >= 0xfe00 && addr <= 0xfe9f {
-		fmt.Printf("%x\n", addr)
-		return m.oam[addr&0x00ff]
-
-	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
-		return m.read_mmio(addr)
-
-	} else if addr >= 0xe000 && addr < 0xfe00 {
-		return m.mem[addr-0x1000]
-	}
-	return m.mem[addr]
-
-}
-*/
-func (m *MMU) read_w(addr uint16) uint16 {
-	return uint16(m.read_b(addr)) | uint16((m.read_b(addr+1)))<<8
-}
 
 func (m *MMU) write_b(addr uint16, val uint8) {
 
@@ -294,6 +253,10 @@ func (m *MMU) read_b(addr uint16) uint8 {
         fmt.Printf("unhandled write:%04x:%04x\n",addr,val)
     }
 	return val
+}
+
+func (m *MMU) read_w(addr uint16) uint16 {
+	return uint16(m.read_b(addr)) | uint16((m.read_b(addr+1)))<<8
 }
 func (m *MMU) write_w(addr uint16, val uint16) {
 
