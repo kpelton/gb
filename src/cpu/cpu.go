@@ -194,7 +194,7 @@ func (c *CPU) Exec() {
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
-		if count == 2 {
+		if c.ic.IE & 0x10 == 0x10 && count == 2 {
 			raise_int := c.gp.Update()
 			count = 0
 			if raise_int > 0 {

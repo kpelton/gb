@@ -70,6 +70,7 @@ func (m *MMU) exec_dma(addr uint8) {
 func (m *MMU) write_mmio(addr uint16, val uint8) {
 	switch addr {
 	case 0xff00:
+
 		m.cpu.gp.P1 = val
 		//		fmt.Printf("->P1:%04X\n",val)
 	case 0xff02:
@@ -156,6 +157,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	var val uint8 = 0
 	switch addr {
 	case 0xff00:
+        m.cpu.gp.Update()
 		val = m.cpu.gp.P1
 	//fmt.Printf("<-P1:%04X\n",val)
 	case 0xff04:

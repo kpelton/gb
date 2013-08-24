@@ -617,7 +617,7 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 		g.screen.screen.Flip()
 		g.frames += 1
 		if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
-			// time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
+			 time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
 			// time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
 
 		}
