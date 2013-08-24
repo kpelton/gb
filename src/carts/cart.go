@@ -131,6 +131,8 @@ type ROM_MBC1 struct {
 	file        os.File
 	name        string
 	has_battery bool
+	dirty       bool
+	count       uint32
 }
 
 func NewROM_MBC1(name string, cart_data []uint8, size int, has_battery bool) *ROM_MBC1 {
@@ -162,8 +164,10 @@ func (m *ROM_MBC1) Load_ram() {
 }
 
 func (m *ROM_MBC1) Save_ram() {
-
-	m.file.WriteAt(m.ram[0:], 0)
+	if m.dirty == true {
+		m.file.WriteAt(m.ram[0:], 0)
+		m.dirty = false
+	}
 }
 
 func (m *ROM_MBC1) Read_b(addr uint16) uint8 {
@@ -174,7 +178,7 @@ func (m *ROM_MBC1) Read_b(addr uint16) uint8 {
 	} else if addr < 0x8000 {
 		retval = m.cart[uint32(addr)+(uint32(m.bank)*0x4000)]
 	} else {
-		if (m.memory_mode == FOUR_MB && m.ram_enabled == true) || (m.memory_mode == SIXTEEN_MB) {
+		if (m.memory_mode == FOUR_MB) || (m.memory_mode == SIXTEEN_MB) {
 			bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
 			fixed_addr := uint16(addr-0xa000) + bank_offset
 			fmt.Printf("RAM  BANK READ:%v  %04X->%04X:%x\n", m.ram_bank, addr, fixed_addr, retval)
@@ -184,7 +188,12 @@ func (m *ROM_MBC1) Read_b(addr uint16) uint8 {
 			panic("Tried to read from ram that wasn't enabled!")
 		}
 	}
-
+	m.count++
+	if m.count >= 10000000 && m.has_battery && m.dirty {
+		m.Save_ram()
+		fmt.Println("Saving Ram")
+		m.count = 0
+	}
 	return retval
 }
 
@@ -211,7 +220,7 @@ func (m *ROM_MBC1) Write_b(addr uint16, val uint8) {
 
 	} else if addr >= 0x4000 && addr < 0x6000 {
 
-		//fmt.Println("RAM bank", "from", m.ram_bank, "to", val&0xf)
+		fmt.Println("RAM bank", "from", m.ram_bank, "to", val&0xf)
 		m.ram_bank = (val & 0xf)
 	} else if addr >= 0x6000 && addr < 0x7000 {
 		if val > 0 {
@@ -231,7 +240,7 @@ func (m *ROM_MBC1) Write_b(addr uint16, val uint8) {
 
 			m.ram[fixed_addr] = val
 			if m.has_battery {
-				m.Save_ram()
+				m.dirty = true
 			}
 		} else {
 			panic("Tried to read from ram that wasn't enabled!")

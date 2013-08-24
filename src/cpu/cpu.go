@@ -198,7 +198,7 @@ func (c *CPU) Exec() {
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
-		if c.ic.IE&0x10 == 0x10 && count >= 20 {
+		if c.ic.IE&0x10 == 0x10 && count >= 2000 {
 			raise_int := c.gp.Update()
 			count = 0
 			if raise_int > 0 {
@@ -215,7 +215,6 @@ func (c *CPU) Exec() {
 		}
 
 		c.DIV++
-
 		//	 if time.Since(last_update) > 20 *time.Second {
 
 		//	pprof.StopCPUProfile()

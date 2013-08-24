@@ -17,6 +17,7 @@ type MMU struct {
 	cpu    *CPU
 	block  uint16
 	inbios bool
+    
 }
 
 func NewMMU(cpu *CPU) *MMU {
@@ -119,7 +120,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.sound.SND_MODE_3 = val
 	case 0xff1b:
 		m.cpu.sound.SND_MODE_3_LEN = val
-		fmt.Println(val)
+		//fmt.Println(val)
 	case 0xff1c:
 		m.cpu.sound.SND_MODE_3_OUTPUT = val
 	case 0xff1d:
