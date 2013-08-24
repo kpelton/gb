@@ -219,7 +219,7 @@ func (g *GPU) print_tile(m *MMU, addr uint16, xoff uint16, yoff uint16, ytoff ui
 	if xflip {
 		j = 0
 		for i = 7; i > 0; i-- {
-
+           
 			g.output_pixel(tile[i][ytoff], uint16(uint8(i)+uint8(xoff)), yoff)
 			j++
 		}
@@ -231,44 +231,55 @@ func (g *GPU) print_tile(m *MMU, addr uint16, xoff uint16, yoff uint16, ytoff ui
 	}
 }
 
-func (g *GPU) print_tile_sprite16(m *MMU, addr uint16, xoff uint16, yoff uint16, ytoff uint16, xflip bool, pal *Palette) {
+func (g *GPU) print_tile_sprite16(m *MMU, addr uint16, xoff uint16, yoff uint16, ytoff uint16, xflip bool,pri uint8, pal *Palette,line *Line) {
 	var i int16
 	var j uint8
 	tile := g.get_tile_val16(m, addr)
-	if xoff < 7 {
-
-	}
+    var x uint16
 	if xflip {
 		j = 0
 		for i = 7; i >= 0; i-- {
+            x = uint16(uint8(j)+uint8(xoff))
+            if x <160 &&(pri == 0 || line[x] ==0){ 
 
-			g.output_pixel_sprite(tile[i][ytoff], uint16(uint8(j)+uint8(xoff)), yoff, pal)
+			    g.output_pixel_sprite(tile[i][ytoff], x, yoff, pal)
+            }
 			j++
 		}
 	} else {
 		for i = 0; i < 8; i++ {
+            x = uint16(uint8(i)+uint8(xoff))
+            if x <160 &&(pri == 0 || line[x] ==0){ 
 
-			g.output_pixel_sprite(tile[i][ytoff], uint16(uint8(i)+uint8(xoff)), yoff, pal)
+			    g.output_pixel_sprite(tile[i][ytoff], x, yoff, pal)
+            }
+
 		}
 	}
 }
 
-func (g *GPU) print_tile_sprite(m *MMU, addr uint16, xoff uint16, yoff uint16, ytoff uint16, xflip bool, pal *Palette) {
+func (g *GPU) print_tile_sprite(m *MMU, addr uint16, xoff uint16, yoff uint16, ytoff uint16, xflip bool, pri uint8,pal *Palette,line *Line) {
 	var i int16
 	var j uint16
-
+    var x uint16
 	tile := g.get_tile_val(m, addr)
 
 	if xflip {
 		j = 0
 		for i = 7; i >= 0; i-- {
+            x = uint16(uint8(j)+uint8(xoff))
+            if x <160 &&(pri == 0 || line[x] ==0){ 
 
-			g.output_pixel_sprite(tile[i][ytoff], uint16(uint8(j)+uint8(xoff)), yoff, pal)
+			    g.output_pixel_sprite(tile[i][ytoff], uint16(uint8(j)+uint8(xoff)), yoff, pal)
+            }
 			j++
 		}
 	} else {
 		for i = 0; i < 8; i++ {
-			g.output_pixel_sprite(tile[i][ytoff], uint16(uint8(i)+uint8(xoff)), yoff, pal)
+            x = uint16(uint8(i)+uint8(xoff))
+            if x <160 &&(pri == 0 || line[x] ==0){ 
+			    g.output_pixel_sprite(tile[i][ytoff],x, yoff, pal)
+            }
 		}
 	}
 }
@@ -435,7 +446,7 @@ func (g *GPU) print_tile_line_w(line uint, scanline *Line){
 
 	}
 }
-func (g *GPU) print_sprites(m *MMU) {
+func (g *GPU) print_sprites(m *MMU,line  *Line) {
 
 	var sp sprite
 	var j uint8
@@ -502,9 +513,9 @@ func (g *GPU) print_sprites(m *MMU) {
 
 				//	fmt.Println(sp)
 
-				g.print_tile_sprite16(m, 0x8000+(uint16(sp.num)*16), uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, pal)
+				g.print_tile_sprite16(m, 0x8000+(uint16(sp.num)*16), uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, sp.fl_pri, pal,line)
 			} else {
-				g.print_tile_sprite(m, 0x8000+(uint16(sp.num)*16), uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, pal)
+				g.print_tile_sprite(m, 0x8000+(uint16(sp.num)*16), uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip,sp.fl_pri, pal,line)
 
 			}
 		}
@@ -551,11 +562,11 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 				g.print_tile_line_w(uint(g.LY),&line)
 			}
 		}
-        g.display_line(int16(g.LY),&line,&g.bg_palette)
+            g.display_line(int16(g.LY),&line,&g.bg_palette)
 
 
 		if g.LCDC&0x82 == 0x82 {
-			g.print_sprites(m)
+			g.print_sprites(m,&line)
 
 		}
 
