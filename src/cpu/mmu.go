@@ -100,8 +100,8 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.gpu.mem_written = true
 	case 0xff41:
 		m.cpu.gpu.STAT |= val & 0xf8
-		m.cpu.Dump()
-		fmt.Printf("->STAT:%04X %04X\n", m.cpu.gpu.STAT, val)
+		//m.cpu.Dump()
+		//fmt.Printf("->STAT:%04X %04X\n", m.cpu.gpu.STAT, val)
 
 	case 0xff42:
 		m.cpu.gpu.SCY = val
@@ -153,9 +153,11 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	}
 
 }
+
 func (m *MMU) read_mmio(addr uint16) uint8 {
 	var val uint8 = 0
 	switch addr {
+
 	case 0xff00:
         m.cpu.gp.Update()
 		val = m.cpu.gp.P1

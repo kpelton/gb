@@ -25,6 +25,7 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
+    SCALE = 2
 )
 
 func newScreen() *Screen {
@@ -38,10 +39,8 @@ func (s *Screen) initSDL() {
 	if sdl.Init(sdl.INIT_EVERYTHING) != 0 {
 		fmt.Println(sdl.GetError())
 	}
-	//s.screen = sdl.SetVideoMode(320, 288, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
-	s.screen = sdl.SetVideoMode(640, 576, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
-	//s.screen = sdl.SetVideoMode(1280, 1152, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
 
+	s.screen = sdl.SetVideoMode(160*SCALE, 144*SCALE, 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
 	if s.screen == nil {
 		fmt.Println(sdl.GetError())
 	}
@@ -50,10 +49,10 @@ func (s *Screen) initSDL() {
 
 }
 func (s *Screen) PutPixel(x int16, y int16, color uint32) {
-	s.rect.H = 4
-	s.rect.W = 4
-	s.rect.X = x * 4
-	s.rect.Y = y * 4
+	s.rect.H = SCALE
+	s.rect.W = SCALE
+	s.rect.X = x * SCALE
+	s.rect.Y = y * SCALE
 	s.screen.FillRect(&s.rect, color)
 }
 
@@ -524,19 +523,19 @@ func (g *GPU) print_sprites(m *MMU,line  *Line) {
 
 }
 func (g *GPU) display_line(y int16,line *Line, pal *Palette) {
-    g.rect.H = 4
-	g.rect.W = 4
-	g.rect.Y = y * 4
+    g.rect.H = SCALE
+	g.rect.W = SCALE
+	g.rect.Y = y * SCALE
 	var x int16
     for x=0; x<160; x++ {
-	    g.rect.X = x * 4 
+	    g.rect.X = x * SCALE
         col:=pal[line[x]]
         for j:=x+1; j<160; j++ {
             col2:=pal[line[j]]
             if col2 != col {
                break
             }
-            g.rect.W+=4
+            g.rect.W+=SCALE
             x++
         }
         g.screen.screen.FillRect(&g.rect, pal[line[x]])
@@ -618,7 +617,7 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 		g.frames += 1
 		if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
 			 time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
-			 time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
+	//		 time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
 
 		}
 		if time.Since(g.last_update) > time.Second {

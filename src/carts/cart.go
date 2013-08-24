@@ -171,9 +171,9 @@ func (m *ROM_MBC1) Read_b(addr uint16) uint8 {
 
 	if addr < 0x4000 {
 		retval = m.cart[addr]
-	} else if addr >= 0x4000 && addr < 0x8000 {
+	} else if addr < 0x8000 {
 		retval = m.cart[uint32(addr)+(uint32(m.bank)*0x4000)]
-	} else if addr >= 0xA000 && addr <= 0xc000 {
+	} else {
 		if (m.memory_mode == FOUR_MB && m.ram_enabled == true) || (m.memory_mode == SIXTEEN_MB) {
 			bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
 			fixed_addr := uint16(addr-0xa000) + bank_offset
