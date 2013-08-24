@@ -92,6 +92,57 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.timer.TMA = val
 	case 0xff07:
 		m.cpu.timer.TAC = val
+	case 0xff0F:
+		//`fmt.Printf("->IF:%04X\n", val)
+		m.cpu.ic.IF = val
+	case 0xff10:
+		m.cpu.sound.SND_MODE_1_SWP = val
+	case 0xff11:
+		m.cpu.sound.SND_MODE_1_LEN = val
+	case 0xff12:
+		m.cpu.sound.SND_MODE_1_ENVP = val
+	case 0xff13:
+		m.cpu.sound.SND_MODE_1_FREQ_LOW = val
+	case 0xff14:
+		m.cpu.sound.SND_MODE_1_FREQ_HI = val
+
+	case 0xff16:
+		m.cpu.sound.SND_MODE_2_LEN = val
+	case 0xff17:
+		m.cpu.sound.SND_MODE_2_ENVP = val
+	case 0xff18:
+		m.cpu.sound.SND_MODE_2_FREQ_LOW = val
+	case 0xff19:
+		m.cpu.sound.SND_MODE_2_FREQ_HI = val
+
+	case 0xff1a:
+		m.cpu.sound.SND_MODE_3 = val
+	case 0xff1b:
+		m.cpu.sound.SND_MODE_3_LEN = val
+		fmt.Println(val)
+	case 0xff1c:
+		m.cpu.sound.SND_MODE_3_OUTPUT = val
+	case 0xff1d:
+		m.cpu.sound.SND_MODE_3_FREQ_HI = val
+	case 0xff1e:
+		m.cpu.sound.SND_MODE_3_FREQ_HI = val
+
+	case 0xff20:
+		m.cpu.sound.SND_MODE_4_LEN = val
+	case 0xff21:
+		m.cpu.sound.SND_MODE_4_ENVP = val
+	case 0xff22:
+		m.cpu.sound.SND_MODE_4_POLY = val
+	case 0xff23:
+		m.cpu.sound.SND_MODE_4_COUNTER = val
+
+	case 0xff24:
+		m.cpu.sound.SND_CHN_CTRL = val
+	case 0xff25:
+		m.cpu.sound.SND_TERM_OUTPUT = val
+	case 0xff26:
+		m.cpu.sound.SND_MASTER_CTRL = val
+
 	case 0xff40:
 		m.cpu.gpu.LCDC = val
 		//fmt.Printf("VAL:%04X\n",val)
@@ -141,15 +192,15 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		}
 	case 0xff4A:
 		m.cpu.gpu.WY = val
+		fmt.Printf("->WY:%04X\n", val)
+
 	case 0xff4B:
-		//fmt.Printf("->WX:%04X\n", val)
+		fmt.Printf("->WX:%04X\n", val)
 		m.cpu.gpu.WX = val
 	case 0xffff:
 		m.cpu.ic.IE = val
 		//fmt.Printf("->IE:%04X\n", val)
-	case 0xff0F:
-		//`fmt.Printf("->IF:%04X\n", val)
-		m.cpu.ic.IF = val
+
 	}
 
 }
@@ -159,7 +210,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	switch addr {
 
 	case 0xff00:
-        m.cpu.gp.Update()
+		m.cpu.gp.Update()
 		val = m.cpu.gp.P1
 	//fmt.Printf("<-P1:%04X\n",val)
 	case 0xff04:
@@ -172,6 +223,54 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		val = m.cpu.timer.TMA
 	case 0xff07:
 		val = m.cpu.timer.TAC
+
+	case 0xff10:
+		val = m.cpu.sound.SND_MODE_1_SWP
+	case 0xff11:
+		val = m.cpu.sound.SND_MODE_1_LEN
+	case 0xff12:
+		val = m.cpu.sound.SND_MODE_1_ENVP
+	case 0xff13:
+		val = m.cpu.sound.SND_MODE_1_FREQ_LOW
+	case 0xff14:
+		val = m.cpu.sound.SND_MODE_1_FREQ_HI
+
+	case 0xff16:
+		val = m.cpu.sound.SND_MODE_2_LEN
+	case 0xff17:
+		val = m.cpu.sound.SND_MODE_2_ENVP
+	case 0xff18:
+		val = m.cpu.sound.SND_MODE_2_FREQ_LOW
+	case 0xff19:
+		val = m.cpu.sound.SND_MODE_2_FREQ_HI
+
+	case 0xff1a:
+		val = m.cpu.sound.SND_MODE_3
+	case 0xff1b:
+		val = m.cpu.sound.SND_MODE_3_LEN
+	case 0xff1c:
+		val = m.cpu.sound.SND_MODE_3_OUTPUT
+	case 0xff1d:
+		val = m.cpu.sound.SND_MODE_3_FREQ_HI
+	case 0xff1e:
+		val = m.cpu.sound.SND_MODE_3_FREQ_HI
+
+	case 0xff20:
+		val = m.cpu.sound.SND_MODE_4_LEN
+	case 0xff21:
+		val = m.cpu.sound.SND_MODE_4_ENVP
+	case 0xff22:
+		val = m.cpu.sound.SND_MODE_4_POLY
+	case 0xff23:
+		val = m.cpu.sound.SND_MODE_4_COUNTER
+
+	case 0xff24:
+		val = m.cpu.sound.SND_CHN_CTRL
+	case 0xff25:
+		val = m.cpu.sound.SND_TERM_OUTPUT
+	case 0xff26:
+		val = m.cpu.sound.SND_MASTER_CTRL
+
 	case 0xff40:
 		val = m.cpu.gpu.LCDC
 	case 0xff41:
@@ -206,8 +305,6 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	return val
 }
 
-
-
 func (m *MMU) write_b(addr uint16, val uint8) {
 
 	if addr < 0x8000 {
@@ -221,16 +318,19 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 	} else if addr < 0xfe00 {
 		m.ram[(addr-0x2000)&0x1fff] = val
 		fmt.Println("shadow")
+	} else if addr >= 0xff30 && addr < 0xff40 {
+		//fmt.Println(m.cpu.sound.Wram,(addr&0x00ff) - 0x30)
+		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
 	} else if addr <= 0xfe9f {
 		m.oam[addr&0x00ff] = val
 	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
 		m.write_mmio(addr, val)
 	} else if addr >= 0xff80 {
 		m.z_ram[(addr&0xff)-0x80] = val
-    }else{
-        fmt.Printf("unhandled write:%04x:%04x\n",addr,val)
+	} else {
+		fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
 
-    }
+	}
 
 }
 func (m *MMU) read_b(addr uint16) uint8 {
@@ -249,13 +349,15 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		val = m.ram[(addr-0x2000)&0x1fff]
 	} else if addr <= 0xfe9f {
 		val = m.oam[addr&0x00ff]
+	} else if addr >= 0xff30 && addr < 0xff40 {
+		val = m.cpu.sound.Wram[(addr&0x00ff)-0x30]
 	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
 		val = m.read_mmio(addr)
 	} else if addr >= 0xff80 {
 		val = m.z_ram[(addr&0x00ff)-0x80]
 	} else {
-        fmt.Printf("unhandled write:%04x:%04x\n",addr,val)
-    }
+		fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
+	}
 	return val
 }
 

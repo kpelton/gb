@@ -5,6 +5,7 @@ import (
 	"gp"
 	"ic"
 	"os"
+	"sound"
 	"timer"
 
 //"runtime/pprof"
@@ -66,6 +67,7 @@ type CPU struct {
 	gp         *gp.GP
 	timer      *timer.Timer
 	ic         *ic.IC
+	sound      *sound.Sound
 	is_halted  bool
 	DIV        uint8
 	last_instr uint16
@@ -164,17 +166,17 @@ func (c *CPU) Exec() {
 	var op uint16
 
 	//	fo, err := os.Create("output.txt")
-//	if err != nil { panic(err) }
-////		  defer fo.Close()
-//		pprof.StartCPUProfile(fo) 
-//	last_update := time.Now()
+	//	if err != nil { panic(err) }
+	////		  defer fo.Close()
+	//		pprof.StartCPUProfile(fo) 
+	//	last_update := time.Now()
 	count := uint(0)
 	for {
 
 		//c.last_instr = 4
-        if c.ic.IF > 0{
-		    c.handleInterrupts()
-        }
+		if c.ic.IF > 0 {
+			c.handleInterrupts()
+		}
 		//run op
 		if !c.is_halted {
 			op = uint16(c.mmu.read_w(c.reg16[PC]))
@@ -188,6 +190,7 @@ func (c *CPU) Exec() {
 			}
 			//  c.Dump()		
 			c.ops[op](c)
+			//c.last_instr /=2
 			count++
 
 		}
@@ -195,7 +198,7 @@ func (c *CPU) Exec() {
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
-		if c.ic.IE & 0x10 == 0x10 && count == 2 {
+		if c.ic.IE&0x10 == 0x10 && count >= 20 {
 			raise_int := c.gp.Update()
 			count = 0
 			if raise_int > 0 {
@@ -213,11 +216,11 @@ func (c *CPU) Exec() {
 
 		c.DIV++
 
-	//	 if time.Since(last_update) > 20 *time.Second {
+		//	 if time.Since(last_update) > 20 *time.Second {
 
-	//	pprof.StopCPUProfile()
-	//	 fmt.Println("STOPPED")
-	//	} 
+		//	pprof.StopCPUProfile()
+		//	 fmt.Println("STOPPED")
+		//	} 
 	}
 
 }
@@ -873,8 +876,8 @@ func gen_push_pop(left string, reg_right string) Action {
 	lambda := func(c *CPU) { fmt.Println("Undefined PUSH op" + left) }
 
 	if left == "PUSH" {
-			f_get_val := gen_get_val(type_right, reg_right)
-        lambda = func(c *CPU) {
+		f_get_val := gen_get_val(type_right, reg_right)
+		lambda = func(c *CPU) {
 			//write word to mem
 
 			if reg_right == "AF" {
@@ -1986,6 +1989,7 @@ func buildCpu() *CPU {
 	c.mmu = NewMMU(c)
 	c.timer = timer.NewTimer()
 	c.ic = ic.NewIC()
+	c.sound = sound.NewSound()
 	createOps(c)
 
 	return c

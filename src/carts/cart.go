@@ -211,7 +211,7 @@ func (m *ROM_MBC1) Write_b(addr uint16, val uint8) {
 
 	} else if addr >= 0x4000 && addr < 0x6000 {
 
-		fmt.Println("RAM bank", "from", m.ram_bank, "to", val&0xf)
+		//fmt.Println("RAM bank", "from", m.ram_bank, "to", val&0xf)
 		m.ram_bank = (val & 0xf)
 	} else if addr >= 0x6000 && addr < 0x7000 {
 		if val > 0 {
