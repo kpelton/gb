@@ -559,10 +559,13 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 		g.print_tile_line(uint(g.LY), &line)
 		if g.LCDC&0x20 == 0x20 {
 
-			if g.WX < 166 && g.LY >= g.WY {
-				g.print_tile_line_w(uint(g.LY), &line)
+			if g.WX < 166 {
+				if g.LY >= g.WY {
+					g.print_tile_line_w(uint(g.LY), &line)
+				}
+				g.window_line++
+
 			}
-			g.window_line++
 		}
 		g.display_line(int16(g.LY), &line, &g.bg_palette)
 
