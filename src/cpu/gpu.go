@@ -58,6 +58,7 @@ func (s *Screen) PutPixel(x int16, y int16, color uint32) {
 }
 
 type Palette [4]uint32
+type Line [160]uint8
 
 type GPU struct {
 	screen             *Screen
@@ -80,6 +81,7 @@ type GPU struct {
 	cycle_count        int16
 	last_update        time.Time
 	frame_time         time.Time
+	rect   sdl.Rect
 
 	currline  uint8
 	bg_tmap   TileMap
@@ -381,7 +383,7 @@ func (g *GPU) get_tile_map(m *MMU) {
 
 }
 
-func (g *GPU) print_tile_line(line uint) {
+func (g *GPU) print_tile_line(line uint, scanline *Line) {
 	tile_line := (uint8(line) + g.SCY) & 7
 	map_line := (uint8(line) + g.SCY) >> 3
 	//tile_line := (uint8(line)) & 7
@@ -394,8 +396,10 @@ func (g *GPU) print_tile_line(line uint) {
 			//fmt.Println(i,map_line,j,tile_line)
 
 			val := (g.bg_tmap[i][map_line][j][tile_line])
-			g.screen.PutPixel(int16(x), int16(line), g.bg_palette[val])
-
+			//g.screen.PutPixel(int16(x), int16(line), g.bg_palette[val])
+            if x <160 {
+                scanline[x] = val
+            }
 			j++
 			x++
 		}
@@ -405,7 +409,7 @@ func (g *GPU) print_tile_line(line uint) {
 	}
 
 }
-func (g *GPU) print_tile_line_w(line uint) {
+func (g *GPU) print_tile_line_w(line uint, scanline *Line){
 	var x uint8
 	tile_line := (uint8(line) - g.WY) & 7
 	map_line := (uint8(line) - g.WY) >> 3
@@ -419,7 +423,10 @@ func (g *GPU) print_tile_line_w(line uint) {
 	for x < 166 {
 		for j < 8 {
 			val := g.w_tmap[i][map_line][j][tile_line]
-			g.screen.PutPixel(int16(x), int16(line), g.bg_palette[val])
+			//g.screen.PutPixel(int16(x), int16(line), g.bg_palette[val])
+                if x <160 {
+                scanline[x] = val
+            }
 			j++
 			x++
 		}
@@ -505,25 +512,48 @@ func (g *GPU) print_sprites(m *MMU) {
 	}
 
 }
-
+func (g *GPU) display_line(y int16,line *Line, pal *Palette) {
+    g.rect.H = 4
+	g.rect.W = 4
+	g.rect.Y = y * 4
+	var x int16
+    for x=0; x<160; x++ {
+	    g.rect.X = x * 4 
+        col:=pal[line[x]]
+        for j:=x+1; j<160; j++ {
+            col2:=pal[line[j]]
+            if col2 != col {
+               break
+            }
+            g.rect.W+=4
+            x++
+        }
+        g.screen.screen.FillRect(&g.rect, pal[line[x]])
+    }
+}
 func (g *GPU) hblank(m *MMU, clocks uint16) {
-	if g.LY == 0 {
+	var line Line	
+
+
+    if g.LY == 0 {
 		g.get_tile_map(m)
 
 	}
-
+    
 	if g.LCDC&0x81 == 0x81 {
 		if g.last_lcdc&0x58 != g.LCDC&0x58 {
 			g.get_tile_map(m)
 			//	fmt.Println("REFRESH")
 		}
-		g.print_tile_line(uint(g.LY))
-
+		g.print_tile_line(uint(g.LY),&line)
 		if g.LCDC&0x20 == 0x20 {
 			if g.WX < 166 && g.LY >= g.WY {
-				g.print_tile_line_w(uint(g.LY))
+				g.print_tile_line_w(uint(g.LY),&line)
 			}
 		}
+        g.display_line(int16(g.LY),&line,&g.bg_palette)
+
+
 		if g.LCDC&0x82 == 0x82 {
 			g.print_sprites(m)
 
