@@ -8,9 +8,11 @@ import (
 
 type MMU struct {
 	mem [0x10000]uint8
-	//    cart [0x10000]uint8
+	//      cart [0x10000]uint8
 	cart   carts.Cart
 	vm     [0x2000]uint8
+	ram    [0x2000]uint8
+	z_ram  [0x80]uint8
 	oam    [0xA0]uint8
 	cpu    *CPU
 	block  uint16
@@ -199,23 +201,31 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 
 	return val
 }
+
+/*
 func (m *MMU) read_b(addr uint16) uint8 {
 
-	if addr >= 0x8000 && addr < 0xa000 {
-		return m.vm[addr&0x1fff]
 
-	} else if addr >= 0x100 && addr < 0x4000 {
+	if addr < 0x4000 {
 		//always ROM bank #0
 		return m.cart.Read_b(addr)
 
-	} else if addr >= 0x4000 && addr < 0x8000 || addr >= 0xA000 && addr < 0xC000 {
+
+	} else if addr < 0x8000  {
 		//  fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
 		//return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
 		return m.cart.Read_b(addr)
 		//return m.cart[addr]
 
-	} else if addr <= 0x100 && !m.inbios {
+	}else if addr >= 0x8000 && addr < 0xa000 {
+		return m.vm[addr&0x1fff]
+
+
+	} else if addr < 0xC000 {
+		//  fmt.Printf("Bank:0x%X,Addr:0x%x,Cart:0x%X\n",m.bank,addr,uint32(addr) +(uint32(m.bank) * 0x4000) )
+		//return m.cart[uint32(addr) +(uint32(m.bank) * 0x4000) ]
 		return m.cart.Read_b(addr)
+		//return m.cart[addr]
 
 	} else if addr >= 0xfe00 && addr <= 0xfe9f {
 		fmt.Printf("%x\n", addr)
@@ -230,43 +240,61 @@ func (m *MMU) read_b(addr uint16) uint8 {
 	return m.mem[addr]
 
 }
-
+*/
 func (m *MMU) read_w(addr uint16) uint16 {
 	return uint16(m.read_b(addr)) | uint16((m.read_b(addr+1)))<<8
 }
 
 func (m *MMU) write_b(addr uint16, val uint8) {
 
-	//   fmt.Printf("write:%04x:%04x\n",addr,val)
-
-	if addr >= 0x8000 && addr < 0xA000 {
-		m.vm[addr&0x1fff] = val
-		//m.cpu.Dump()
-		//fmt.Printf("Video:0x%04X->0x%02X\n",addr,val) 
-		//m.cpu.gpu.mem_written = true
-		m.vm[addr&0x1fff] = val
-		return
-
-	} else if addr < 0x8000 || addr >= 0xA000 && addr < 0xC000 {
+	if addr < 0x8000 {
 		m.cart.Write_b(addr, val)
-		return
+	} else if addr < 0xA000 {
+		m.vm[addr&0x1fff] = val
+	} else if addr < 0xC000 {
+		m.cart.Write_b(addr, val)
+	} else if addr < 0xe000 {
+		m.ram[addr&0x1fff] = val
+	} else if addr < 0xfe00 {
+		m.ram[(addr-0x2000)&0x1fff] = val
+		fmt.Println("shadow")
+	} else if addr <= 0xfe9f {
+		m.oam[addr&0x00ff] = val
 	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
 		m.write_mmio(addr, val)
-		return
-	} else if addr >= 0xfe00 && addr <= 0xfe9f {
-		m.oam[addr&0x00ff] = val
-		return
-	} else if addr >= 0xe000 && addr < 0xfe00 {
-		m.mem[addr-0x1000] = val
-		fmt.Println("shadow")
-		return
+	} else if addr >= 0xff80 {
+		m.z_ram[(addr&0xff)-0x80] = val
+    }else{
+        fmt.Printf("unhandled write:%04x:%04x\n",addr,val)
 
-	}
-
-	m.mem[addr] = val
+    }
 
 }
+func (m *MMU) read_b(addr uint16) uint8 {
 
+	//   fmt.Printf("write:%04x:%04x\n",addr,val)
+	var val uint8
+	if addr < 0x8000 {
+		val = m.cart.Read_b(addr)
+	} else if addr < 0xA000 {
+		val = m.vm[addr&0x1fff]
+	} else if addr < 0xC000 {
+		val = m.cart.Read_b(addr)
+	} else if addr < 0xe000 {
+		val = m.ram[addr&0x1fff]
+	} else if addr < 0xfe00 {
+		val = m.ram[(addr-0x2000)&0x1fff]
+	} else if addr <= 0xfe9f {
+		val = m.oam[addr&0x00ff]
+	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
+		val = m.read_mmio(addr)
+	} else if addr >= 0xff80 {
+		val = m.z_ram[(addr&0x00ff)-0x80]
+	} else {
+        fmt.Printf("unhandled write:%04x:%04x\n",addr,val)
+    }
+	return val
+}
 func (m *MMU) write_w(addr uint16, val uint16) {
 
 	m.write_b(addr, uint8(val&0x00ff))
