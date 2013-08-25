@@ -556,7 +556,7 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 	if g.LCDC&0x81 == 0x81 {
 		if g.last_lcdc&0x58 != g.LCDC&0x58 {//&& g.lyc_int != g.LY {
 			g.get_tile_map(m)
-			fmt.Printf("REFRESH 0x%x\n",g.LY)
+			//fmt.Printf("REFRESH 0x%x\n",g.LY)
 		    m.cpu.Dump()
             } 
         //if g.lyc_int != g.LY{
@@ -589,7 +589,7 @@ func (g *GPU) check_stat_int(m *MMU) {
 	//Check LYC FLAg
 	if g.LY == g.LYC {
 		if g.STAT&0x04 != 0x04 && g.STAT&0x40 == 0x40 {
-			m.cpu.ic.Assert(constants.LCDC)
+		//	m.cpu.ic.Assert(constants.LCDC)
 			g.STAT |= 0x04
             g.lyc_int = g.LY
 			fmt.Printf("Asserted lyc 0x%x 0x%x",g.LY,g.LYC)
