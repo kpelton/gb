@@ -25,7 +25,7 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
-	SCALE         = 2
+	SCALE         = 4 
 	fullspeed     = true
 )
 
@@ -589,10 +589,10 @@ func (g *GPU) check_stat_int(m *MMU) {
 	//Check LYC FLAg
 	if g.LY == g.LYC {
 		if g.STAT&0x04 != 0x04 && g.STAT&0x40 == 0x40 {
-		//	m.cpu.ic.Assert(constants.LCDC)
+			m.cpu.ic.Assert(constants.LCDC)
 			g.STAT |= 0x04
-            g.lyc_int = g.LY
-			fmt.Printf("Asserted lyc 0x%x 0x%x",g.LY,g.LYC)
+            		g.lyc_int = g.LY
+			//fmt.Printf("Asserted lyc 0x%x 0x%x",g.LY,g.LYC)
 		}
 
 	} else {
