@@ -25,7 +25,7 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
-	SCALE         = 4
+	SCALE         = 4 
 	fullspeed     = true
 )
 
@@ -83,12 +83,12 @@ type GPU struct {
 	last_update        time.Time
 	frame_time         time.Time
 	rect               sdl.Rect
-	Cache              TileCache
-	currline           uint8
-	bg_tmap            TileMap
-	w_tmap             TileMap
-	line_done          uint8
-	frames             uint16
+
+	currline  uint8
+	bg_tmap   TileMap
+	w_tmap    TileMap
+	line_done uint8
+	frames    uint16
 	//palettes
 	win_palette  Palette
 	bg_palette   Palette
@@ -96,7 +96,8 @@ type GPU struct {
 	obp1_palette Palette
 
 	last_lcdc uint8
-	lyc_int   uint8
+	lyc_int uint8
+
 }
 
 type sprite struct {
@@ -152,15 +153,12 @@ func NewGPU() *GPU {
 	g.obp0_palette = g.bg_palette
 	g.obp1_palette = g.bg_palette
 	g.cycle_count = 456
-	g.Cache = make(TileCache)
-
 	return g
 }
 
 type Tile [8][8]uint8
 type Tile16 [8][16]uint8
 type TileMap [32][32]Tile
-type TileCache map[uint16]Tile
 
 func (g *GPU) get_tile_val(m *MMU, addr uint16) Tile {
 
@@ -168,10 +166,6 @@ func (g *GPU) get_tile_val(m *MMU, addr uint16) Tile {
 	var j uint16
 	var i uint8
 	var tile Tile
-	val, exists := g.Cache[addr]
-	if exists {
-		return val
-	}
 
 	for k = 0; k < 8; k++ {
 		var off uint16 = addr + uint16(k*2)
@@ -184,7 +178,6 @@ func (g *GPU) get_tile_val(m *MMU, addr uint16) Tile {
 			i--
 		}
 	}
-	g.Cache[addr] = tile
 	return tile
 }
 
@@ -306,7 +299,6 @@ func (g *GPU) get_tile_map(m *MMU) {
 	//var tile_limit uint16
 
 	var tile uint16
-	g.Cache = make(TileCache)
 
 	//Bit3 Tile map base
 	if g.LCDC&0x08 == 0x08 {
@@ -562,14 +554,14 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 	}
 
 	if g.LCDC&0x81 == 0x81 {
-		if g.last_lcdc&0x58 != g.LCDC&0x58 { //&& g.lyc_int != g.LY {
+		if g.last_lcdc&0x58 != g.LCDC&0x58 {//&& g.lyc_int != g.LY {
 			g.get_tile_map(m)
 			//fmt.Printf("REFRESH 0x%x\n",g.LY)
-			//m.cpu.Dump()
-		}
-		//if g.lyc_int != g.LY{
-		g.last_lcdc = g.LCDC
-		//}
+		    m.cpu.Dump()
+            } 
+        //if g.lyc_int != g.LY{
+	        g.last_lcdc = g.LCDC
+        //}
 		g.print_tile_line(uint(g.LY), &line)
 		if g.LCDC&0x20 == 0x20 {
 
@@ -599,7 +591,7 @@ func (g *GPU) check_stat_int(m *MMU) {
 		if g.STAT&0x04 != 0x04 && g.STAT&0x40 == 0x40 {
 			m.cpu.ic.Assert(constants.LCDC)
 			g.STAT |= 0x04
-			g.lyc_int = g.LY
+            		g.lyc_int = g.LY
 			//fmt.Printf("Asserted lyc 0x%x 0x%x",g.LY,g.LYC)
 		}
 
@@ -631,14 +623,15 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 		g.STAT = (g.STAT & 0xfc) | 0x01
 		//ASSERT vblank int
 		m.cpu.ic.Assert(constants.V_BLANK)
-		if !fullspeed && time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
-			time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
-			//		 time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
-
-		}
 		g.screen.screen.Flip()
 		g.frames += 1
+		if !fullspeed {
+			if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
+				time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
+				//		 time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))
 
+			}
+		}
 		if time.Since(g.last_update) > time.Second {
 			fmt.Println("FPS", int(g.frames))
 			g.frames = 0
@@ -661,7 +654,7 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 }
 
 func (g *GPU) Update(m *MMU, clocks uint16) {
-
+	
 	g.check_stat_int(m)
 	if g.LCDC&0x80 == 0x80 {
 		//	fmt.Printf("STAT:0x%04u\n",g.LY)
