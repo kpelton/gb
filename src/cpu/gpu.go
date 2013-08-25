@@ -96,6 +96,8 @@ type GPU struct {
 	obp1_palette Palette
 
 	last_lcdc uint8
+	lyc_int uint8
+
 }
 
 type sprite struct {
@@ -552,10 +554,14 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 	}
 
 	if g.LCDC&0x81 == 0x81 {
-		if g.last_lcdc&0x58 != g.LCDC&0x58 {
+		if g.last_lcdc&0x58 != g.LCDC&0x58 {//&& g.lyc_int != g.LY {
 			g.get_tile_map(m)
-			//fmt.Println("REFRESH")
-		}
+			fmt.Printf("REFRESH 0x%x\n",g.LY)
+		    m.cpu.Dump()
+            } 
+        //if g.lyc_int != g.LY{
+	        g.last_lcdc = g.LCDC
+        //}
 		g.print_tile_line(uint(g.LY), &line)
 		if g.LCDC&0x20 == 0x20 {
 
@@ -576,7 +582,6 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 
 	}
 	g.line_done = 1
-	g.last_lcdc = g.LCDC
 }
 
 func (g *GPU) check_stat_int(m *MMU) {
@@ -586,8 +591,8 @@ func (g *GPU) check_stat_int(m *MMU) {
 		if g.STAT&0x04 != 0x04 && g.STAT&0x40 == 0x40 {
 			m.cpu.ic.Assert(constants.LCDC)
 			g.STAT |= 0x04
-
-			//fmt.Println("Asserted lyc",g.LY,g.LYC)
+            g.lyc_int = g.LY
+			fmt.Printf("Asserted lyc 0x%x 0x%x",g.LY,g.LYC)
 		}
 
 	} else {
@@ -649,7 +654,8 @@ func (g *GPU) vblank(m *MMU, clocks uint16) {
 }
 
 func (g *GPU) Update(m *MMU, clocks uint16) {
-
+	
+	g.check_stat_int(m)
 	if g.LCDC&0x80 == 0x80 {
 		//	fmt.Printf("STAT:0x%04u\n",g.LY)
 
@@ -678,10 +684,8 @@ func (g *GPU) Update(m *MMU, clocks uint16) {
 			g.cycle_count += 456
 			g.line_done = 0
 			g.LY++
-			//			g.check_stat_int(m)
 
 		}
-		g.check_stat_int(m)
 
 		g.cycle_count -= int16(clocks)
 	} else {
