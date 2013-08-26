@@ -878,36 +878,48 @@ func gen_push_pop(left string, reg_right string) Action {
 		f_get_val := gen_get_val(type_right, reg_right)
 		lambda = func(c *CPU) {
 			//write word to mem
-
-			if reg_right == "AF" {
-				c.reg8[F] = 0
-
-				if c.reg8[FL_C] == 1 {
-					c.reg8[F] |= 0x10
-				}
-				if c.reg8[FL_H] == 1 {
-					c.reg8[F] |= 0x20
-				}
-				if c.reg8[FL_N] == 1 {
-					c.reg8[F] |= 0x40
-				}
-				if c.reg8[FL_Z] == 1 {
-					c.reg8[F] |= 0x80
-				}
-				//	fmt.Printf("->Write F:%x\n", c.reg8[F])
-
-			}
 			c.reg16[SP] -= 2
-			//fmt.Printf("Write 0x%04x to 0x%04x\n",f_get_val(c),c.reg16[SP])
+			c.mmu.write_w(c.reg16[SP], f_get_val(c))
+			c.do_instr(desc, 16, 1)
+		}
+	} else if left == "PUSHAF" {
+		f_get_val := gen_get_val(type_right, reg_right)
+		lambda = func(c *CPU) {
+			//write word to mem
+			c.reg8[F] = 0
+
+			if c.reg8[FL_C] == 1 {
+				c.reg8[F] |= 0x10
+			}
+			if c.reg8[FL_H] == 1 {
+				c.reg8[F] |= 0x20
+			}
+			if c.reg8[FL_N] == 1 {
+				c.reg8[F] |= 0x40
+			}
+			if c.reg8[FL_Z] == 1 {
+				c.reg8[F] |= 0x80
+			}
+
+			c.reg16[SP] -= 2
 
 			c.mmu.write_w(c.reg16[SP], f_get_val(c))
 
-			//fmt.Printf("0x%04x",c.reg16[SP])
 			c.do_instr(desc, 16, 1)
 
-			//fmt.Println(c.reg8,c.reg16)
 		}
 	} else if left == "POP" {
+
+		f_set_val := gen_set_val(type_right, reg_right)
+		lambda = func(c *CPU) {
+			val := c.mmu.read_w(c.reg16[SP])
+			c.reg16[SP] += 2
+			f_set_val(c, val)
+
+			c.do_instr(desc, 12, 1)
+
+		}
+	} else if left == "POPAF" {
 
 		f_set_val := gen_set_val(type_right, reg_right)
 		lambda = func(c *CPU) {
@@ -915,35 +927,33 @@ func gen_push_pop(left string, reg_right string) Action {
 			val := c.mmu.read_w(c.reg16[SP])
 			//fmt.Printf("read 0x%04x to 0x%04x",val,c.reg16[SP])
 			//fmt.Println(val)
-			if reg_right == "AF" {
-				new_val := uint8(val & 0x00ff)
-				c.reg8[FL_C] = 0
-				c.reg8[FL_H] = 0
-				c.reg8[FL_N] = 0
-				c.reg8[FL_Z] = 0
+			new_val := uint8(val & 0x00ff)
+			c.reg8[FL_C] = 0
+			c.reg8[FL_H] = 0
+			c.reg8[FL_N] = 0
+			c.reg8[FL_Z] = 0
 
-				if new_val&0x10 == 0x10 {
-					c.reg8[FL_C] = 1
-					//	fmt.Printf("Set C\n")
-
-				}
-
-				if new_val&0x20 == 0x20 {
-					c.reg8[FL_H] = 1
-					//	fmt.Printf("Set H\n")
-
-				}
-				if new_val&0x40 == 0x40 {
-					c.reg8[FL_N] = 1
-					//	fmt.Printf("Set N\n")
-				}
-				if new_val&0x80 == 0x80 {
-					c.reg8[FL_Z] = 1
-					//	fmt.Printf("Set Z\n")
-				}
-				//	fmt.Printf("Pop->Write->new_val 0x%04x\n",new_val)
+			if new_val&0x10 == 0x10 {
+				c.reg8[FL_C] = 1
+				//	fmt.Printf("Set C\n")
 
 			}
+
+			if new_val&0x20 == 0x20 {
+				c.reg8[FL_H] = 1
+				//	fmt.Printf("Set H\n")
+
+			}
+			if new_val&0x40 == 0x40 {
+				c.reg8[FL_N] = 1
+				//	fmt.Printf("Set N\n")
+			}
+			if new_val&0x80 == 0x80 {
+				c.reg8[FL_Z] = 1
+				//	fmt.Printf("Set Z\n")
+			}
+			//	fmt.Printf("Pop->Write->new_val 0x%04x\n",new_val)
+
 			//	fmt.Printf("Pop->Write 0x%04x\n",val)
 
 			c.reg16[SP] += 2
@@ -1521,12 +1531,12 @@ func createOps(c *CPU) {
 
 	c.ops[0xf9] = gen_ld("SP", "HL", 8, 1)
 	c.ops[0x08] = gen_ld("(nn)", "SP", 20, 3)
-	c.ops[0xf5] = gen_push_pop("PUSH", "AF")
+	c.ops[0xf5] = gen_push_pop("PUSHAF", "AF")
 	c.ops[0xC5] = gen_push_pop("PUSH", "BC")
 	c.ops[0xD5] = gen_push_pop("PUSH", "DE")
 	c.ops[0xE5] = gen_push_pop("PUSH", "HL")
 
-	c.ops[0xF1] = gen_push_pop("POP", "AF")
+	c.ops[0xF1] = gen_push_pop("POPAF", "AF")
 	c.ops[0xC1] = gen_push_pop("POP", "BC")
 	c.ops[0xD1] = gen_push_pop("POP", "DE")
 	c.ops[0xE1] = gen_push_pop("POP", "HL")

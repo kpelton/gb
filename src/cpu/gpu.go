@@ -25,7 +25,7 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
-	SCALE         = 4 
+	SCALE         = 3
 	fullspeed     = true
 )
 
@@ -557,7 +557,7 @@ func (g *GPU) hblank(m *MMU, clocks uint16) {
 		if g.last_lcdc&0x58 != g.LCDC&0x58 {//&& g.lyc_int != g.LY {
 			g.get_tile_map(m)
 			//fmt.Printf("REFRESH 0x%x\n",g.LY)
-		    m.cpu.Dump()
+		    //m.cpu.Dump()
             } 
         //if g.lyc_int != g.LY{
 	        g.last_lcdc = g.LCDC
