@@ -83,7 +83,8 @@ type GPU struct {
 	last_update        time.Time
 	frame_time         time.Time
 	rect               sdl.Rect
-
+	Cache		   TileCache
+	tile_vals	   TileVals
 	currline  uint8
 	bg_tmap   TileMap
 	w_tmap    TileMap
@@ -158,15 +159,21 @@ func NewGPU() *GPU {
 
 type Tile [8][8]uint8
 type Tile16 [8][16]uint8
-type TileMap [32][32]Tile
+type TileMap [32][32]*Tile
+type TileVals [0x180]Tile
+type TileCache [0x180]*Tile
 
-func (g *GPU) get_tile_val(m *MMU, addr uint16) Tile {
+func (g *GPU) get_tile_val(m *MMU, addr uint16) *Tile {
 
 	var k int16
 	var j uint16
 	var i uint8
-	var tile Tile
+	offset :=(addr &0x1ff0) >>4
 
+	///fmt.Printf("0x%x->0x%x\n",addr,((addr) &(0x1ff0))/16)
+	if g.Cache[offset] != nil {
+		return g.Cache[offset]
+	} 
 	for k = 0; k < 8; k++ {
 		var off uint16 = addr + uint16(k*2)
 		bl := m.vm[off&0x1fff]
@@ -174,11 +181,12 @@ func (g *GPU) get_tile_val(m *MMU, addr uint16) Tile {
 		i = 7
 		for j = 0; j < 8; j++ {
 			val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
-			tile[i][k] = val
+			g.tile_vals[offset][i][k] = val
 			i--
 		}
 	}
-	return tile
+	g.Cache[offset] = &g.tile_vals[offset]
+	return &g.tile_vals[offset]
 }
 
 func (g *GPU) get_tile_val16(m *MMU, addr uint16) Tile16 {

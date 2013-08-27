@@ -311,6 +311,12 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 	if addr < 0x8000 {
 		m.cart.Write_b(addr, val)
 	} else if addr < 0xA000 {
+	
+		if addr <0x9800 {
+			offset := (addr &0x1fff)>>4
+			//invalidate cache for given tile
+			m.cpu.gpu.Cache[offset] = nil
+		}
 		m.vm[addr&0x1fff] = val
 	} else if addr < 0xC000 {
 		m.cart.Write_b(addr, val)
