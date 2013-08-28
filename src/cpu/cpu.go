@@ -200,14 +200,14 @@ func (c *CPU) Exec() {
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
-		if c.ic.IE&0x10 == 0x10 && count >= 20000 {
+		if c.ic.IE&0x10 == 0x10 && count >= 1000 {
 			raise_int := c.gp.Update()
 			count = 0
 			if raise_int > 0 {
 				c.ic.Assert(raise_int)
 			}
 		}
-         if c.ic.IE&0x08 == 0x08 && count >= 2000  {
+         if c.ic.IE&0x08 == 0x08 && count >= 300 {
 		        c.serial.Update()
                 count = 0
 		}
