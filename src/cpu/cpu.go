@@ -7,6 +7,7 @@ import (
 	"os"
 	"sound"
 	"timer"
+    "serial"
 
 //"runtime/pprof"
 //"time"
@@ -65,6 +66,7 @@ type CPU struct {
 	mmu        *MMU
 	gpu        *GPU
 	gp         *gp.GP
+    serial     serial.Serial
 	timer      *timer.Timer
 	ic         *ic.IC
 	sound      *sound.Sound
@@ -76,7 +78,7 @@ type CPU struct {
 
 func (c *CPU) load_bios() {
 
-	c.mmu.Create_new_cart(os.Args[1])
+	c.mmu.Create_new_cart(os.Args[len(os.Args)-1])
 
 	c.reg16[PC] = 0x100
 	c.reg16[SP] = 0xfffe
@@ -188,7 +190,7 @@ func (c *CPU) Exec() {
 			} else {
 				op = 0xcb00 | ((op & 0xff00) >> 8)
 			}
-			//  c.Dump()		
+			 // c.Dump()		
 			c.ops[op](c)
 			//c.last_instr /=2
 			count++
@@ -198,12 +200,16 @@ func (c *CPU) Exec() {
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
-		if c.ic.IE&0x10 == 0x10 && count >= 2000 {
+		if c.ic.IE&0x10 == 0x10 && count >= 20000 {
 			raise_int := c.gp.Update()
 			count = 0
 			if raise_int > 0 {
 				c.ic.Assert(raise_int)
 			}
+		}
+         if c.ic.IE&0x08 == 0x08 && count >= 2000  {
+		        c.serial.Update()
+                count = 0
 		}
 
 		//for i:=0; i< int(c.last_instr); i++ {
@@ -213,7 +219,6 @@ func (c *CPU) Exec() {
 		if raise_int > 0 {
 			c.ic.Assert(raise_int)
 		}
-
 		c.DIV++
 		//	 if time.Since(last_update) > 20 *time.Second {
 
@@ -1394,9 +1399,7 @@ func gen_ldh(reg_left string, reg_right string, ticks uint16, args uint16) Actio
 	return lambda
 }
 
-func NewCpu() *CPU {
-	return buildCpu()
-}
+
 
 func createOps(c *CPU) {
 	//Init registers
@@ -1990,7 +1993,7 @@ func createOps(c *CPU) {
 	//c.ops[0x27] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
 }
 
-func buildCpu() *CPU {
+func NewCpu(listen bool, connect string) *CPU {
 	c := new(CPU)
 
 	c.gpu = NewGPU()
@@ -1999,7 +2002,13 @@ func buildCpu() *CPU {
 	c.timer = timer.NewTimer()
 	c.ic = ic.NewIC()
 	c.sound = sound.NewSound()
-	createOps(c)
+    if listen != false || connect != "" {
+        c.serial = serial.NewNetSerial(c.ic,listen,connect)
+
+    }else{
+        c.serial = serial.NewFakeSerial(c.ic)
+	}
+    createOps(c)
 
 	return c
 }

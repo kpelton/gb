@@ -2,12 +2,11 @@ package cpu
 
 import (
 	"carts"
-	"constants"
 	"fmt"
+
 )
 
 type MMU struct {
-	mem [0x10000]uint8
 	//      cart [0x10000]uint8
 	cart   carts.Cart
 	vm     [0x2000]uint8
@@ -74,18 +73,13 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 
 		m.cpu.gp.P1 = val
 		//		fmt.Printf("->P1:%04X\n",val)
+	case 0xff01:
+       // fmt.Printf("->SERIALB:%04X\n", val)
+
+        m.cpu.serial.Write(addr,val)        
 	case 0xff02:
-		//fmt.Printf("->SERIAL:%04X\n", val)
-		if ((m.mem[0xff02] & 0x80) == 0x80) && ((m.mem[0xff02] & 0x1) == 0x1) {
-
-			m.cpu.ic.Assert(constants.SERIAL)
-			m.mem[0xff01] = 0xff
-			m.mem[0xff02] = val & (^uint8(0x80))
-
-		} else {
-			m.mem[0xff02] |= val
-
-		}
+		//fmt.Printf("->SERIALC:%04X\n", val)
+         m.cpu.serial.Write(addr,val)        
 
 	case 0xff05:
 		m.cpu.timer.TIMA = val
@@ -214,6 +208,17 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		m.cpu.gp.Update()
 		val = m.cpu.gp.P1
 	//fmt.Printf("<-P1:%04X\n",val)
+    case 0xff01:
+
+        val= m.cpu.serial.Read(addr)     
+                   fmt.Printf("<-SERIALB:%04X\n", val)
+
+	case 0xff02:
+
+        val = m.cpu.serial.Read(addr)        
+		fmt.Printf("<-SERIALC:%04X\n", val)
+
+
 	case 0xff04:
 		val = m.cpu.DIV
 		//fmt.Printf("<-DIV:%04X\n",val)
