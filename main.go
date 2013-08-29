@@ -6,7 +6,7 @@ import ("cpu"
         )
 func main() {
     var host = flag.Bool("serv", false, "Host server for gameport")
-    var serv = flag.String("conenct", "", "connect to server")
+    var serv = flag.String("connect", "", "connect to server")
     var scale = flag.Int("s", 4, "window scale")
 
     flag.Parse()
