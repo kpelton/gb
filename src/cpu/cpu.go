@@ -501,6 +501,7 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 	case "DAA":
 		lambda = func(c *CPU) {
 			val := uint16(f_right_get_val(c))
+            fmt.Println("CALLED")
 			if c.reg8[FL_N] != 1 {
 				if c.reg8[FL_H] == 1 || ((val & 0x0f) > 0x09) {
 					val += 0x06

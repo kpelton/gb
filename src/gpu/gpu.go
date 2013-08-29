@@ -554,12 +554,13 @@ func (g *GPU) print_sprites(line *Line) {
 
 }
 func (g *GPU) display_line(y int16, line *Line, pal *Palette) {
+    //minimize draws to lines that have more than one color.
 	g.rect.H = uint16(g.scale)
-	g.rect.W = uint16(g.scale)
 	g.rect.Y = y * g.scale
 	var x int16
 	for x = 0; x < 160; x++ {
 		g.rect.X = x * g.scale
+		g.rect.W = uint16(g.scale)
 		col := pal[line[x]]
 		for j := x + 1; j < 160; j++ {
 			col2 := pal[line[j]]
@@ -568,7 +569,9 @@ func (g *GPU) display_line(y int16, line *Line, pal *Palette) {
 			}
 			g.rect.W += uint16(g.scale)
 			x++
+
 		}
+
 		g.screen.screen.FillRect(&g.rect, pal[line[x]])
 	}
 }
