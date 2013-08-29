@@ -9,10 +9,8 @@ import (
 type MMU struct {
 	//      cart [0x10000]uint8
 	cart   carts.Cart
-	vm     [0x2000]uint8
 	ram    [0x2000]uint8
 	z_ram  [0x80]uint8
-	oam    [0xA0]uint8
 	cpu    *CPU
 	block  uint16
 	inbios bool
@@ -31,37 +29,13 @@ func (m *MMU) Create_new_cart(filename string) {
 	m.cart = carts.Load_cart(filename)
 }
 
-func (m *MMU) Dump_mem() {
-	j := 0
-	fmt.Printf("\n0x0000:")
-	for i := 0x8000; i < 0xafff; i++ {
-		fmt.Printf("%02X ", m.vm[i])
-		j++
-		if j == 16 {
-			fmt.Printf("\n0x%04X:", i+1+0x0000)
-			j = 0
-		}
-	}
-
-}
-func (m *MMU) Dump_vm() {
-	j := 0
-	for i := 0x0; i < 0x2000; i++ {
-		fmt.Printf("%02X ", m.vm[i])
-		j++
-		if j == 16 {
-			fmt.Printf("\n0x%04X:", i+1+0x8000)
-			j = 0
-		}
-	}
-}
 
 func (m *MMU) exec_dma(addr uint8) {
 	var real_addr uint16
 	var i uint16
 	real_addr = uint16(addr) * 0x100
 	for i = 0; i < 160; i++ {
-		m.oam[i] = m.read_b(real_addr + i)
+		m.cpu.gpu.Oam[i] = m.read_b(real_addr + i)
 
 	}
 
@@ -143,7 +117,6 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		//fmt.Printf("VAL:%04X\n",val)
 		//m.cpu.Dump()
 		//fmt.Printf("->LCDC:%04X,LY:0x%04X\n", val,m.cpu.gpu.LY)
-		m.cpu.gpu.mem_written = true
 	case 0xff41:
 		m.cpu.gpu.STAT |= val & 0xf8
 		//m.cpu.Dump()
@@ -168,22 +141,21 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.exec_dma(val)
 	case 0xff47:
 		if val != m.cpu.gpu.BGP {
-			m.cpu.gpu.update_palette(&m.cpu.gpu.bg_palette, val)
 			m.cpu.gpu.BGP = val
-			//fmt.Println("BGP", val, m.cpu.gpu.obp0_palette)
+            m.cpu.gpu.UpdatePaletteBg( val)
 
 		}
 	case 0xff48:
 		if val != m.cpu.gpu.OBP0 {
 			m.cpu.gpu.OBP0 = val
-			m.cpu.gpu.update_palette(&m.cpu.gpu.obp0_palette, val)
-			//fmt.Println(m.cpu.gpu.obp0_palette)
+			m.cpu.gpu.UpdatePaletteObp0( val)
 
 		}
 	case 0xff49:
 		if val != m.cpu.gpu.OBP1 {
 			m.cpu.gpu.OBP1 = val
-			m.cpu.gpu.update_palette(&m.cpu.gpu.obp1_palette, val)
+			m.cpu.gpu.UpdatePaletteObp1( val)
+
 		}
 	case 0xff4A:
 		m.cpu.gpu.WY = val
@@ -322,7 +294,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 			//invalidate cache for given tile
 			m.cpu.gpu.Cache[offset] = nil
 		}
-		m.vm[addr&0x1fff] = val
+		m.cpu.gpu.Vm[addr&0x1fff] = val
 	} else if addr < 0xC000 {
 		m.cart.Write_b(addr, val)
 	} else if addr < 0xe000 {
@@ -334,7 +306,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 		//fmt.Println(m.cpu.sound.Wram,(addr&0x00ff) - 0x30)
 		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
 	} else if addr <= 0xfe9f {
-		m.oam[addr&0x00ff] = val
+		m.cpu.gpu.Oam[addr&0x00ff] = val
 	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
 		m.write_mmio(addr, val)
 	} else if addr >= 0xff80 {
@@ -352,7 +324,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
 	if addr < 0x8000 {
 		val = m.cart.Read_b(addr)
 	} else if addr < 0xA000 {
-		val = m.vm[addr&0x1fff]
+		val = m.cpu.gpu.Vm[addr&0x1fff]
 	} else if addr < 0xC000 {
 		val = m.cart.Read_b(addr)
 	} else if addr < 0xe000 {
@@ -360,7 +332,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
 	} else if addr < 0xfe00 {
 		val = m.ram[(addr-0x2000)&0x1fff]
 	} else if addr <= 0xfe9f {
-		val = m.oam[addr&0x00ff]
+		val = m.cpu.gpu.Oam[addr&0x00ff]
 	} else if addr >= 0xff30 && addr < 0xff40 {
 		val = m.cpu.sound.Wram[(addr&0x00ff)-0x30]
 	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {

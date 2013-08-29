@@ -3,11 +3,12 @@ package cpu
 import (
 	"fmt"
 	"gp"
+	"gpu"
 	"ic"
 	"os"
+	"serial"
 	"sound"
 	"timer"
-    "serial"
 
 //"runtime/pprof"
 //"time"
@@ -64,9 +65,9 @@ type CPU struct {
 	reg8       RegMap8
 	reg16      RegMap16
 	mmu        *MMU
-	gpu        *GPU
+	gpu        *gpu.GPU
 	gp         *gp.GP
-    serial     serial.Serial
+	serial     serial.Serial
 	timer      *timer.Timer
 	ic         *ic.IC
 	sound      *sound.Sound
@@ -160,7 +161,7 @@ func (c *CPU) handleInterrupts() {
 	}
 }
 func (c *CPU) Dump() {
-	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x LY:%02x  g_clocks:%d \n", c.reg16[PC], c.reg16[SP], c.reg8[A], c.reg8[B], c.reg8[C], c.reg8[D], c.reg8[E], c.reg8[H], c.reg8[L], c.reg8[FL_Z], c.reg8[FL_C], c.reg8[FL_H], c.gpu.LY, c.gpu.cycle_count) //,c.reg8[FL_N]);
+	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x LY:%02x  g_clocks:%d \n", c.reg16[PC], c.reg16[SP], c.reg8[A], c.reg8[B], c.reg8[C], c.reg8[D], c.reg8[E], c.reg8[H], c.reg8[L], c.reg8[FL_Z], c.reg8[FL_C], c.reg8[FL_H], c.gpu.LY, c.gpu.LY) //,c.reg8[FL_N]);
 }
 func (c *CPU) Exec() {
 
@@ -190,7 +191,7 @@ func (c *CPU) Exec() {
 			} else {
 				op = 0xcb00 | ((op & 0xff00) >> 8)
 			}
-			 // c.Dump()		
+			// c.Dump()		
 			c.ops[op](c)
 			//c.last_instr /=2
 			count++
@@ -207,13 +208,13 @@ func (c *CPU) Exec() {
 				c.ic.Assert(raise_int)
 			}
 		}
-         if c.ic.IE&0x08 == 0x08 && count >= 300 {
-		        c.serial.Update()
-                count = 0
+		if c.ic.IE&0x08 == 0x08 && count >= 300 {
+			c.serial.Update()
+			count = 0
 		}
 
 		//for i:=0; i< int(c.last_instr); i++ {
-		c.gpu.Update(c.mmu, uint16(c.last_instr))
+		c.gpu.Update(uint16(c.last_instr))
 		//	}
 		raise_int := c.timer.Update(uint64(c.last_instr))
 		if raise_int > 0 {
@@ -1399,8 +1400,6 @@ func gen_ldh(reg_left string, reg_right string, ticks uint16, args uint16) Actio
 	return lambda
 }
 
-
-
 func createOps(c *CPU) {
 	//Init registers
 	/////////////////
@@ -1993,22 +1992,23 @@ func createOps(c *CPU) {
 	//c.ops[0x27] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
 }
 
-func NewCpu(listen bool, connect string) *CPU {
+func NewCpu(listen bool, connect string, scale int) *CPU {
 	c := new(CPU)
 
-	c.gpu = NewGPU()
 	c.gp = gp.NewGP()
 	c.mmu = NewMMU(c)
 	c.timer = timer.NewTimer()
 	c.ic = ic.NewIC()
 	c.sound = sound.NewSound()
-    if listen != false || connect != "" {
-        c.serial = serial.NewNetSerial(c.ic,listen,connect)
+	c.gpu = gpu.NewGPU(c.ic, int16(scale))
 
-    }else{
-        c.serial = serial.NewFakeSerial(c.ic)
+	if listen != false || connect != "" {
+		c.serial = serial.NewNetSerial(c.ic, listen, connect)
+
+	} else {
+		c.serial = serial.NewFakeSerial(c.ic)
 	}
-    createOps(c)
+	createOps(c)
 
 	return c
 }
