@@ -7,7 +7,7 @@ const (
 )
 
 type Serial interface {
-	Update() uint8
+	Update(cycles uint16) uint8
 	Read(addr uint16) uint8
 	Write(addr uint16, val uint8)
 }

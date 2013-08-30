@@ -9,7 +9,7 @@ import (
 	"serial"
 	"sound"
 	"timer"
-
+	"constants"
 //"runtime/pprof"
 //"time"
 )
@@ -201,16 +201,15 @@ func (c *CPU) Exec() {
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
-		if c.ic.IE&0x10 == 0x10 && count >= 1000 {
+		if c.ic.IE&0x10 == 0x10 && count >= 20 {
 			raise_int := c.gp.Update()
 			count = 0
 			if raise_int > 0 {
 				c.ic.Assert(raise_int)
 			}
 		}
-		if c.ic.IE&0x08 == 0x08 && count >= 300 {
-			c.serial.Update()
-			count = 0
+		if c.ic.IE&constants.SERIAL == constants.SERIAL {
+			c.serial.Update(c.last_instr)
 		}
 
 		//for i:=0; i< int(c.last_instr); i++ {

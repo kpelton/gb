@@ -10,6 +10,8 @@ type FakeSerial struct {
     SB uint8
     SC uint8
     ic *ic.IC
+    cycle_count uint16
+    started bool
 }
 
 func NewFakeSerial(ic *ic.IC) *FakeSerial {
@@ -18,8 +20,20 @@ func NewFakeSerial(ic *ic.IC) *FakeSerial {
 	return serial
 }
 
-func (s *FakeSerial) Update() uint8 {
-    return constants.SERIAL
+func (s *FakeSerial) Update(cycles uint16) uint8 {
+
+	if s.started { 
+		if  s.cycle_count <= 0 {
+			s.SB = 0xff
+           		s.SC &=  (^uint8(0x80))
+            		s.ic.Assert(constants.SERIAL)
+			s.started = false
+			s.cycle_count =0 
+		}
+		s.cycle_count -=cycles	
+	}
+	return 0
+	
 }
 
 func (s *FakeSerial) Read(addr uint16) uint8 {
@@ -37,16 +51,16 @@ func (s *FakeSerial) Write(addr uint16,val uint8) {
 	switch addr {
 
 	case SB_ADDR:
-        fmt.Printf("->SERIALB:%04X\n", val)
+        	fmt.Printf("->SERIALB:%04X\n", val)
 		s.SB = val
 	case SC_ADDR:
-        s.SC = val
-        if val & 0x81 == 0x81{
-            s.SB = 0xff
-            s.SC &=  val &(^uint8(0x80))
-            s.ic.Assert(constants.SERIAL)
-
-        }
+        	s.SC = val
+        	fmt.Printf("->SERIALC:%04X\n", val)
+		if !s.started && val & 0x81 == 0x81{
+            		s.started =true
+			s.cycle_count = HZ_8192_t
+	
+        	}
         
     default:
         panic("mis-routed serial write!")

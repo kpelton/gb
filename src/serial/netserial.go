@@ -113,7 +113,7 @@ func (s *NetSerial) getBytes() {
     }
 
 }
-func (s *NetSerial) Update() uint8 {
+func (s *NetSerial) Update(cycles uint16) uint8 {
 
     if s.SC & 0x80  == 0x80 {
         s.getBytes()
