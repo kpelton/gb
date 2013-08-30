@@ -9,7 +9,6 @@ import (
 	"serial"
 	"sound"
 	"timer"
-	"constants"
 //"runtime/pprof"
 //"time"
 )
@@ -208,9 +207,8 @@ func (c *CPU) Exec() {
 				c.ic.Assert(raise_int)
 			}
 		}
-		if c.ic.IE&constants.SERIAL == constants.SERIAL {
 			c.serial.Update(c.last_instr)
-		}
+
 
 		//for i:=0; i< int(c.last_instr); i++ {
 		c.gpu.Update(uint16(c.last_instr))

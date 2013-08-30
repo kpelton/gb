@@ -24,6 +24,7 @@ type NetSerial struct {
     ic *ic.IC
     bytes_sent bool
     sock   net.Conn
+    count uint16
 }
 func (s *NetSerial)  listen() {
     fmt.Println("Waiting for connection to gameboy")
@@ -114,10 +115,13 @@ func (s *NetSerial) getBytes() {
 
 }
 func (s *NetSerial) Update(cycles uint16) uint8 {
+if s.ic.IE&0x08 == 0x08 && s.count >= 512*8 {
+                        s.count = 0
+ s.getBytes()
+        s.count = 0
+                }
 
-    if s.SC & 0x80  == 0x80 {
-        s.getBytes()
-    }
+        s.count+=cycles
     return 0
 
 }
