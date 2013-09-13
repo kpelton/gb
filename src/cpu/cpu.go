@@ -1990,7 +1990,7 @@ func createOps(c *CPU) {
 	//c.ops[0x27] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
 }
 
-func NewCpu(listen bool, connect string, scale int) *CPU {
+func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c := new(CPU)
 
 	c.gp = gp.NewGP()
@@ -2000,9 +2000,10 @@ func NewCpu(listen bool, connect string, scale int) *CPU {
 	c.sound = sound.NewSound()
 	c.gpu = gpu.NewGPU(c.ic, int16(scale))
 
-	if listen != false || connect != "" {
+    if serial_p != "" {
+		c.serial = serial.NewRealSerial(c.ic, serial_p)
+	} else if listen != false || connect != "" {
 		c.serial = serial.NewNetSerial(c.ic, listen, connect)
-
 	} else {
 		c.serial = serial.NewFakeSerial(c.ic)
 	}
