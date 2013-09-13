@@ -32,6 +32,8 @@ func NewFakeSerial(ic *ic.IC) *FakeSerial {
 
 func (s *FakeSerial) Update(cycles uint16) uint8 {
 		var buf [1]uint8	
+
+for i:=0; i<4; i++ {
 		if     s.started  {
       			n, _ := s.port.Read(buf[0:])
       			if n >0 {
@@ -47,6 +49,8 @@ func (s *FakeSerial) Update(cycles uint16) uint8 {
 		}else{
 		s.cycle_count -=cycles
 }	
+
+}
 	return 0
 	
 }

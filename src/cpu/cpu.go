@@ -208,6 +208,7 @@ func (c *CPU) Exec() {
 			}
 		}
 			c.serial.Update(c.last_instr)
+	
 
 
 		//for i:=0; i< int(c.last_instr); i++ {
