@@ -29,7 +29,7 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
-	fullspeed     = false 
+	fullspeed     = true
 )
 
 func newScreen(scale int16) *Screen {
@@ -640,7 +640,7 @@ func (g *GPU) check_stat_int_hblank() {
 
 	if g.STAT&0x8 == 0x8 {
 		g.ic.Assert(constants.LCDC)
-		fmt.Println("Asserted hblank")
+	//	fmt.Println("Asserted hblank")
 
 	}
 }

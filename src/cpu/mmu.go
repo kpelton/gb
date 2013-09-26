@@ -7,13 +7,14 @@ import (
 )
 
 type MMU struct {
-	//      cart [0x10000]uint8
 	cart   carts.Cart
-	ram    [0x2000]uint8
+	ram         [0x1000]uint8
+    exp_ram     [0x7000]uint8
 	z_ram  [0x80]uint8
 	cpu    *CPU
 	block  uint16
 	inbios bool
+    SVBK uint8
     
 }
 
@@ -164,6 +165,9 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff4B:
 		//fmt.Printf("->WX:%04X\n", val)
 		m.cpu.gpu.WX = val
+    case 0xff70:
+		fmt.Printf("->SVBK:%04X\n", val &0x7)
+        m.SVBK = val & 0x7
 	case 0xffff:
 		m.cpu.ic.IE = val
 		//fmt.Printf("->IE:%04X\n", val)
@@ -274,6 +278,8 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		val = m.cpu.gpu.WY
 	case 0xff4B:
 		val = m.cpu.gpu.WX
+	case 0xff70:
+		val = m.SVBK
 	case 0xffff:
 		val = m.cpu.ic.IE
 	case 0xff0F:
@@ -297,8 +303,12 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 		m.cpu.gpu.Vm[addr&0x1fff] = val
 	} else if addr < 0xC000 {
 		m.cart.Write_b(addr, val)
-	} else if addr < 0xe000 {
+	} else if addr < 0xd000 {
 		m.ram[addr&0x1fff] = val
+    }else if addr <0xe000 {
+        //get offset of interal ram bank 
+        //fmt.Printf("WRITE exp_ram:0x%x,0x%x\n",addr,(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6)))
+        m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6))] = val
 	} else if addr < 0xfe00 {
 		m.ram[(addr-0x2000)&0x1fff] = val
 		fmt.Println("shadow")
@@ -307,7 +317,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
 	} else if addr <= 0xfe9f {
 		m.cpu.gpu.Oam[addr&0x00ff] = val
-	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
+	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff  || addr == 0xff70{
 		m.write_mmio(addr, val)
 	} else if addr >= 0xff80 {
 		m.z_ram[(addr&0xff)-0x80] = val
@@ -327,20 +337,25 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		val = m.cpu.gpu.Vm[addr&0x1fff]
 	} else if addr < 0xC000 {
 		val = m.cart.Read_b(addr)
-	} else if addr < 0xe000 {
-		val = m.ram[addr&0x1fff]
+	} else if addr < 0xd000 {
+		val = m.ram[addr&0xfff]
+    }else if addr <0xe000 {
+        //get offset of interal ram bank 
+         //fmt.Printf("val exp_ram:0x%x,0x%x\n",addr,(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6)))
+        val = m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK & 0x6))]
 	} else if addr < 0xfe00 {
 		val = m.ram[(addr-0x2000)&0x1fff]
 	} else if addr <= 0xfe9f {
 		val = m.cpu.gpu.Oam[addr&0x00ff]
 	} else if addr >= 0xff30 && addr < 0xff40 {
 		val = m.cpu.sound.Wram[(addr&0x00ff)-0x30]
-	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff {
+	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff || addr == 0xff70 {
 		val = m.read_mmio(addr)
 	} else if addr >= 0xff80 {
 		val = m.z_ram[(addr&0x00ff)-0x80]
 	} else {
-		fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
+		fmt.Printf("unhandled read:%04x:%04x\n", addr, val)
+        //panic("Fail")
 	}
 	return val
 }
