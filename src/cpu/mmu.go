@@ -169,6 +169,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
      case 0xff4D:
 		fmt.Printf("->KEY1:%04X\n", val &0x7)
         m.SVBK = val
+        m.cpu.Ready_sswitch()
     case 0xff70:
 		fmt.Printf("->SVBK:%04X\n", val &0x7)
         m.SVBK = val & 0x7
@@ -283,7 +284,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	case 0xff4B:
 		val = m.cpu.gpu.WX
     case 0xff4D:
-    		fmt.Printf("<-KEY1:%04X\n", m.KEY1)
+        fmt.Printf("<-KEY1:%04X\n", m.KEY1)
 
         val = m.KEY1
 	case 0xff70:

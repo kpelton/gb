@@ -74,6 +74,29 @@ type CPU struct {
 	DIV        uint8
 	last_instr uint16
 	push_pc    Action
+    sswitch    bool        
+    clk_mul    uint16   
+}
+
+func (c *CPU) Ready_sswitch() {
+    c.sswitch =true 
+}
+
+func (c *CPU) set_sswitch() {
+    if c.sswitch == true {
+        c.sswitch = false
+        if c.clk_mul == 2 {
+            c.clk_mul = 1
+            fmt.Println("CLK to 4mhz")
+            c.mmu.KEY1 = 0 
+        }else{
+            c.clk_mul = 2
+            fmt.Println("CLK to 8mhz") 
+            c.mmu.KEY1 = 0x80 
+
+       }
+    }
+    
 }
 
 func (c *CPU) load_bios() {
@@ -207,14 +230,14 @@ func (c *CPU) Exec() {
 				c.ic.Assert(raise_int)
 			}
 		}
-			c.serial.Update(c.last_instr)
+			c.serial.Update(c.last_instr/c.clk_mul)
 	
 
 
 		//for i:=0; i< int(c.last_instr); i++ {
 		c.gpu.Update(uint16(c.last_instr))
 		//	}
-		raise_int := c.timer.Update(uint64(c.last_instr))
+		raise_int := c.timer.Update(uint64(c.last_instr/c.clk_mul))
 		if raise_int > 0 {
 			c.ic.Assert(raise_int)
 		}
@@ -1960,7 +1983,7 @@ func createOps(c *CPU) {
 	c.ops[0xD9] = func(c *CPU) { c.reg8[EI] = 1; f_reti(c); c.do_instr("RST", 16, 0) }
 
 	c.ops[0x0] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
-	c.ops[0x10] = func(c *CPU) { c.do_instr("STOP", 4, 1) }
+	c.ops[0x10] = func(c *CPU) { c.set_sswitch(); c.do_instr("STOP", 4, 1) }
 	c.ops[0xFB] = func(c *CPU) { ; c.reg8[EI] = 1; c.do_instr("EI", 4, 1) }
 
 	c.ops[0xF3] = func(c *CPU) { c.reg8[EI] = 0; c.do_instr("DI", 4, 1) }
@@ -1999,6 +2022,7 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c.ic = ic.NewIC()
 	c.sound = sound.NewSound()
 	c.gpu = gpu.NewGPU(c.ic, int16(scale))
+    c.clk_mul = 1
 
     if serial_p != "" {
 		c.serial = serial.NewRealSerial(c.ic, serial_p)
