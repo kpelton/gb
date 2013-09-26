@@ -15,6 +15,7 @@ type MMU struct {
 	block  uint16
 	inbios bool
     SVBK uint8
+    KEY1 uint8
     
 }
 
@@ -165,6 +166,9 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff4B:
 		//fmt.Printf("->WX:%04X\n", val)
 		m.cpu.gpu.WX = val
+     case 0xff4D:
+		fmt.Printf("->KEY1:%04X\n", val &0x7)
+        m.SVBK = val
     case 0xff70:
 		fmt.Printf("->SVBK:%04X\n", val &0x7)
         m.SVBK = val & 0x7
@@ -278,6 +282,10 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		val = m.cpu.gpu.WY
 	case 0xff4B:
 		val = m.cpu.gpu.WX
+    case 0xff4D:
+    		fmt.Printf("<-KEY1:%04X\n", m.KEY1)
+
+        val = m.KEY1
 	case 0xff70:
 		val = m.SVBK
 	case 0xffff:
@@ -317,7 +325,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
 	} else if addr <= 0xfe9f {
 		m.cpu.gpu.Oam[addr&0x00ff] = val
-	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff  || addr == 0xff70{
+	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff  || addr == 0xff70 || addr == 0xff4d{
 		m.write_mmio(addr, val)
 	} else if addr >= 0xff80 {
 		m.z_ram[(addr&0xff)-0x80] = val
@@ -349,7 +357,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		val = m.cpu.gpu.Oam[addr&0x00ff]
 	} else if addr >= 0xff30 && addr < 0xff40 {
 		val = m.cpu.sound.Wram[(addr&0x00ff)-0x30]
-	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff || addr == 0xff70 {
+	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff || addr == 0xff70 || addr == 0xff4d{
 		val = m.read_mmio(addr)
 	} else if addr >= 0xff80 {
 		val = m.z_ram[(addr&0x00ff)-0x80]
