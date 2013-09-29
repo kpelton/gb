@@ -166,10 +166,15 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff4B:
 		//fmt.Printf("->WX:%04X\n", val)
 		m.cpu.gpu.WX = val
-     case 0xff4D:
+	case 0xff4D:
 		fmt.Printf("->KEY1:%04X\n", val &0x7)
         m.SVBK = val
         m.cpu.Ready_sswitch()
+
+	case 0xff4F:
+		fmt.Printf("->VBANK:%04X\n", val &0x1)
+        m.cpu.gpu.VBANK = val &1
+		m.cpu.gpu.Gbc_mode = true
     case 0xff70:
 		fmt.Printf("->SVBK:%04X\n", val &0x7)
         m.SVBK = val & 0x7
@@ -287,6 +292,10 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
         fmt.Printf("<-KEY1:%04X\n", m.KEY1)
 
         val = m.KEY1
+
+	case 0xff4F:
+		fmt.Printf("<-VBANK:%04X\n", val &0x1)
+        val = m.cpu.gpu.VBANK
 	case 0xff70:
 		val = m.SVBK
 	case 0xffff:
@@ -302,14 +311,8 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 
 	if addr < 0x8000 {
 		m.cart.Write_b(addr, val)
-	} else if addr < 0xA000 {
-	
-		if addr <0x9800 {
-			offset := (addr &0x1fff)>>4
-			//invalidate cache for given tile
-			m.cpu.gpu.Cache[offset] = nil
-		}
-		m.cpu.gpu.Vm[addr&0x1fff] = val
+	} else if addr < 0xA000 {	
+		m.cpu.gpu.Vm[(uint16(m.cpu.gpu.VBANK) *0x2000)+addr&0x1fff] = val
 	} else if addr < 0xC000 {
 		m.cart.Write_b(addr, val)
 	} else if addr < 0xd000 {
@@ -326,7 +329,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
 	} else if addr <= 0xfe9f {
 		m.cpu.gpu.Oam[addr&0x00ff] = val
-	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff  || addr == 0xff70 || addr == 0xff4d{
+	} else if addr >= 0xff00 && addr <= 0xff4f || addr == 0xffff  || addr == 0xff70 {
 		m.write_mmio(addr, val)
 	} else if addr >= 0xff80 {
 		m.z_ram[(addr&0xff)-0x80] = val
@@ -343,7 +346,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
 	if addr < 0x8000 {
 		val = m.cart.Read_b(addr)
 	} else if addr < 0xA000 {
-		val = m.cpu.gpu.Vm[addr&0x1fff]
+		val = m.cpu.gpu.Vm[(uint16(m.cpu.gpu.VBANK) *0x2000)+addr&0x1fff] 
 	} else if addr < 0xC000 {
 		val = m.cart.Read_b(addr)
 	} else if addr < 0xd000 {
@@ -358,7 +361,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		val = m.cpu.gpu.Oam[addr&0x00ff]
 	} else if addr >= 0xff30 && addr < 0xff40 {
 		val = m.cpu.sound.Wram[(addr&0x00ff)-0x30]
-	} else if addr >= 0xff00 && addr <= 0xff4b || addr == 0xffff || addr == 0xff70 || addr == 0xff4d{
+	} else if addr >= 0xff00 && addr <= 0xff4f || addr == 0xffff || addr == 0xff70 {
 		val = m.read_mmio(addr)
 	} else if addr >= 0xff80 {
 		val = m.z_ram[(addr&0x00ff)-0x80]
