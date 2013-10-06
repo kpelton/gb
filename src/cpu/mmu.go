@@ -175,6 +175,25 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		fmt.Printf("->VBANK:%04X\n", val &0x1)
         m.cpu.gpu.VBANK = val &1
 		m.cpu.gpu.Gbc_mode = true
+
+	case 0xff68:
+		m.cpu.gpu.BCPS = val
+		fmt.Printf("->BCPS:%04X\n", val)
+		m.cpu.gpu.BC_index = val & 0x3f
+		
+
+	case 0xff69:
+		m.cpu.gpu.BCPD = val
+		fmt.Printf("->BCPDIN:%04X %X  %d \n", val,m.cpu.gpu.STAT,m.cpu.gpu.BC_index,)
+		m.cpu.gpu.Pal_mem[m.cpu.gpu.BC_index] = val
+
+		if m.cpu.gpu.BCPS  & 0x80 == 0x80 {
+			m.cpu.gpu.BC_index = (m.cpu.gpu.BC_index +1) %0x40
+			m.cpu.gpu.BCPS  = 0x80 | 	m.cpu.gpu.BC_index 
+
+		}
+
+
     case 0xff70:
 		fmt.Printf("->SVBK:%04X\n", val &0x7)
         m.SVBK = val & 0x7
@@ -296,6 +315,12 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	case 0xff4F:
 		fmt.Printf("<-VBANK:%04X\n", val &0x1)
         val = m.cpu.gpu.VBANK
+	case 0xff68:
+		val = m.cpu.gpu.BCPS
+	case 0xff69:
+		panic("FAIL")
+		val = m.cpu.gpu.BCPD
+
 	case 0xff70:
 		val = m.SVBK
 	case 0xffff:
@@ -329,7 +354,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
 	} else if addr <= 0xfe9f {
 		m.cpu.gpu.Oam[addr&0x00ff] = val
-	} else if addr >= 0xff00 && addr <= 0xff4f || addr == 0xffff  || addr == 0xff70 {
+	} else if addr >= 0xff00 && addr <= 0xff70 || addr == 0xffff {
 		m.write_mmio(addr, val)
 	} else if addr >= 0xff80 {
 		m.z_ram[(addr&0xff)-0x80] = val
@@ -361,7 +386,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		val = m.cpu.gpu.Oam[addr&0x00ff]
 	} else if addr >= 0xff30 && addr < 0xff40 {
 		val = m.cpu.sound.Wram[(addr&0x00ff)-0x30]
-	} else if addr >= 0xff00 && addr <= 0xff4f || addr == 0xffff || addr == 0xff70 {
+	} else if addr >= 0xff00 && addr <= 0xff70 || addr == 0xffff {
 		val = m.read_mmio(addr)
 	} else if addr >= 0xff80 {
 		val = m.z_ram[(addr&0x00ff)-0x80]
