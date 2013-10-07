@@ -16,7 +16,11 @@ type MMU struct {
 	inbios bool
     SVBK uint8
     KEY1 uint8
-    
+	HDMA_hi_src uint8
+	HDMA_lo_src uint8
+	HDMA_hi_dst uint8
+	HDMA_lo_dst uint8
+    HDMA_start uint8
 }
 
 func NewMMU(cpu *CPU) *MMU {
@@ -171,6 +175,37 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
         m.KEY1= val
         m.cpu.Ready_sswitch()
 
+	case 0xff51:
+		fmt.Printf("->SRC:HDMA_HIGH:%04X\n", val)
+        m.HDMA_hi_src = val
+	case 0xff52:
+		fmt.Printf("->SRC:HDMA_LOW:%04X\n", val)
+        m.HDMA_lo_src = val
+	case 0xff53:
+		fmt.Printf("->DST:HDMA_HIGH:%04X\n", val)
+        m.HDMA_hi_dst = val
+	case 0xff54:
+		fmt.Printf("->DST:HDMA_LOW:%04X\n", val)
+        m.HDMA_lo_dst = val
+	case 0xff55:
+		src := uint16(m.HDMA_hi_src) <<8 | uint16(m.HDMA_lo_src)
+		dst := uint16(m.HDMA_hi_dst) <<8 | uint16(m.HDMA_lo_dst)
+		if dst < 0x8000 {
+			dst+=0x8000
+		}
+		length := ((val & 0x7f) + 1) * 16
+		fmt.Printf("->START transfer:%04X %04x %x\n", src,dst,length)
+
+		var i uint16
+
+		for i = 0; i < uint16(length); i++ {
+			m.write_b(dst +i,m.read_b(src+i))
+		}
+		m.HDMA_start = 0xff
+		
+
+
+
 	case 0xff4F:
 		//fmt.Printf("->VBANK:%04X\n", val &0x1)
         m.cpu.gpu.VBANK = val &1
@@ -188,7 +223,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.gpu.Pal_mem[m.cpu.gpu.BC_index] = val
 		if m.cpu.gpu.BCPS  & 0x80 == 0x80  {
 			m.cpu.gpu.BC_index = (m.cpu.gpu.BC_index +1) %0x40
-			//m.cpu.gpu.BCPS  = 0x80 | 	m.cpu.gpu.BC_index 
+			m.cpu.gpu.BCPS  = 0x80 | 	m.cpu.gpu.BC_index 
 
 		}
 	case 0xff6A:
@@ -333,12 +368,14 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	case 0xff4F:
 		fmt.Printf("<-VBANK:%04X\n", val &0x1)
         val = m.cpu.gpu.VBANK
+	case 0xff55:
+		val = m.HDMA_start
+		m.HDMA_start = 0
 	case 0xff68:
 		val = m.cpu.gpu.BCPS
 		fmt.Printf("<-BCPS:%04X\n", val &0x1)
 
 	case 0xff69:
-		panic("FAIL")
 		val = m.cpu.gpu.BCPD
 
 	case 0xff6A:
@@ -346,8 +383,8 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		fmt.Printf("<-OCPS:%04X\n", val &0x1)
 
 	case 0xff6B:
-		panic("FAIL")
-		
+		val = m.cpu.gpu.BCPS
+
 	case 0xff70:
 		val = m.SVBK
 	case 0xffff:

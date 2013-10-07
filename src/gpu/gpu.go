@@ -774,9 +774,8 @@ func (g *GPU) print_sprites_gbc(line *Line) {
 		sp.fl_pri = g.Oam[i] >> 7
 		sp.fl_y_flip = (g.Oam[i] & 0x40) >> 6
 		sp.fl_x_flip = (g.Oam[i] & 0x20) >> 5
-		sp.bank = (g.Oam[i] & 0x10) >> 4
+		sp.bank = (g.Oam[i] & 0x8) >> 3
 		sp.pal = (g.Oam[i] & 0x07) 
-
 		yoff = sp.y - 16
 		ytoff = (g.LY - yoff)
 		//fmt.Println(sp,yoff,g.LY,ytoff)	
@@ -794,8 +793,6 @@ func (g *GPU) print_sprites_gbc(line *Line) {
 				xflip = true
 			}
 			if g.LCDC&0x04 == 0x04 {
-
-				//	fmt.Println(sp)
 
 				g.print_tile_sprite16(0x8000+(uint16(sp.num)*16),sp.bank,uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, sp.fl_pri, &g.gbc_oc_palette[sp.pal], line)
 			} else {
