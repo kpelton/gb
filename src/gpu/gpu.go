@@ -82,6 +82,9 @@ type GPU struct {
 	BC_index           uint8
 	BCPS               uint8
 	BCPD               uint8
+	OC_index           uint8
+	OCPS               uint8
+	OCPD               uint8
 
 
 
@@ -99,14 +102,17 @@ type GPU struct {
 	tile_vals          TileVals
 	currline           uint8
 	bg_tmap            [2]TileMap
-	w_tmap             TileMap
+	w_tmap             [2]TileMap
 	bg_attr_map            TileAttr
+	w_attr_map            TileAttr
+
 	line_done          uint8
 	frames             uint16
 	//palettes
 	bg_palette  GBPalette
 	win_palette GBPalette
 	gbc_palette [8]GBPalette
+	gbc_oc_palette [8]GBPalette
 
 
 	obp0_palette GBPalette
@@ -119,6 +125,8 @@ type GPU struct {
 	Oam          [0xA0]uint8
 	ic           *ic.IC
 	Pal_mem      [0x40] uint8
+	Pal_oc_mem      [0x40] uint8
+
 }
 
 type sprite struct {
@@ -129,6 +137,17 @@ type sprite struct {
 	fl_x_flip uint8
 	fl_y_flip uint8
 	fl_pri    uint8
+}
+
+type sprite_gbc struct {
+	y         uint8
+	x         uint8
+	num       uint8
+	fl_x_flip uint8
+	fl_y_flip uint8
+	fl_pri    uint8
+	bank      uint8
+	pal       uint8
 }
 
 type bg_attr struct {
@@ -187,23 +206,23 @@ func (g *GPU) UpdatePaletteObp1(val uint8) {
 
 }
 
-func (g *GPU) update_paletteGBC() {
+func (g *GPU) Update_paletteGBC(pal_mem  *[0x40]uint8, pal *[8]GBPalette) {
 	offset:= 0
 	var val uint32
 	for i:=0; i<8; i++ {
 		for j:=0; j<4; j++ {
 			val = 0
-			bcpd :=  (uint16(g.Pal_mem[offset+1])<<8) | uint16(g.Pal_mem[offset])
+			bcpd :=  (uint16(pal_mem[offset+1])<<8) | uint16(pal_mem[offset])
 			red := uint32(bcpd &0x1f) *8
 			green := uint32((bcpd & 0x3e0) >> 5) *8
 			blue := uint32((bcpd & 0x7c00) >> 10) *8
-			fmt.Printf("R:%x G:%x B:%x BCPD:%x\n",red,green,blue,bcpd) 
+			//fmt.Printf("R:%02x G:%02x B:%02x BCBD:%04x PAL%x NUM%x\n",red,green,blue,bcpd,i,j) 
 			val = 0xff << 24 | red <<16 | green <<8 | blue 
-			g.gbc_palette[i][j] = val
+			pal[i][j] = val
 			offset+=2
-			fmt.Printf("%x\n",val)
-
+	
 		}
+
 	}
 }
 
@@ -230,7 +249,7 @@ func NewGPU(ic *ic.IC, scale int16) *GPU {
 
 
 
-func (g *GPU) get_tile_val(addr uint16, bank uint16) Tile {
+func (g *GPU) get_tile_val(addr uint16, bank uint16,xflip uint8,yflip uint8) Tile {
 
 	var k int16
 	var j uint16
@@ -241,22 +260,58 @@ func (g *GPU) get_tile_val(addr uint16, bank uint16) Tile {
 	//if g.Cache[offset] != nil {
 	//	/	return *g.Cache[offset]
 	//	}
-	for k = 0; k < 8; k++ {
-		var off uint16 = addr + uint16(k*2)
-		bl := g.Vm[off&0x1fff + bank *0x2000]
-		bh := g.Vm[(off+1)&0x1fff + bank * 0x2000]
-		i = 7
-		for j = 0; j < 8; j++ {
-			val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
-			g.tile_vals[offset][i][k] = val
-			i--
+	if yflip == 0{
+		for k = 0; k < 8; k++ {
+			var off uint16 = addr + uint16(k*2)
+			bl := g.Vm[off&0x1fff + bank *0x2000]
+			bh := g.Vm[(off+1)&0x1fff + bank * 0x2000]
+			if xflip ==1 {
+				i=0
+				for j = 0; j< 8; j++{
+					val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
+					g.tile_vals[offset][i][k] = val
+					i++
+				}
+			}else {
+				i=7
+				for j = 0; j < 8; j++ {
+					val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
+					g.tile_vals[offset][i][k] = val
+					i--
+				}
+			}
+		}
+	
+	}else {
+		z:=7
+		for k = 0; k <8 ; k++ {
+			var off uint16 = addr + uint16(z*2)
+			bl := g.Vm[off&0x1fff + bank *0x2000]
+			bh := g.Vm[(off+1)&0x1fff + bank * 0x2000]
+			if xflip ==1 {
+				i=0
+				for j = 0; j < 8; j++ {
+					val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
+					g.tile_vals[offset][i][k] = val
+					i++
+				}
+			}else {
+				i=7
+				for j = 0; j < 8; j++ {
+					val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
+					g.tile_vals[offset][i][k] = val
+					i--
+				}
+			}
+			z--
 		}
 	}
+
 	//g.Cache[offset] = &g.tile_vals[offset]
 	return g.tile_vals[offset]
 }
 
-func (g *GPU) get_tile_val16(addr uint16) Tile16 {
+func (g *GPU) get_tile_val16(addr uint16,bank uint16) Tile16 {
 
 	var k int16
 	var j uint16
@@ -265,9 +320,10 @@ func (g *GPU) get_tile_val16(addr uint16) Tile16 {
 
 	for k = 0; k < 16; k++ {
 		var off uint16 = addr + uint16(k*2)
-		bl := g.Vm[off&0x1fff]
-		bh := g.Vm[(off+1)&0x1fff]
+		bl := g.Vm[off&0x1fff + bank *0x2000]
+		bh := g.Vm[(off+1)&0x1fff + bank * 0x2000]
 		i = 7
+
 		for j = 0; j < 8; j++ {
 			val := uint8((bh>>(j)&0x1)<<1) | uint8((bl >> j & 0x1))
 			tile[i][k] = val
@@ -290,10 +346,10 @@ func (g *GPU) output_pixel_sprite(val uint8, x uint16, y uint16, pal *GBPalette)
 }
 
 
-func (g *GPU) print_tile_sprite16(addr uint16, xoff uint16, yoff uint16, ytoff uint16, xflip bool, pri uint8, pal *GBPalette, line *Line) {
+func (g *GPU) print_tile_sprite16(addr uint16, bank uint8,xoff uint16, yoff uint16, ytoff uint16, xflip bool, pri uint8, pal *GBPalette, line *Line) {
 	var i int16
 	var j uint8
-	tile := g.get_tile_val16(addr)
+	tile := g.get_tile_val16(addr,uint16(bank))
 	var x uint16
 	if xflip {
 		j = 0
@@ -315,11 +371,11 @@ func (g *GPU) print_tile_sprite16(addr uint16, xoff uint16, yoff uint16, ytoff u
 	}
 }
 
-func (g *GPU) print_tile_sprite(addr uint16, xoff uint16, yoff uint16, ytoff uint16, xflip bool, pri uint8, pal *GBPalette, line *Line) {
+func (g *GPU) print_tile_sprite(addr uint16, bank uint8, xoff uint16, yoff uint16, ytoff uint16, xflip bool, pri uint8, pal *GBPalette, line *Line) {
 	var i int16
 	var j uint16
 	var x uint16
-	tile := g.get_tile_val(addr,0)
+	tile := g.get_tile_val(addr,uint16(bank),0,0)
 
 	if xflip {
 		j = 0
@@ -363,21 +419,65 @@ func (g *GPU) get_tile_map() {
 		w_map_limit = 0x9fff
 	} 
 
-	//get background tmap
-	g.get_tmap(map_base,map_limit,tile_base,0,&g.bg_tmap[0])
-	//if window is enabled get 
-	if g.LCDC&0x20 == 0x20 {
-		g.get_tmap(w_map_base,w_map_limit,tile_base,0,&g.w_tmap)
-	}
+
 	//get attribute map
 	if g.Gbc_mode == true {
-		g.get_bg_attr_map(map_base,map_limit)
-		g.get_tmap(map_base,map_limit,tile_base,1,&g.bg_tmap[1])
-		g.update_paletteGBC()
-		//fmt.Println(g.bg_attr_map)
+		g.get_attr_map(map_base,map_limit,&g.bg_attr_map)
+		g.get_tmap_gbc(map_base,map_limit,tile_base,0,&g.bg_tmap[0],&g.bg_attr_map)
+		g.get_tmap_gbc(map_base,map_limit,tile_base,1,&g.bg_tmap[1],&g.bg_attr_map)
+		if g.LCDC&0x20 == 0x20 {
+			g.get_attr_map(w_map_base,w_map_limit,&g.w_attr_map)
+			g.get_tmap_gbc(w_map_base,w_map_limit,tile_base,0,&g.w_tmap[0],&g.bg_attr_map)
+			g.get_tmap_gbc(w_map_base,w_map_limit,tile_base,1,&g.w_tmap[1],&g.bg_attr_map)
+
+		}
+		g.Update_paletteGBC(&g.Pal_mem,&g.gbc_palette)
+		g.Update_paletteGBC(&g.Pal_oc_mem,&g.gbc_oc_palette)
+
+	}else {
+
+		//get background tmap
+		g.get_tmap(map_base,map_limit,tile_base,0,&g.bg_tmap[0])
+		//if window is enabled get 
+		if g.LCDC&0x20 == 0x20 {
+			g.get_tmap(w_map_base,w_map_limit,tile_base,0,&g.w_tmap[0])
+		}
 	}
 
 }
+func (g* GPU) get_tmap_gbc(map_base uint16, map_limit uint16,tile_base uint16,bank uint16, tmap *TileMap,amap *TileAttr) {
+	var i int
+	var j int
+	var tile uint16
+
+	for offset := map_base; offset <= map_limit; offset++ {
+		b := g.Vm[offset&0x1fff]
+
+		//fmt.Printf("0x%x:0x%x\n",offset,b)
+		if tile_base == 0x8800 {
+			//signed case
+
+			if int8(b) >= 0 {
+				tile = 0x9000 + uint16(int(int8(b))*16)
+			} else {
+				tile = tile_base + uint16((128+int(int8(b)))*16)
+			}
+		} else {
+			//unsigned
+			tile = tile_base + (uint16(b) * 16)
+		}
+		attr:=amap[i][j]
+
+		tmap[i][j] = g.get_tile_val(tile,bank,attr.h_flip,attr.v_flip)
+
+		i++
+		if i == 32 {
+			i = 0
+			j++
+		}
+	}
+}
+
 
 func (g* GPU) get_tmap(map_base uint16, map_limit uint16,tile_base uint16,bank uint16, tmap *TileMap) {
 	var i int
@@ -400,7 +500,7 @@ func (g* GPU) get_tmap(map_base uint16, map_limit uint16,tile_base uint16,bank u
 				//unsigned
 				tile = tile_base + (uint16(b) * 16)
 			}
-		tmap[i][j] = g.get_tile_val(tile,bank)
+		tmap[i][j] = g.get_tile_val(tile,bank,0,0)
 
 		i++
 			if i == 32 {
@@ -410,7 +510,7 @@ func (g* GPU) get_tmap(map_base uint16, map_limit uint16,tile_base uint16,bank u
 		}
 }
 
-func (g *GPU) get_bg_attr_map(map_base uint16, map_limit uint16)  {
+func (g *GPU) get_attr_map(map_base uint16, map_limit uint16, attr * TileAttr)  {
 
 	var j int
 	var i int
@@ -421,13 +521,13 @@ func (g *GPU) get_bg_attr_map(map_base uint16, map_limit uint16)  {
 		abs_offset = (offset & 0x1fff) + 0x2000 
 		val = g.Vm[abs_offset]
 
-		g.bg_attr_map[i][j].pal = val &0x7
-		g.bg_attr_map[i][j].bank = (val &0x8) >>3
-		g.bg_attr_map[i][j].h_flip = (val &0x20)  >>5
-		g.bg_attr_map[i][j].v_flip = (val &0x40) >>6
-		g.bg_attr_map[i][j].pri  = val >>7
+		attr[i][j].pal = val &0x7
+		attr[i][j].bank = (val &0x8) >>3
+		attr[i][j].h_flip = (val &0x20)  >>5
+		attr[i][j].v_flip = (val &0x40) >>6
+		attr[i][j].pri  = val >>7
 		
-		if g.bg_attr_map[i][j].pal != 0 {
+		if attr[i][j].pal != 0 {
 			//fmt.Println("XXXX",g.bg_attr_map[i][j].pal)
 		}
 		i++
@@ -510,9 +610,41 @@ func (g *GPU) print_tile_line_w(line uint, scanline *Line) {
 	}
 	for x < 166 {
 		for j < 8 {
-			val := g.w_tmap[i][map_line][j][tile_line]
+				val := g.w_tmap[0][i][map_line][j][tile_line]
+
 			if x < 160 {
 				scanline[x] = val
+
+			}				
+
+			j++
+			x++
+		}
+		j = 0
+		i = (1 + i) & 31
+
+	}
+}
+
+func (g *GPU) print_tile_line_w_gbc(line uint, scanline *Line) {
+	var x uint8
+	tile_line := (g.window_line - g.WY) & 7
+	map_line := (g.window_line - g.WY) >> 3
+	j := 0
+	i := 0
+	if g.WX < 7 {
+		x = 0
+	} else {
+		x = g.WX - 7
+	}
+	for x < 166 {
+		for j < 8 {
+			attr:=g.w_attr_map[i][map_line]
+
+			val := (g.w_tmap[attr.bank][i][map_line][j][tile_line])
+			if x < 160 {
+				g.screen.PutPixel(int16(x), int16(line), g.gbc_palette[attr.pal][val])
+
 			}
 			j++
 			x++
@@ -522,6 +654,8 @@ func (g *GPU) print_tile_line_w(line uint, scanline *Line) {
 
 	}
 }
+
+
 func (g *GPU) print_sprites(line *Line) {
 
 	var sp sprite
@@ -581,6 +715,80 @@ func (g *GPU) print_sprites(line *Line) {
 			if sp.fl_pal == 1 {
 				pal = &g.obp1_palette
 			}
+			if sp.fl_x_flip == 1 {
+				xflip = true
+			}
+			if g.LCDC&0x04 == 0x04 {
+
+				//	fmt.Println(sp)
+
+				g.print_tile_sprite16(0x8000+(uint16(sp.num)*16),0,uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, sp.fl_pri, pal, line)
+			} else {
+				g.print_tile_sprite(0x8000+(uint16(sp.num)*16),0,uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, sp.fl_pri, pal, line)
+
+			}
+		}
+
+	}
+
+}
+
+func (g *GPU) print_sprites_gbc(line *Line) {
+
+	var sp sprite_gbc
+	var j uint8
+	var yoff uint8
+	var ytoff uint8
+	var xflip bool = false
+	var mask uint8 = 0xff
+	var yflip_mask uint8 = 0x7
+
+	var size uint8 = 8
+
+	if g.LCDC&0x04 == 0x04 {
+		mask = 0xfe
+		yflip_mask = 0xf
+		//on 8x16 least sig bit of num is 0
+
+	}
+
+	for i := 0x9f; i > 0; i -= 4 {
+		//Main attributes
+		sp.y = g.Oam[i-3]
+
+		if sp.y > 155 {
+			continue
+		}
+		sp.x = g.Oam[i-2]
+
+		//tile number is uint
+
+		if g.LCDC&0x04 == 0x04 {
+			mask = 0xfe
+			size = 16
+		}
+
+		sp.num = g.Oam[i-1] & mask
+
+		//Flags
+		sp.fl_pri = g.Oam[i] >> 7
+		sp.fl_y_flip = (g.Oam[i] & 0x40) >> 6
+		sp.fl_x_flip = (g.Oam[i] & 0x20) >> 5
+		sp.bank = (g.Oam[i] & 0x10) >> 4
+		sp.pal = (g.Oam[i] & 0x07) 
+
+		yoff = sp.y - 16
+		ytoff = (g.LY - yoff)
+		//fmt.Println(sp,yoff,g.LY,ytoff)	
+
+		xflip = false
+		if ytoff < size {
+			//fmt.Println(sp,yoff,g.LY,ytoff)	
+
+			if sp.fl_y_flip == 1 {
+				ytoff = (^ytoff & yflip_mask)
+			}
+
 
 			if sp.fl_x_flip == 1 {
 				xflip = true
@@ -589,9 +797,9 @@ func (g *GPU) print_sprites(line *Line) {
 
 				//	fmt.Println(sp)
 
-				g.print_tile_sprite16(0x8000+(uint16(sp.num)*16), uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, sp.fl_pri, pal, line)
+				g.print_tile_sprite16(0x8000+(uint16(sp.num)*16),sp.bank,uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, sp.fl_pri, &g.gbc_oc_palette[sp.pal], line)
 			} else {
-				g.print_tile_sprite(0x8000+(uint16(sp.num)*16), uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, sp.fl_pri, pal, line)
+				g.print_tile_sprite(0x8000+(uint16(sp.num)*16), sp.bank,uint16((sp.x-8)+j), uint16(g.LY), uint16(ytoff), xflip, sp.fl_pri, &g.gbc_oc_palette[sp.pal], line)
 
 			}
 		}
@@ -599,6 +807,9 @@ func (g *GPU) print_sprites(line *Line) {
 	}
 
 }
+
+
+
 func (g *GPU) display_line(y int16, line *Line, pal *GBPalette) {
     //minimize draws to lines that have more than one color.
 	g.rect.H = uint16(g.scale)
@@ -646,7 +857,12 @@ func (g *GPU) hblank(clocks uint16) {
 
 			if g.WX < 166 {
 				if g.LY >= g.WY {
-					g.print_tile_line_w(uint(g.LY), &line)
+					if g.Gbc_mode == true {		
+						g.print_tile_line_w_gbc(uint(g.LY), &line)
+					} else {
+						g.print_tile_line_w(uint(g.LY), &line)
+					}
+				
 				}
 				g.window_line++
 
@@ -657,8 +873,11 @@ func (g *GPU) hblank(clocks uint16) {
 			g.display_line(int16(g.LY), &line, &g.bg_palette)
 		}
 		if g.LCDC&0x82 == 0x82 {
-			g.print_sprites(&line)
-
+			if g.Gbc_mode == true {	
+				g.print_sprites_gbc(&line)
+			}else{
+				g.print_sprites(&line)	
+			}
 		}
 
 	}

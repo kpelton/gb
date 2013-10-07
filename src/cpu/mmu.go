@@ -9,7 +9,7 @@ import (
 type MMU struct {
 	cart   carts.Cart
 	ram         [0x1000]uint8
-    exp_ram     [0x7000]uint8
+    exp_ram     [0x8000]uint8
 	z_ram  [0x80]uint8
 	cpu    *CPU
 	block  uint16
@@ -168,11 +168,11 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.gpu.WX = val
 	case 0xff4D:
 		fmt.Printf("->KEY1:%04X\n", val &0x7)
-        m.SVBK = val
+        m.KEY1= val
         m.cpu.Ready_sswitch()
 
 	case 0xff4F:
-		fmt.Printf("->VBANK:%04X\n", val &0x1)
+		//fmt.Printf("->VBANK:%04X\n", val &0x1)
         m.cpu.gpu.VBANK = val &1
 		m.cpu.gpu.Gbc_mode = true
 
@@ -186,20 +186,38 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		m.cpu.gpu.BCPD = val
 		fmt.Printf("->BCPDIN:%04X %X  %d \n", val,m.cpu.gpu.STAT,m.cpu.gpu.BC_index,)
 		m.cpu.gpu.Pal_mem[m.cpu.gpu.BC_index] = val
-
-		if m.cpu.gpu.BCPS  & 0x80 == 0x80 {
+		if m.cpu.gpu.BCPS  & 0x80 == 0x80  {
 			m.cpu.gpu.BC_index = (m.cpu.gpu.BC_index +1) %0x40
-			m.cpu.gpu.BCPS  = 0x80 | 	m.cpu.gpu.BC_index 
+			//m.cpu.gpu.BCPS  = 0x80 | 	m.cpu.gpu.BC_index 
+
+		}
+	case 0xff6A:
+		m.cpu.gpu.OCPS = val
+		fmt.Printf("->OCPS:%04X\n", val)
+		m.cpu.gpu.OC_index = val & 0x3f
+		
+
+	case 0xff6B:
+		m.cpu.gpu.OCPD = val
+		fmt.Printf("->OCPDIN:%04X %X  %d \n", val,m.cpu.gpu.STAT,m.cpu.gpu.OC_index,)
+		m.cpu.gpu.Pal_oc_mem[m.cpu.gpu.OC_index] = val
+		if m.cpu.gpu.OCPS  & 0x80 == 0x80  {
+			m.cpu.gpu.OC_index = (m.cpu.gpu.OC_index +1) %0x40
+			m.cpu.gpu.OCPS  = 0x80 | 	m.cpu.gpu.BC_index 
 
 		}
 
 
+
     case 0xff70:
-		fmt.Printf("->SVBK:%04X\n", val &0x7)
+
         m.SVBK = val & 0x7
+				fmt.Printf("->SVBK:%04X\n", m.SVBK)
 	case 0xffff:
 		m.cpu.ic.IE = val
 		//fmt.Printf("->IE:%04X\n", val)
+	default:
+		fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
 
 	}
 
@@ -317,23 +335,38 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
         val = m.cpu.gpu.VBANK
 	case 0xff68:
 		val = m.cpu.gpu.BCPS
+		fmt.Printf("<-BCPS:%04X\n", val &0x1)
+
 	case 0xff69:
 		panic("FAIL")
 		val = m.cpu.gpu.BCPD
 
+	case 0xff6A:
+		
+		fmt.Printf("<-OCPS:%04X\n", val &0x1)
+
+	case 0xff6B:
+		panic("FAIL")
+		
 	case 0xff70:
 		val = m.SVBK
 	case 0xffff:
 		val = m.cpu.ic.IE
 	case 0xff0F:
 		val = m.cpu.ic.IF
+    default:
+		fmt.Printf("unhandled read:%04x\n", addr)
+
+
 	}
 
 	return val
 }
 
 func (m *MMU) write_b(addr uint16, val uint8) {
-
+	if addr == 0xdc4f {
+		fmt.Printf("dc4f:0x%x\n",val)
+	}
 	if addr < 0x8000 {
 		m.cart.Write_b(addr, val)
 	} else if addr < 0xA000 {	
@@ -345,7 +378,7 @@ func (m *MMU) write_b(addr uint16, val uint8) {
     }else if addr <0xe000 {
         //get offset of interal ram bank 
         //fmt.Printf("WRITE exp_ram:0x%x,0x%x\n",addr,(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6)))
-        m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6))] = val
+        m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK))] = val
 	} else if addr < 0xfe00 {
 		m.ram[(addr-0x2000)&0x1fff] = val
 		fmt.Println("shadow")
@@ -379,7 +412,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
     }else if addr <0xe000 {
         //get offset of interal ram bank 
          //fmt.Printf("val exp_ram:0x%x,0x%x\n",addr,(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6)))
-        val = m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK & 0x6))]
+        val = m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK))]
 	} else if addr < 0xfe00 {
 		val = m.ram[(addr-0x2000)&0x1fff]
 	} else if addr <= 0xfe9f {
