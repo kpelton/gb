@@ -6,11 +6,12 @@ import (
 
 )
 
-////MBC1///////
+////MBC5///////
 
 
-type ROM_MBC1 struct {
-	cart        [0x200000]uint8
+
+type ROM_MBC5 struct {
+	cart        [0x600000]uint8
 	bank        uint16
 	ram_enabled bool
 	ram_bank    uint8
@@ -23,8 +24,8 @@ type ROM_MBC1 struct {
 	count       uint32
 }
 
-func NewROM_MBC1(name string, cart_data []uint8, size int, has_battery bool) *ROM_MBC1 {
-	m := new(ROM_MBC1)
+func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *ROM_MBC5 {
+	m := new(ROM_MBC5)
 	fmt.Println(size)
 	copy(m.cart[:], cart_data)
 	m.memory_mode = SIXTEEN_MB
@@ -35,7 +36,7 @@ func NewROM_MBC1(name string, cart_data []uint8, size int, has_battery bool) *RO
 	}
 	return m
 }
-func (m *ROM_MBC1) Load_ram() {
+func (m *ROM_MBC5) Load_ram() {
 	save_name := m.name + ".data"
 
 	file, err := os.OpenFile(save_name, os.O_RDWR, 666) // For read access.
@@ -51,14 +52,14 @@ func (m *ROM_MBC1) Load_ram() {
 
 }
 
-func (m *ROM_MBC1) Save_ram() {
+func (m *ROM_MBC5) Save_ram() {
 	if m.dirty == true {
 		m.file.WriteAt(m.ram[0:], 0)
 		m.dirty = false
 	}
 }
 
-func (m *ROM_MBC1) Read_b(addr uint16) uint8 {
+func (m *ROM_MBC5) Read_b(addr uint16) uint8 {
 	var retval uint8
 
 	if addr < 0x4000 {
@@ -85,7 +86,7 @@ func (m *ROM_MBC1) Read_b(addr uint16) uint8 {
 	return retval
 }
 
-func (m *ROM_MBC1) Write_b(addr uint16, val uint8) {
+func (m *ROM_MBC5) Write_b(addr uint16, val uint8) {
 	if addr >= 0x2000 && addr < 0x4000 {
 		if val > 1 {
 			//fmt.Println("ROM Bank from",m.bank,val-1)

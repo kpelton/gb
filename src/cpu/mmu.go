@@ -9,7 +9,7 @@ import (
 type MMU struct {
 	cart   carts.Cart
 	ram         [0x1000]uint8
-    exp_ram     [0x8000]uint8
+    exp_ram     [0x7000]uint8
 	z_ram  [0x80]uint8
 	cpu    *CPU
 	block  uint16
@@ -28,6 +28,7 @@ func NewMMU(cpu *CPU) *MMU {
 	m.inbios = false
 	m.cpu = cpu
 	m.block = 0
+	m.SVBK = 1
 	return m
 }
 
@@ -193,7 +194,9 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		if dst < 0x8000 {
 			dst+=0x8000
 		}
-		length := ((val & 0x7f) + 1) * 16
+		fmt.Printf("0x%x\n",val)
+		length := (uint16( (val & 0x7f)) + 1) *0x10
+
 		fmt.Printf("->START transfer:%04X %04x %x\n", src,dst,length)
 
 		var i uint16
@@ -247,6 +250,9 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
     case 0xff70:
 
         m.SVBK = val & 0x7
+		if m.SVBK == 0 {
+			m.SVBK = 1
+		}
 				fmt.Printf("->SVBK:%04X\n", m.SVBK)
 	case 0xffff:
 		m.cpu.ic.IE = val
@@ -377,6 +383,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 
 	case 0xff69:
 		val = m.cpu.gpu.BCPD
+		fmt.Printf("<-BCPD:%04X\n", val &0x1)
 
 	case 0xff6A:
 		
@@ -414,8 +421,10 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 		m.ram[addr&0x1fff] = val
     }else if addr <0xe000 {
         //get offset of interal ram bank 
-        //fmt.Printf("WRITE exp_ram:0x%x,0x%x\n",addr,(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6)))
-        m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK))] = val
+        
+		offset:=(addr&0xfff) +(0x1000 *uint16(m.SVBK-1))
+		fmt.Printf("WRITE exp_ram:0x%x %x\n",offset,m.SVBK-1)
+        m.exp_ram[offset] = val
 	} else if addr < 0xfe00 {
 		m.ram[(addr-0x2000)&0x1fff] = val
 		fmt.Println("shadow")
@@ -449,7 +458,7 @@ func (m *MMU) read_b(addr uint16) uint8 {
     }else if addr <0xe000 {
         //get offset of interal ram bank 
          //fmt.Printf("val exp_ram:0x%x,0x%x\n",addr,(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6)))
-        val = m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK))]
+        val = m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK-1))]
 	} else if addr < 0xfe00 {
 		val = m.ram[(addr-0x2000)&0x1fff]
 	} else if addr <= 0xfe9f {

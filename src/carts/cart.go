@@ -10,6 +10,11 @@ type Cart interface {
 	Read_b(uint16) uint8
 	Write_b(uint16, uint8)
 }
+const (
+	SIXTEEN_MB = 0
+	FOUR_MB    = 1
+)
+
 
 const (
 	REG_CART_TYPE       = 0x147
@@ -24,6 +29,10 @@ const (
 	C_ROM_MBC2          = 5
 	C_ROM_MBC2_BATT     = 6
 	C_ROM_MBC3_RAM_BATT = 13
+	C_ROM_MBC5 = 0x19
+	C_ROM_MBC5_RAM_BATT  = 0x1b
+	C_ROM_MBC5_RUM  = 0x1C
+
 	C_ROM_RAM           = 8
 )
 
@@ -82,13 +91,19 @@ func create_new_cart(data []uint8, size int) Cart {
 		cart = NewROM_MBC2(data, size)
 	case C_ROM_MBC3_RAM_BATT:
 		cart = NewROM_MBC1(cart_name, data, size, true)
+	case C_ROM_MBC5_RAM_BATT:
+		cart = NewROM_MBC5(cart_name, data, size, true)
+	case C_ROM_MBC5:
+		cart = NewROM_MBC5(cart_name, data, size, false)
+	case C_ROM_MBC5_RUM:
+		cart = NewROM_MBC5(cart_name, data, size, false)
 
 	case C_ROM_RAM:
 		fmt.Printf("ROM_RAM\n")
 	default:
 
 		fmt.Printf("Unknown!\n")
-		//  panic("Unsupported cart!!!!")
+		  panic("Unsupported cart!!!!")
 		cart = NewROM_MBC1(cart_name, data, size, true)
 
 	}
