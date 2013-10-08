@@ -423,9 +423,9 @@ func (m *MMU) write_b(addr uint16, val uint8) {
         //get offset of interal ram bank 
         
 		offset:=(addr&0xfff) +(0x1000 *uint16(m.SVBK-1))
-		fmt.Printf("WRITE exp_ram:0x%x %x\n",offset,m.SVBK-1)
+		//fmt.Printf("WRITE exp_ram:0x%x %x\n",offset,m.SVBK-1)
         m.exp_ram[offset] = val
-	} else if addr < 0xfe00 {
+	} else if addr < 0xe000 {
 		m.ram[(addr-0x2000)&0x1fff] = val
 		fmt.Println("shadow")
 	} else if addr >= 0xff30 && addr < 0xff40 {
@@ -459,9 +459,10 @@ func (m *MMU) read_b(addr uint16) uint8 {
         //get offset of interal ram bank 
          //fmt.Printf("val exp_ram:0x%x,0x%x\n",addr,(addr&0xfff) +(0x1000 *uint16(m.SVBK &0x6)))
         val = m.exp_ram[(addr&0xfff) +(0x1000 *uint16(m.SVBK-1))]
-	} else if addr < 0xfe00 {
+	} else if addr < 0xf000 {
+		//fmt.Printf("%x\n",addr)
 		val = m.ram[(addr-0x2000)&0x1fff]
-	} else if addr <= 0xfe9f {
+	} else if addr >= 0xfe00 && addr <= 0xfe9f {
 		val = m.cpu.gpu.Oam[addr&0x00ff]
 	} else if addr >= 0xff30 && addr < 0xff40 {
 		val = m.cpu.sound.Wram[(addr&0x00ff)-0x30]
