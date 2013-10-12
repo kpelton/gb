@@ -216,13 +216,13 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 
 	case 0xff68:
 		m.cpu.gpu.BCPS = val
-		fmt.Printf("->BCPS:%04X\n", val)
+	//	fmt.Printf("->BCPS:%04X\n", val)
 		m.cpu.gpu.BC_index = val & 0x3f
 		
 
 	case 0xff69:
 		m.cpu.gpu.BCPD = val
-		fmt.Printf("->BCPDIN:%04X %X  %d \n", val,m.cpu.gpu.STAT,m.cpu.gpu.BC_index,)
+	//	fmt.Printf("->BCPDIN:%04X %X  %d \n", val,m.cpu.gpu.STAT,m.cpu.gpu.BC_index,)
 		m.cpu.gpu.Pal_mem[m.cpu.gpu.BC_index] = val
 		if m.cpu.gpu.BCPS  & 0x80 == 0x80  {
 			m.cpu.gpu.BC_index = (m.cpu.gpu.BC_index +1) %0x40

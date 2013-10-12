@@ -13,6 +13,8 @@ import (
 type ROM_MBC5 struct {
 	cart        [0x600000]uint8
 	bank        uint16
+	bank_lo     uint8
+	bank_hi     uint8
 	ram_enabled bool
 	ram_bank    uint8
 	ram         [0x20000]uint8
@@ -28,7 +30,7 @@ func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *RO
 	m := new(ROM_MBC5)
 	fmt.Println(size)
 	copy(m.cart[:], cart_data)
-	m.memory_mode = SIXTEEN_MB
+	m.memory_mode = FOUR_MB
 	m.name = name
 	m.has_battery = has_battery
 	if has_battery == true {
@@ -58,14 +60,16 @@ func (m *ROM_MBC5) Save_ram() {
 		m.dirty = false
 	}
 }
-
+func (m *ROM_MBC5) Dump()  {
+	fmt.Println("BANK",m.bank)
+}
 func (m *ROM_MBC5) Read_b(addr uint16) uint8 {
 	var retval uint8
 
 	if addr < 0x4000 {
 		retval = m.cart[addr]
 	} else if addr < 0x8000 {
-		retval = m.cart[uint32(addr)+(uint32(m.bank)*0x4000)]
+		retval = m.cart[uint32(addr)+(uint32(m.bank-1)*0x4000)]
 	} else {
 		if (m.memory_mode == FOUR_MB) || (m.memory_mode == SIXTEEN_MB) {
 			bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
@@ -87,13 +91,18 @@ func (m *ROM_MBC5) Read_b(addr uint16) uint8 {
 }
 
 func (m *ROM_MBC5) Write_b(addr uint16, val uint8) {
-	if addr >= 0x2000 && addr < 0x4000 {
-		if val > 1 {
+	if addr >= 0x2000 && addr < 0x3000 {
 			//fmt.Println("ROM Bank from",m.bank,val-1)
-			m.bank = uint16((val) - 1)
-		} else {
-			m.bank = uint16(0)
-		}
+	
+		m.bank_lo = val
+		m.bank = uint16(m.bank_hi) <<8 | uint16(m.bank_lo)
+		fmt.Println("ROM Bank ",m.bank)    
+	} else if addr > 0x3000 && addr  <0x4000 {
+	 
+		m.bank_hi = val &1
+	    m.bank = uint16(m.bank_hi) <<8 | uint16(m.bank_lo)
+		fmt.Println("ROM Bank ",m.bank)    
+
 	} else if addr < 0x2000 {
 		if m.memory_mode == FOUR_MB {
 			if val == 0x0A {
@@ -111,14 +120,6 @@ func (m *ROM_MBC5) Write_b(addr uint16, val uint8) {
 
 		fmt.Println("RAM bank", "from", m.ram_bank, "to", val&0xf)
 		m.ram_bank = (val & 0xf)
-	} else if addr >= 0x6000 && addr < 0x7000 {
-		if val > 0 {
-			m.memory_mode = SIXTEEN_MB
-			fmt.Println("RAM Memory mode", val, "selected")
-		} else {
-			m.memory_mode = FOUR_MB
-		}
-
 	} else if addr >= 0xA000 && addr < 0xc000 {
 
 		if (m.memory_mode == FOUR_MB && m.ram_enabled == true) || (m.memory_mode == SIXTEEN_MB) {

@@ -206,6 +206,7 @@ func (g *GPU) UpdatePaletteObp1(val uint8) {
 
 }
 
+
 func (g *GPU) Update_paletteGBC(pal_mem  *[0x40]uint8, pal *[8]GBPalette) {
 	offset:= 0
 	var val uint32
@@ -216,7 +217,7 @@ func (g *GPU) Update_paletteGBC(pal_mem  *[0x40]uint8, pal *[8]GBPalette) {
 			red := uint32(bcpd &0x1f) *8
 			green := uint32((bcpd & 0x3e0) >> 5) *8
 			blue := uint32((bcpd & 0x7c00) >> 10) *8
-			//fmt.Printf("R:%02x G:%02x B:%02x BCBD:%04x PAL%x NUM%x\n",red,green,blue,bcpd,i,j) 
+		//	fmt.Printf("R:%02x G:%02x B:%02x BCBD:%04x PAL%x NUM%x\n",red,green,blue,bcpd,i,j) 
 			val = 0xff << 24 | red <<16 | green <<8 | blue 
 			pal[i][j] = val
 			offset+=2
@@ -445,6 +446,10 @@ func (g *GPU) get_tile_map() {
 	}
 
 }
+func (g* GPU) Up() {
+	g.Update_paletteGBC(&g.Pal_mem,&g.gbc_palette)
+}
+
 func (g* GPU) get_tmap_gbc(map_base uint16, map_limit uint16,tile_base uint16,bank uint16, tmap *TileMap,amap *TileAttr) {
 	var i int
 	var j int
@@ -574,6 +579,8 @@ func (g *GPU) print_tile_line_gbc(line uint, scanline *Line) {
 
 	j := g.SCX & 7
 	i := g.SCX >> 3
+		g.Update_paletteGBC(&g.Pal_mem,&g.gbc_palette)
+
 	for x := 0; x < 160; {
 		for j < 8 {
 			//fmt.Println(i,map_line,j,tile_line)
@@ -834,7 +841,7 @@ func (g *GPU) hblank(clocks uint16) {
 
 	if g.LY == 0 {
 		g.get_tile_map()
-
+ 
 	}
 
 	if g.LCDC&0x81 == 0x81 {
@@ -844,7 +851,11 @@ func (g *GPU) hblank(clocks uint16) {
 		}
 		g.last_lcdc = g.LCDC
 		if g.Gbc_mode == true {		
+			//g.get_tile_map()
+
 			g.print_tile_line_gbc(uint(g.LY), &line)
+	//	g.screen.screen.Flip()
+
 		} else {
 			g.print_tile_line(uint(g.LY), &line)
 
@@ -917,6 +928,7 @@ func (g *GPU) vblank(clocks uint16) {
 		g.ic.Assert(constants.V_BLANK)
 		g.screen.screen.Flip()
 		g.frames += 1
+		
 		if !fullspeed {
 			if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
 				time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
@@ -939,6 +951,7 @@ func (g *GPU) vblank(clocks uint16) {
 		g.LY = 0
 		g.line_done = 0
 		g.cycle_count += 456
+//		fmt.Println(g.bg_attr_map)
 		//fmt.Println(g.cycle_count)        
 		//	time.Sleep(time.Duration(5) * time.Millisecond)
 	}
