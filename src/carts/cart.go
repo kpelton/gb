@@ -31,8 +31,9 @@ const (
 	C_ROM_MBC3_RAM_BATT = 13
 	C_ROM_MBC5 = 0x19
 	C_ROM_MBC5_RAM_BATT  = 0x1b
-	C_ROM_MBC5_RUM  = 0x1C
 
+	C_ROM_MBC5_RUM  = 0x1C
+	C_ROM_MBC5_RUM_RAM_BATT  = 0x1e
 	C_ROM_RAM           = 8
 )
 
@@ -97,6 +98,9 @@ func create_new_cart(data []uint8, size int) Cart {
 		cart = NewROM_MBC5(cart_name, data, size, false)
 	case C_ROM_MBC5_RUM:
 		cart = NewROM_MBC5(cart_name, data, size, false)
+	case C_ROM_MBC5_RUM_RAM_BATT:
+		cart = NewROM_MBC5(cart_name, data, size, true)
+
 
 	case C_ROM_RAM:
 		fmt.Printf("ROM_RAM\n")

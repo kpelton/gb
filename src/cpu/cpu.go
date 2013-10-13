@@ -92,7 +92,7 @@ func (c *CPU) set_sswitch() {
         }else{
             c.clk_mul = 2
             fmt.Println("CLK to 8mhz") 
-            c.mmu.KEY1 = 0x80 
+            c.mmu.KEY1 = 0x80
 
        }
     }
@@ -237,11 +237,11 @@ func (c *CPU) Exec() {
 		//for i:=0; i< int(c.last_instr); i++ {
 		c.gpu.Update(uint16(c.last_instr/c.clk_mul  ))
 		//	}
-		raise_int := c.timer.Update(uint64(c.last_instr/c.clk_mul))
+		raise_int := c.timer.Update(uint64(c.last_instr*c.clk_mul))
 		if raise_int > 0 {
 			c.ic.Assert(raise_int)
 		}
-		//c.DIV++
+		c.DIV++
 		//	 if time.Since(last_update) > 20 *time.Second {
 
 		//	pprof.StopCPUProfile()

@@ -172,8 +172,8 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		//fmt.Printf("->WX:%04X\n", val)
 		m.cpu.gpu.WX = val
 	case 0xff4D:
-		fmt.Printf("->KEY1:%04X\n", val &0x7)
-        m.KEY1= val
+		fmt.Printf("->KEY1:%04X\n", val &0x1)
+        m.KEY1= val &0x1
         m.cpu.Ready_sswitch()
 
 	case 0xff51:
