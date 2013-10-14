@@ -238,6 +238,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	case 0xff6B:
 		m.cpu.gpu.OCPD = val
 		fmt.Printf("->OCPDIN:%04X %X  %d \n", val,m.cpu.gpu.STAT,m.cpu.gpu.OC_index,)
+		m.cpu.Dump()
 		m.cpu.gpu.Pal_oc_mem[m.cpu.gpu.OC_index] = val
 		if m.cpu.gpu.OCPS  & 0x80 == 0x80  {
 			m.cpu.gpu.OC_index = (m.cpu.gpu.OC_index +1) %0x40

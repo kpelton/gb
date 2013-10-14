@@ -235,7 +235,7 @@ func (c *CPU) Exec() {
 
 
 		//for i:=0; i< int(c.last_instr); i++ {
-		c.gpu.Update(uint16(c.last_instr/c.clk_mul  ))
+		c.gpu.Update(uint16(c.last_instr/2  ))
 		//	}
 		raise_int := c.timer.Update(uint64(c.last_instr*c.clk_mul))
 		if raise_int > 0 {

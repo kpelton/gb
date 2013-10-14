@@ -27,7 +27,7 @@ const (
 	LIGHT_SEL     = 1
 	LIGHTEST_SEL  = 0
 	HBLANK_CYCLES = 204
-	OAM_CYCLES    = 80
+	OAM_CYCLES    = 150
 	RAM_CYCLES    = 172
 	fullspeed     = true
 )
@@ -843,18 +843,19 @@ func (g *GPU) hblank(clocks uint16) {
 		g.get_tile_map()
  
 	}
+		//g.get_attr_map(0x9800,0x9bff,&g.bg_attr_map)
 
 	if g.LCDC&0x81 == 0x81 {
 		if g.last_lcdc&0x58 != g.LCDC&0x58 { //&& g.lyc_int != g.LY {
 			g.get_tile_map()
-		
+			fmt.Println("Refresh")
 		}
 		g.last_lcdc = g.LCDC
 		if g.Gbc_mode == true {		
 			//g.get_tile_map()
 
 			g.print_tile_line_gbc(uint(g.LY), &line)
-	//	g.screen.screen.Flip()
+		//g.screen.screen.Flip()
 
 		} else {
 			g.print_tile_line(uint(g.LY), &line)
