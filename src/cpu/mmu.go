@@ -163,6 +163,8 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 	} else if addr >= 0xff30 && addr < 0xff40 {
 		//fmt.Println(m.cpu.sound.Wram,(addr&0x00ff) - 0x30)
 		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
+	}else if (addr >= 0xff05 && addr < 0xff08) {
+		m.cpu.timer.Write_mmio(addr,val)
 	}else if (addr >= 0xff10 && addr < 0xff27) {
 		m.cpu.sound.Write_mmio(addr,val)
 	}else if (addr >= 0xff40 && addr < 0xff46)  || addr >= 0xff47 && addr < 0xff4C || addr == 0xff4f || addr >= 0xff68 && addr < 0xff6C{
@@ -195,6 +197,8 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		val = m.cpu.dram.Read_b(addr)
 	} else if addr >= 0xfe00 && addr <= 0xfe9f {
 		val = m.cpu.gpu.Oam[addr&0x00ff]
+	}else if (addr >= 0xff05 && addr < 0xff08) {
+		val = m.cpu.timer.Read_mmio(addr)
 	}else if (addr >= 0xff40 && addr < 0xff46)  {
 	    val = m.cpu.gpu.Read_mmio(addr)
 	}else if (addr >= 0xff10 && addr < 0xff27)  {

@@ -284,7 +284,7 @@ func (g *GPU) Write_mmio(addr uint16,val uint8) {
 		g.WY = val
 	case 0xff4B:
 		g.WX = val
-	case 0xff4f:
+	case VBANK_MMIO:
 		g.Gbc_mode = true
 		g.Vram.Write_mmio(addr,val)
 
