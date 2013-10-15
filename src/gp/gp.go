@@ -7,7 +7,9 @@ import (
 	"banthar/sdl"
 
 )
-
+const ( 
+	GP_MMIO = 0xff00
+)
 type GP struct {
 	P1      uint8
 	K_LEFT  uint8
@@ -27,6 +29,26 @@ func NewGP() *GP {
 
 	return g
 }
+func (g *GP) Read_mmio(addr uint16) uint8 {
+	var val uint8
+	switch addr {
+	case GP_MMIO:
+		g.Update()
+		val = g.P1
+	default:
+		panic("GP: unhandled gp read")
+	}
+	return val
+}
+func (g *GP) Write_mmio(addr uint16,val uint8) {
+	switch addr {
+	case GP_MMIO:
+		g.P1 = val
+	default:
+		panic("GP: unhandled gp write")
+	}
+}
+
 
 func (g *GP) handleKeyDown(e *sdl.KeyboardEvent) {
 

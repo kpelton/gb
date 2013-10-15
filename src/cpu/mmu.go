@@ -55,12 +55,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		//fmt.Printf("->SERIALC:%04X\n", val)
          m.cpu.serial.Write(addr,val)        
 
-	case 0xff05:
-		m.cpu.timer.TIMA = val
-	case 0xff06:
-		m.cpu.timer.TMA = val
-	case 0xff07:
-		m.cpu.timer.TAC = val
+
 	case 0xff0F:
 		//`fmt.Printf("->IF:%04X\n", val)
 		m.cpu.ic.IF = val
@@ -103,17 +98,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		for i = 0; i < uint16(length); i++ {
 			m.write_b(dst +i,m.read_b(src+i))
 		}
-		m.HDMA_start = 0xff
-		
-
-
-
-
-
-
-
     case 0xff70:
-
 		m.cpu.dram.Write_mmio(addr,val)
 	case 0xffff:
 		m.cpu.ic.IE = val

@@ -14,7 +14,31 @@ type IC struct {
 func NewIC() *IC {
 	return new(IC)
 }
+func (i *IC) Write_mmio(addr uint16, val uint8) {
+	switch addr {
+	case 0xff0f:
+		i.IF = val
+	case 0xffff:
+		i.IE = val
+	default:
+		panic("IC:unhandled mmio write")
+	}
+}
 
+func (i *IC) Read_mmio(addr uint16) uint8 {
+	var val uint8
+	switch addr {
+	case 0xff0f:
+		val = i.IF
+	case 0xffff:
+		val = i.IE 
+	default:
+		panic("IC:unhandled mmio write")
+
+
+	}
+	return val
+}
 func (i *IC) Assert(signal uint8) {
 	//check to see if it is masked off
 	//fmt.Println("ASSERT",signal,i.IE,i.IF)

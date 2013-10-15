@@ -28,6 +28,35 @@ func NewTimer() *Timer {
 	timer.last_update = 0
 	return timer
 }
+func (timer *Timer) Write_mmio(addr uint16, val uint8) {
+	switch addr {
+	case 0xff05:
+		timer.TIMA = val
+	case 0xff06:
+		timer.TMA = val
+	case 0xff07:
+		timer.TAC = val
+	default:
+		panic("TIMER:unhandled timer mmio write")
+	}
+}
+
+func (timer *Timer) Read_mmio(addr uint16) uint8 {
+	var val uint8
+	switch addr {
+	case 0xff05:
+		val =timer.TIMA
+	case 0xff06:
+		val = timer.TMA 
+	case 0xff07:
+		val = timer.TAC 
+	default:
+		panic("TIMER:unhandled timer mmio read")
+
+	}
+	return val
+}
+
 func (timer *Timer) update_regs() (bool){
 	timer.TIMA += 1
 	if timer.TIMA == 0 {
