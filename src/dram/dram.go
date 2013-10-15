@@ -18,8 +18,11 @@ const (
 	EBANK_LO = 0xd000
 	EBANK_HI = 0xe000
 
-	ECHO_HI = 0xfe00
-	ECHO_LO  = 0xe000
+	ECHO_B0_HI = 0xf000
+	ECHO_B0_LO  = 0xe000
+
+	ECHO_B1_HI = 0xfe00
+	ECHO_B1_LO  = 0xf000
 
 	Z_RAM_LO   = 0xff80
 	Z_RAM_HI  = 0xffff
@@ -68,8 +71,12 @@ func (m *DRAM) Read_b(addr uint16) uint8 {
     }else if addr  >= EBANK_LO && addr < EBANK_HI {
 		offset :=(addr&0xfff) +(0x1000 *uint16(m.SVBK-1) )
         val = m.exp_ram[offset]
-	}else if addr >= ECHO_LO && addr < ECHO_HI {
-		val = m.ram[(addr-0x2000)&0x1fff]
+	}else if addr >= ECHO_B0_LO && addr < ECHO_B0_HI {
+		val = m.ram[(addr-0x2000)&0xfff]
+	}else if addr >= ECHO_B1_LO && addr < ECHO_B1_HI {
+		new_addr := addr -0x3000 
+		offset :=(new_addr&0xfff) +(0x1000 *uint16(m.SVBK-1) )
+        val = m.exp_ram[offset]
 	} else if addr >= Z_RAM_LO && addr < Z_RAM_HI {
 		val = m.z_ram[(addr&0x00ff)-0x80]
 	} else {
@@ -80,17 +87,24 @@ func (m *DRAM) Read_b(addr uint16) uint8 {
 
 func (m *DRAM) Write_b(addr uint16,val uint8)  {
 
-	 //  fmt.Printf("write:%04x:%04x\n",addr,val)
+	//fmt.Printf("DRAM write:%04x:%04x\n",addr,val)
 
 	if addr >= BANK_0_LO && addr < BANK_0_HI {
+		//fmt.Printf("BANK0 write:%04x:%04x\n",addr&0xfff,val)
 		m.ram[addr&0xfff] = val
     }else if addr  >= EBANK_LO && addr < EBANK_HI {
 		offset :=(addr&0xfff) +(0x1000 *uint16(m.SVBK-1) )
 		m.exp_ram[offset] = val
-	}else if addr >= ECHO_LO && addr < ECHO_HI {
-		m.ram[(addr-0x2000)&0x1fff] = val
+	}else if addr >= ECHO_B0_LO && addr < ECHO_B0_HI {
+		m.ram[(addr-0x2000)&0xfff] = val
+	}else if addr >= ECHO_B1_LO && addr < ECHO_B1_HI {
+		new_addr := addr-0x3000 
+		offset :=(new_addr&0xfff) +(0x1000 *uint16(m.SVBK-1) )
+		m.exp_ram[offset] = val
 	} else if addr >= Z_RAM_LO && addr < Z_RAM_HI {
-		m.z_ram[(addr&0x00ff)-0x80] = val
+		offset:=(addr&0x00ff)-0x80
+	//	fmt.Printf("%x\n",offset)
+		m.z_ram[offset] = val
 	} else {
 		fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
 	}

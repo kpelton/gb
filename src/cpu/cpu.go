@@ -9,6 +9,7 @@ import (
 	"serial"
 	"sound"
 	"timer"
+	"dram"
 //"runtime/pprof"
 //"time"
 )
@@ -70,6 +71,7 @@ type CPU struct {
 	timer      *timer.Timer
 	ic         *ic.IC
 	sound      *sound.Sound
+	dram       *dram.DRAM
 	is_halted  bool
 	DIV        uint8
 	last_instr uint16
@@ -2022,6 +2024,7 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c.ic = ic.NewIC()
 	c.sound = sound.NewSound()
 	c.gpu = gpu.NewGPU(c.ic, int16(scale))
+	c.dram = dram.NewDRAM()
     c.clk_mul = 1
 
     if serial_p != "" {

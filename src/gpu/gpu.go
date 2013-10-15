@@ -27,7 +27,7 @@ const (
 	LIGHT_SEL     = 1
 	LIGHTEST_SEL  = 0
 	HBLANK_CYCLES = 204
-	OAM_CYCLES    = 150
+	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
 	fullspeed     = true
 )
@@ -78,14 +78,13 @@ type GPU struct {
 	BGP                uint8
 	OBP0               uint8
 	OBP1               uint8
-	VBANK              uint8
 	BC_index           uint8
 	BCPS               uint8
 	BCPD               uint8
 	OC_index           uint8
 	OCPS               uint8
 	OCPD               uint8
-
+	Vram               *VRAM
 
 
 
@@ -121,7 +120,6 @@ type GPU struct {
 	last_lcdc    uint8
 	lyc_int      uint8
 	Gbc_mode     bool
-	Vm           [0x4000]uint8
 	Oam          [0xA0]uint8
 	ic           *ic.IC
 	Pal_mem      [0x40] uint8
@@ -206,6 +204,126 @@ func (g *GPU) UpdatePaletteObp1(val uint8) {
 
 }
 
+func (g *GPU) Read_mmio(addr uint16) uint8 {
+	var val uint8
+	switch addr {
+	case 0xff40:
+		val = g.LCDC
+	case 0xff41:
+		val = g.STAT
+		//fmt.Printf("<-STAT:%04X\n", val)
+	case 0xff42:
+		val = g.SCY
+	case 0xff43:
+		val = g.SCX
+	case 0xff44:
+		val = g.LY
+	case 0xff45:
+		val = g.LYC
+	case 0xff46:
+		val = 0xff
+	case 0xff47:
+		val = g.BGP
+	case 0xff48:
+		val = g.OBP0
+	case 0xff49:
+		val = g.OBP1
+	case 0xff4A:
+		val = g.WY
+	case 0xff4B:
+		val = g.WX
+	case VBANK_MMIO:
+        val=g.Vram.Read_mmio(addr)
+	case 0xff68:
+		val = g.BCPS
+		fmt.Printf("<-BCPS:%04X\n", val &0x1)
+	case 0xff69:
+		val = g.Pal_mem[g.BC_index]
+		fmt.Printf("<-BCPD:%04X\n", val &0x1)
+	case 0xff6A:
+		fmt.Printf("<-OCPS:%04X\n", val &0x1)
+	case 0xff6B:
+		val = g.BCPS
+	default:
+		panic("unhandled read addr")
+	}
+	return val
+}
+
+func (g *GPU) Write_mmio(addr uint16,val uint8) {
+	switch addr {
+
+	case 0xff40:
+		g.LCDC = val
+	case 0xff41:
+		g.STAT |= val & 0xf8
+	case 0xff42:
+		g.SCY = val
+	case 0xff43:
+		g.SCX = val
+	case 0xff44:
+		g.LY = 0		
+	case 0xff45:
+		g.LYC = val		
+	case 0xff47:
+		if val != g.BGP {
+			g.BGP = val
+            g.UpdatePaletteBg( val)
+		}
+	case 0xff48:
+		if val != g.OBP0 {
+			g.OBP0 = val
+			g.UpdatePaletteObp0( val)
+		}
+	case 0xff49:
+		if val != g.OBP1 {
+			g.OBP1 = val
+			g.UpdatePaletteObp1( val)
+		}
+	case 0xff4A:
+		g.WY = val
+	case 0xff4B:
+		g.WX = val
+	case 0xff4f:
+		g.Gbc_mode = true
+		g.Vram.Write_mmio(addr,val)
+
+	case 0xff68:
+		g.BCPS = val
+	//	fmt.Printf("->BCPS:%04X\n", val)
+		g.BC_index = val & 0x3f
+		
+
+	case 0xff69:
+		g.BCPD = val
+	//	fmt.Printf("->BCPDIN:%04X %X  %d \n", val,g.STAT,g.BC_index,)
+		g.Pal_mem[g.BC_index] = val
+		if g.BCPS  & 0x80 == 0x80  {
+			g.BC_index = (g.BC_index +1) %0x40
+			g.BCPS  = 0x80 | 	g.BC_index 
+
+		}
+	case 0xff6A:
+		g.OCPS = val
+		fmt.Printf("->OCPS:%04X\n", val)
+		g.OC_index = val & 0x3f
+		
+
+	case 0xff6B:
+		g.OCPD = val
+		fmt.Printf("->OCPDIN:%04X %X  %d \n", val,g.STAT,g.OC_index,)
+		g.Pal_oc_mem[g.OC_index] = val
+		if g.OCPS  & 0x80 == 0x80  {
+			g.OC_index = (g.OC_index +1) %0x40
+			g.OCPS  = 0x80 | 	g.BC_index 
+
+		}
+	default: 
+		panic("Unhandled GPU mmio write")
+	}
+}
+
+
 
 func (g *GPU) Update_paletteGBC(pal_mem  *[0x40]uint8, pal *[8]GBPalette) {
 	offset:= 0
@@ -231,6 +349,7 @@ func (g *GPU) Update_paletteGBC(pal_mem  *[0x40]uint8, pal *[8]GBPalette) {
 func NewGPU(ic *ic.IC, scale int16) *GPU {
 	g := new(GPU)
 	g.screen = newScreen(scale)
+	g.Vram = newVRAM()
 	g.last_update = time.Now()
 	g.frame_time = time.Now()
 	g.scale = scale
@@ -264,8 +383,8 @@ func (g *GPU) get_tile_val(addr uint16, bank uint16,xflip uint8,yflip uint8) Til
 	if yflip == 0{
 		for k = 0; k < 8; k++ {
 			var off uint16 = addr + uint16(k*2)
-			bl := g.Vm[off&0x1fff + bank *0x2000]
-			bh := g.Vm[(off+1)&0x1fff + bank * 0x2000]
+			bl := g.Vram.Vm[off&0x1fff + bank *0x2000]
+			bh := g.Vram.Vm[(off+1)&0x1fff + bank * 0x2000]
 			if xflip ==1 {
 				i=0
 				for j = 0; j< 8; j++{
@@ -287,8 +406,8 @@ func (g *GPU) get_tile_val(addr uint16, bank uint16,xflip uint8,yflip uint8) Til
 		z:=7
 		for k = 0; k <8 ; k++ {
 			var off uint16 = addr + uint16(z*2)
-			bl := g.Vm[off&0x1fff + bank *0x2000]
-			bh := g.Vm[(off+1)&0x1fff + bank * 0x2000]
+			bl := g.Vram.Vm[off&0x1fff + bank *0x2000]
+			bh := g.Vram.Vm[(off+1)&0x1fff + bank * 0x2000]
 			if xflip ==1 {
 				i=0
 				for j = 0; j < 8; j++ {
@@ -321,8 +440,8 @@ func (g *GPU) get_tile_val16(addr uint16,bank uint16) Tile16 {
 
 	for k = 0; k < 16; k++ {
 		var off uint16 = addr + uint16(k*2)
-		bl := g.Vm[off&0x1fff + bank *0x2000]
-		bh := g.Vm[(off+1)&0x1fff + bank * 0x2000]
+		bl := g.Vram.Vm[off&0x1fff + bank *0x2000]
+		bh := g.Vram.Vm[(off+1)&0x1fff + bank * 0x2000]
 		i = 7
 
 		for j = 0; j < 8; j++ {
@@ -456,7 +575,7 @@ func (g* GPU) get_tmap_gbc(map_base uint16, map_limit uint16,tile_base uint16,ba
 	var tile uint16
 
 	for offset := map_base; offset <= map_limit; offset++ {
-		b := g.Vm[offset&0x1fff]
+		b := g.Vram.Vm[offset&0x1fff]
 
 		//fmt.Printf("0x%x:0x%x\n",offset,b)
 		if tile_base == 0x8800 {
@@ -490,7 +609,7 @@ func (g* GPU) get_tmap(map_base uint16, map_limit uint16,tile_base uint16,bank u
 	var tile uint16
 
 	for offset := map_base; offset <= map_limit; offset++ {
-			b := g.Vm[offset&0x1fff]
+			b := g.Vram.Vm[offset&0x1fff]
 
 			//fmt.Printf("0x%x:0x%x\n",offset,b)
 			if tile_base == 0x8800 {
@@ -524,7 +643,7 @@ func (g *GPU) get_attr_map(map_base uint16, map_limit uint16, attr * TileAttr)  
 
 	for offset := map_base; offset <= map_limit; offset++ {
 		abs_offset = (offset & 0x1fff) + 0x2000 
-		val = g.Vm[abs_offset]
+		val = g.Vram.Vm[abs_offset]
 
 		attr[i][j].pal = val &0x7
 		attr[i][j].bank = (val &0x8) >>3
@@ -848,7 +967,7 @@ func (g *GPU) hblank(clocks uint16) {
 	if g.LCDC&0x81 == 0x81 {
 		if g.last_lcdc&0x58 != g.LCDC&0x58 { //&& g.lyc_int != g.LY {
 			g.get_tile_map()
-			fmt.Println("Refresh")
+			//fmt.Println("Refresh")
 		}
 		g.last_lcdc = g.LCDC
 		if g.Gbc_mode == true {		
