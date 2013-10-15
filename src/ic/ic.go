@@ -12,7 +12,13 @@ type IC struct {
 }
 
 func NewIC() *IC {
-	return new(IC)
+	ic := new(IC)
+	ic.Reset()
+	return ic
+}
+func (i *IC) Reset() {
+	i.IF = 0
+	i.IE = 0
 }
 func (i *IC) Write_mmio(addr uint16, val uint8) {
 	switch addr {

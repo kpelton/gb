@@ -19,11 +19,16 @@ const (
 
 func newVRAM() *VRAM {
 	m := new(VRAM)
-	m.VBANK = 0
-	
+	m.Reset()
 	return m
-
 }
+
+func (m *VRAM)  Reset() {
+	m.VBANK = 0
+}
+
+
+
 
 func (m *VRAM) Write_mmio(addr uint16,val uint8)  {
 	if addr == VBANK_MMIO {

@@ -1,7 +1,7 @@
 package timer
 
 import (
-//    "fmt"
+    "fmt"
 )
 
 type Timer struct {
@@ -25,10 +25,20 @@ const (
 
 func NewTimer() *Timer {
 	timer := new(Timer)
-	timer.last_update = 0
+	timer.Reset()
+
 	return timer
 }
+func (timer *Timer) Reset() {
+	timer.last_update = 0
+	timer.TAC = 0
+	timer.TIMA = 0
+	timer.TMA = 0
+}
+
+
 func (timer *Timer) Write_mmio(addr uint16, val uint8) {
+	fmt.Printf("TIMER:%x %x\n",addr,val)
 	switch addr {
 	case 0xff05:
 		timer.TIMA = val
@@ -43,7 +53,10 @@ func (timer *Timer) Write_mmio(addr uint16, val uint8) {
 
 func (timer *Timer) Read_mmio(addr uint16) uint8 {
 	var val uint8
+				fmt.Printf("TIMER READ:%x \n",addr)
+
 	switch addr {
+
 	case 0xff05:
 		val =timer.TIMA
 	case 0xff06:
@@ -52,7 +65,6 @@ func (timer *Timer) Read_mmio(addr uint16) uint8 {
 		val = timer.TAC 
 	default:
 		panic("TIMER:unhandled timer mmio read")
-
 	}
 	return val
 }
