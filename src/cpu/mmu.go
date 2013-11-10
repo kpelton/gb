@@ -3,9 +3,17 @@ package cpu
 import (
 	"carts"
 	"fmt"
-
+    "component"
 )
+type mmio_connection struct {
+	comp component.Component
+	addr uint16
+	name string
 
+}
+const (
+	MAX_MMIO = 128
+)
 type MMU struct {
 	cart   carts.Cart
 	cpu    *CPU
@@ -16,7 +24,10 @@ type MMU struct {
 	HDMA_hi_dst uint8
 	HDMA_lo_dst uint8
     HDMA_start uint8
+	mmio_connections [MAX_MMIO]*mmio_connection
+	mmio_tail int
 }
+
 
 func NewMMU(cpu *CPU) *MMU {
 	m := new(MMU)
@@ -28,6 +39,23 @@ func NewMMU(cpu *CPU) *MMU {
 func (m *MMU) Create_new_cart(filename string) {
 	m.cart = carts.Load_cart(filename)
 }
+
+func (m *MMU) Connect_mmio(addr uint16,name string,comp component.Component) {
+	if m.mmio_tail == MAX_MMIO {
+		panic("Unable to handle this mmio connection")
+	}
+	con := new(mmio_connection)
+	con.addr = addr
+	con.name = name
+	con.comp = comp
+	m.mmio_connections[m.mmio_tail] = con
+	m.mmio_tail++
+	
+	
+}
+
+
+
 
 
 func (m *MMU) exec_dma(addr uint8) {
@@ -42,25 +70,18 @@ func (m *MMU) exec_dma(addr uint8) {
 }
 
 func (m *MMU) write_mmio(addr uint16, val uint8) {
+	for i:=0; i<m.mmio_tail; i++ {
+		if m.mmio_connections[i].addr== addr {
+			//fmt.Println("Writing to",m.mmio_connections[i].name)
+			m.mmio_connections[i].comp.Write_mmio(addr,val)
+			return
+		}
+	}
 	switch addr {
-	case 0xff00:
-
-		m.cpu.gp.P1 = val
-		//		fmt.Printf("->P1:%04X\n",val)
 	case 0xff01:
-       // fmt.Printf("->SERIALB:%04X\n", val)
-
         m.cpu.serial.Write(addr,val)        
 	case 0xff02:
-		//fmt.Printf("->SERIALC:%04X\n", val)
          m.cpu.serial.Write(addr,val)        
-
-
-	case 0xff0F:
-		//`fmt.Printf("->IF:%04X\n", val)
-		m.cpu.ic.IF = val
-
-
 	case 0xff46:
 		// m.Dump_vm()
 		m.exec_dma(val)
@@ -98,26 +119,24 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		for i = 0; i < uint16(length); i++ {
 			m.write_b(dst +i,m.read_b(src+i))
 		}
-    case 0xff70:
-		m.cpu.dram.Write_mmio(addr,val)
-	case 0xffff:
-		m.cpu.ic.IE = val
-		//fmt.Printf("->IE:%04X\n", val)
+	 
 	default:
 		fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
 
 	}
 
+
 }
 
 func (m *MMU) read_mmio(addr uint16) uint8 {
 	var val uint8 = 0
+	for i:=0; i<m.mmio_tail; i++ {
+		if m.mmio_connections[i].addr == addr {
+			//fmt.Println("Reading From",m.mmio_connections[i].name)
+			return m.mmio_connections[i].comp.Read_mmio(addr)
+		}
+	}
 	switch addr {
-
-	case 0xff00:
-		m.cpu.gp.Update()
-		val = m.cpu.gp.P1
-	//fmt.Printf("<-P1:%04X\n",val)
     case 0xff01:
         val= m.cpu.serial.Read(addr)     
          fmt.Printf("<-SERIALB:%04X\n", val)
@@ -135,13 +154,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	case 0xff55:
 		val = m.HDMA_start
 		m.HDMA_start = 0
-	case 0xff70:
-		val =m.cpu.dram.Read_mmio(addr)
-	case 0xffff:
-		val = m.cpu.ic.IE
-	case 0xff0F:
-		val = m.cpu.ic.IF
-    default:
+	default:
 		fmt.Printf("unhandled read:%04x\n", addr)
 
 
@@ -163,8 +176,6 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 	} else if addr >= 0xff30 && addr < 0xff40 {
 		//fmt.Println(m.cpu.sound.Wram,(addr&0x00ff) - 0x30)
 		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
-	}else if (addr >= 0xff05 && addr < 0xff08) {
-		m.cpu.timer.Write_mmio(addr,val)
 	}else if (addr >= 0xff10 && addr < 0xff27) {
 		m.cpu.sound.Write_mmio(addr,val)
 	}else if (addr >= 0xff40 && addr < 0xff46)  || addr >= 0xff47 && addr < 0xff4C || addr == 0xff4f || addr >= 0xff68 && addr < 0xff6C{
@@ -197,8 +208,6 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		val = m.cpu.dram.Read_b(addr)
 	} else if addr >= 0xfe00 && addr <= 0xfe9f {
 		val = m.cpu.gpu.Oam[addr&0x00ff]
-	}else if (addr >= 0xff05 && addr < 0xff08) {
-		val = m.cpu.timer.Read_mmio(addr)
 	}else if (addr >= 0xff40 && addr < 0xff46)  {
 	    val = m.cpu.gpu.Read_mmio(addr)
 	}else if (addr >= 0xff10 && addr < 0xff27)  {

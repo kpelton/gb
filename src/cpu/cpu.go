@@ -253,10 +253,6 @@ func (c *CPU) Exec() {
 
 }
 
-func (c *CPU) tick(val uint16) {
-	//	time.Sleep(time.Duratio(val) *time.Microsecond)
-}
-
 func get_ld_type(arg string) int {
 	//turn type into token
 
@@ -2018,14 +2014,24 @@ func createOps(c *CPU) {
 func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c := new(CPU)
 
-	c.gp = gp.NewGP()
+	
 	c.mmu = NewMMU(c)
 	c.timer = timer.NewTimer()
 	c.ic = ic.NewIC()
+	c.gp = gp.NewGP()
+
+	c.mmu.Connect_mmio(0xff0f,"IE",c.ic)
+	c.mmu.Connect_mmio(0xffff,"IF",c.ic)
 	c.sound = sound.NewSound()
 	c.gpu = gpu.NewGPU(c.ic, int16(scale))
 	c.dram = dram.NewDRAM()
-    c.clk_mul = 1
+    c.mmu.Connect_mmio(0xff70,"SVBK",c.dram)
+	c.mmu.Connect_mmio(0xff00,"GP",c.gp)
+	c.mmu.Connect_mmio(0xff07,"TAC",c.timer)
+	c.mmu.Connect_mmio(0xff06,"TMA",c.timer)
+	c.mmu.Connect_mmio(0xff05,"TIMA",c.timer)
+	
+	c.clk_mul = 1
 
     if serial_p != "" {
 		c.serial = serial.NewRealSerial(c.ic, serial_p)

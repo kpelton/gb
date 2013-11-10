@@ -29,7 +29,7 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
-	fullspeed     = true
+	fullspeed     = false
 )
 
 func newScreen(scale int16) *Screen {
