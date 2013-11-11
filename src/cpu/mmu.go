@@ -78,10 +78,6 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 		}
 	}
 	switch addr {
-	case 0xff01:
-        m.cpu.serial.Write(addr,val)        
-	case 0xff02:
-         m.cpu.serial.Write(addr,val)        
 	case 0xff46:
 		// m.Dump_vm()
 		m.exec_dma(val)
@@ -137,12 +133,6 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		}
 	}
 	switch addr {
-    case 0xff01:
-        val= m.cpu.serial.Read(addr)     
-         fmt.Printf("<-SERIALB:%04X\n", val)
-	case 0xff02:
-        val = m.cpu.serial.Read(addr)        
-		fmt.Printf("<-SERIALC:%04X\n", val)
 	case 0xff04:
 		val = m.cpu.DIV
 		//fmt.Printf("<-DIV:%04X\n",val)

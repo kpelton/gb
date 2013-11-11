@@ -124,7 +124,7 @@ func (s *NetSerial) Update(cycles uint16) uint8 {
 
 }
 
-func (s *NetSerial) Read(addr uint16) uint8 {
+func (s *NetSerial) Read_mmio(addr uint16) uint8 {
 	switch addr {
 	case SB_ADDR:
 		return s.SB
@@ -135,7 +135,7 @@ func (s *NetSerial) Read(addr uint16) uint8 {
 	}
 }
 
-func (s *NetSerial) Write(addr uint16, val uint8) {
+func (s *NetSerial) Write_mmio(addr uint16, val uint8) {
 	switch addr {
 
 	case SB_ADDR:

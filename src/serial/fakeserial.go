@@ -36,7 +36,7 @@ func (s *FakeSerial) Update(cycles uint16) uint8 {
 
 }
 
-func (s *FakeSerial) Read(addr uint16) uint8 {
+func (s *FakeSerial) Read_mmio(addr uint16) uint8 {
 	switch addr {
 	case SB_ADDR:
 		return s.SB
@@ -47,7 +47,7 @@ func (s *FakeSerial) Read(addr uint16) uint8 {
 	}
 }
 
-func (s *FakeSerial) Write(addr uint16, val uint8) {
+func (s *FakeSerial) Write_mmio(addr uint16, val uint8) {
 	switch addr {
 
 	case SB_ADDR:

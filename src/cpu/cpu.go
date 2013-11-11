@@ -2040,6 +2040,9 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	} else {
 		c.serial = serial.NewFakeSerial(c.ic)
 	}
+	c.mmu.Connect_mmio(0xff01,"SC",c.serial)
+	c.mmu.Connect_mmio(0xff02,"SB",c.serial)
+	
 	createOps(c)
 
 	return c

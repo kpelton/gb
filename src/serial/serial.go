@@ -8,6 +8,6 @@ const (
 
 type Serial interface {
 	Update(cycles uint16) uint8
-	Read(addr uint16) uint8
-	Write(addr uint16, val uint8)
+	Read_mmio(addr uint16) uint8
+	Write_mmio(addr uint16, val uint8)
 }
