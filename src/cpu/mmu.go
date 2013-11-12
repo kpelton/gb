@@ -12,7 +12,7 @@ type mmio_connection struct {
 
 }
 const (
-	MAX_MMIO = 128
+	MAX_MMIO = 256
 )
 type MMU struct {
 	cart   carts.Cart
@@ -24,7 +24,6 @@ type MMU struct {
 	HDMA_lo_dst uint8
     HDMA_start uint8
 	mmio_connections [MAX_MMIO]*mmio_connection
-	mmio_tail int
 }
 
 
@@ -40,37 +39,34 @@ func (m *MMU) Create_new_cart(filename string) {
 }
 
 func (m *MMU) Connect_mmio(addr uint16,name string,comp component.MMIOComponent) {
-	if m.mmio_tail == MAX_MMIO {
+	if addr < 0xff00 || m.mmio_connections[addr&0xff] != nil {
 		panic("Unable to handle this mmio connection")
 	}
+	
 	con := new(mmio_connection)
 	con.addr = addr
 	con.name = name
 	con.comp = comp
-	m.mmio_connections[m.mmio_tail] = con
-	m.mmio_tail++
 	
+	m.mmio_connections[addr &0xff] = con
 	
 }
 
 func (m *MMU) write_mmio(addr uint16, val uint8) {
-	for i:=0; i<m.mmio_tail; i++ {
-		if m.mmio_connections[i].addr== addr {
-			//fmt.Println("Writing to",m.mmio_connections[i].name)
-			m.mmio_connections[i].comp.Write_mmio(addr,val)
-			return
-		}
+	con := m.mmio_connections[addr &0xff]
+	if con != nil {
+		con.comp.Write_mmio(addr,val)
+		return
 	}
+	
 	fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
 }
 
 func (m *MMU) read_mmio(addr uint16) uint8 {
 	var val uint8 = 0
-	for i:=0; i<m.mmio_tail; i++ {
-		if m.mmio_connections[i].addr == addr {
-			//fmt.Println("Reading From",m.mmio_connections[i].name)
-			return m.mmio_connections[i].comp.Read_mmio(addr)
-		}
+	con := m.mmio_connections[addr &0xff]
+	if con != nil {
+		return con.comp.Read_mmio(addr)
 	}
 	fmt.Printf("unhandled read:%04x\n", addr)
 	return val
