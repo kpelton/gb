@@ -4,6 +4,7 @@ import (
 	"constants"
 	"fmt"
 	"ic"
+	"component"
 )
 
 type FakeSerial struct {
@@ -12,10 +13,19 @@ type FakeSerial struct {
 	ic          *ic.IC
 	cycle_count uint16
 	started     bool
-}
+	reg_list    component.RegList
 
+}
+func (g* FakeSerial) Get_reg_list() component.RegList{
+	return g.reg_list
+}
 func NewFakeSerial(ic *ic.IC) *FakeSerial {
 	serial := new(FakeSerial)
+	serial.reg_list = component.RegList{
+		{Name:"SC" , Addr:0xff01},
+		{Name:"SB" , Addr:0xff02},
+	}
+
 	serial.ic = ic
 	return serial
 }

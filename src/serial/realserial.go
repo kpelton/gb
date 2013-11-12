@@ -6,6 +6,7 @@ import (
 	"github.com/tarm/goserial"
 	"ic"
 	"io"
+	"component"
 )
 
 type RealSerial struct {
@@ -15,10 +16,20 @@ type RealSerial struct {
 	cycle_count uint16
 	started     bool
 	port        io.ReadWriteCloser
+	reg_list    component.RegList
+
 }
+func (g* RealSerial) Get_reg_list() component.RegList{
+	return g.reg_list
+}
+
 
 func NewRealSerial(ic *ic.IC, port string) *RealSerial {
 	nserial := new(RealSerial)
+	nserial.reg_list = component.RegList{
+		{Name:"SC" , Addr:0xff01},
+		{Name:"SB" , Addr:0xff02},
+	}
 	nserial.ic = ic
 	c := &serial.Config{Name: "/dev/ttyUSB0", Baud: 115200}
 	s, err := serial.OpenPort(c)

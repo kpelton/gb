@@ -11,6 +11,7 @@ import (
 	"timer"
 	"dram"
 	"dmac"
+	"component"
 //"runtime/pprof"
 //"time"
 )
@@ -83,7 +84,8 @@ type CPU struct {
 	last_instr uint16
 	push_pc    Action
     sswitch    bool        
-    clk_mul    uint16   
+    clk_mul    uint16
+	reg_list   component.RegList
 }
 
 func (c *CPU) Ready_sswitch() {
@@ -2042,43 +2044,36 @@ func createOps(c *CPU) {
 	c.ops[0x37] = gen_rotate_shift("SCF", "A", 4, 1)
 	c.ops[0x3f] = gen_rotate_shift("CCF", "A", 4, 1)
 
-	//c.ops[0x27] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
+	//c.ops[0x27   ] =  func(c* CPU) {c.do_instr("NOOP", 4, 1)}
 }
 
+func (c *CPU) Get_reg_list() component.RegList {
+	return c.reg_list
+}
+func setup_mmu_conn(c component.MMIOComponent, m *MMU) {
+	reg_list := c.Get_reg_list()
+	for i := range reg_list {
+		m.Connect_mmio(reg_list[i].Addr,reg_list[i].Name,c) 
+	}
+
+}
 func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c := new(CPU)
-
+	c.reg_list = component.RegList{
+		{Name:"KEY1",Addr:KEY1_MMIO},
+		{Name:"DIV",Addr:DIV_MMIO},
+	}
 	
 	c.mmu = NewMMU(c)
 	c.timer = timer.NewTimer()
 	c.ic = ic.NewIC()
 	c.gp = gp.NewGP()
-
-	c.mmu.Connect_mmio(0xff0f,"IE",c.ic)
-	c.mmu.Connect_mmio(0xffff,"IF",c.ic)
 	c.sound = sound.NewSound()
 	c.gpu = gpu.NewGPU(c.ic, int16(scale))
 	c.dram = dram.NewDRAM()
 	c.dmac = dmac.NewDMAC(c.mmu)
-    c.mmu.Connect_mmio(0xff70,"SVBK",c.dram)
-	c.mmu.Connect_mmio(0xff00,"GP",c.gp)
-	c.mmu.Connect_mmio(0xff07,"TAC",c.timer)
-	c.mmu.Connect_mmio(0xff06,"TMA",c.timer)
-	c.mmu.Connect_mmio(0xff05,"TIMA",c.timer)
-	c.mmu.Connect_mmio(KEY1_MMIO,"KEY1",c)
-	c.mmu.Connect_mmio(DIV_MMIO,"DIV",c)
 
-
-	c.mmu.Connect_mmio(0xff46,"DMA",c.dmac)
-	c.mmu.Connect_mmio(0xff51,"DMA_SRC_HIGH",c.dmac)
-	c.mmu.Connect_mmio(0xff52,"DMA_SRC_LO",c.dmac)
-	c.mmu.Connect_mmio(0xff53,"DMA_DST_LO",c.dmac)
-	c.mmu.Connect_mmio(0xff54,"DMA_DST_HIGH",c.dmac)
-	c.mmu.Connect_mmio(0xff55,"DMA_START",c.dmac)
-
-	
-	
-
+		
 	c.clk_mul = 1
 
     if serial_p != "" {
@@ -2088,8 +2083,18 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	} else {
 		c.serial = serial.NewFakeSerial(c.ic)
 	}
-	c.mmu.Connect_mmio(0xff01,"SC",c.serial)
-	c.mmu.Connect_mmio(0xff02,"SB",c.serial)
+	
+	///setup mmu conns
+	setup_mmu_conn(c.timer,c.mmu)
+	setup_mmu_conn(c.ic,c.mmu)
+	setup_mmu_conn(c.gp,c.mmu)
+	setup_mmu_conn(c.dram,c.mmu)
+	setup_mmu_conn(c.dmac,c.mmu)
+	setup_mmu_conn(c.serial,c.mmu)
+	setup_mmu_conn(c,c.mmu)
+	setup_mmu_conn(c.gpu,c.mmu)
+
+
 	
 	createOps(c)
 

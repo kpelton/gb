@@ -2,6 +2,7 @@ package timer
 
 import (
     "fmt"
+	"component"
 )
 
 type Timer struct {
@@ -9,6 +10,7 @@ type Timer struct {
 	TMA         uint8 // Timer Modulo (R/W)
 	TIMA        uint8 // Timer counter (R/W)
 	last_update int   // in clock cycles
+	reg_list component.RegList
 }
 
 const (
@@ -21,13 +23,26 @@ const (
 	HZ_262_144_t = 16
 	HZ_65_536_t  = 64
 	HZ_16_384_t  = 256
+
+	MMIO_TAC = 0xff07
+	MMIO_TMA = 0xff06
+	MMIO_TIMA = 0xff05
+
 )
 
 func NewTimer() *Timer {
 	timer := new(Timer)
 	timer.Reset()
-
+	timer.reg_list = component.RegList{
+		{Name:"TAC" , Addr:MMIO_TAC},
+		{Name:"TMA" , Addr:MMIO_TMA},
+		{Name:"TIMA", Addr:MMIO_TIMA},
+	}
 	return timer
+}
+func (timer *Timer) Get_reg_list() component.RegList {
+	return timer.reg_list
+	
 }
 func (timer *Timer) Reset() {
 	timer.last_update = 0

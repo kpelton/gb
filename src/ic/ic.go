@@ -3,16 +3,29 @@ package ic
 import (
 	"fmt"
     "constants"
+	"component"
 )
 
 type IC struct {
 	IE uint8 //Interrupt Enable (R/W)
 	IF uint8 // Interrupt Flag (R/W)
+	reg_list component.RegList
 
 }
+const (
+	MMIO_IE = 0xffff
+	MMIO_IF = 0xff0f
 
+)
+func (ic *IC) Get_reg_list() component.RegList{
+	return ic.reg_list
+}
 func NewIC() *IC {
 	ic := new(IC)
+	ic.reg_list = component.RegList{
+		{Name:"ie",Addr:MMIO_IE},
+		{Name:"if",Addr:MMIO_IF},
+	}
 	ic.Reset()
 	return ic
 }

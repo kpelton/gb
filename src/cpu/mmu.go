@@ -47,7 +47,6 @@ func (m *MMU) Connect_mmio(addr uint16,name string,comp component.MMIOComponent)
 	con.addr = addr
 	con.name = name
 	con.comp = comp
-	
 	m.mmio_connections[addr &0xff] = con
 	
 }
@@ -56,6 +55,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	con := m.mmio_connections[addr &0xff]
 	if con != nil {
 		con.comp.Write_mmio(addr,val)
+	
 		return
 	}
 	
@@ -66,6 +66,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	var val uint8 = 0
 	con := m.mmio_connections[addr &0xff]
 	if con != nil {
+		//fmt.Printf("Reading %s \n",con.name) 
 		return con.comp.Read_mmio(addr)
 	}
 	fmt.Printf("unhandled read:%04x\n", addr)
@@ -87,8 +88,6 @@ func (m *MMU) write_b(addr uint16, val uint8) {
 		m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
 	}else if (addr >= 0xff10 && addr < 0xff27) {
 		m.cpu.sound.Write_mmio(addr,val)
-	}else if (addr >= 0xff40 && addr < 0xff46)  || addr >= 0xff47 && addr < 0xff4C || addr == 0xff4f || addr >= 0xff68 && addr < 0xff6C{
-		m.cpu.gpu.Write_mmio(addr,val)
 	} else if addr <= 0xfe9f {
 		m.cpu.gpu.Oam[addr&0x00ff] = val
 		
@@ -117,14 +116,10 @@ func (m *MMU) read_b(addr uint16) uint8 {
 		val = m.cpu.dram.Read_b(addr)
 	} else if addr >= 0xfe00 && addr <= 0xfe9f {
 		val = m.cpu.gpu.Oam[addr&0x00ff]
-	}else if (addr >= 0xff40 && addr < 0xff46)  {
-	    val = m.cpu.gpu.Read_mmio(addr)
 	}else if (addr >= 0xff10 && addr < 0xff27)  {
 	    val = m.cpu.sound.Read_mmio(addr)
 	} else if addr >= 0xff30&& addr < 0xff40 {
 		val = m.cpu.sound.Wram[(addr&0x00ff)-0x30]
-	} else if addr >= 0xff40 && addr < 0xff46  || addr >= 0xff47 && addr < 0xff4C  || addr == 0xff4f || addr >= 0xff68 && addr < 0xff6 {
-		val = m.cpu.gpu.Read_mmio(addr)
 	} else if addr >= 0xff00 && addr <= 0xff70 || addr == 0xffff {
 		val = m.read_mmio(addr)
 	} else if addr >= 0xff80 {
@@ -150,5 +145,6 @@ func (m *MMU) write_w(addr uint16, val uint16) {
 
 	m.write_b(addr, uint8(val&0x00ff))
 	m.write_b(addr+1, uint8((val&0xff00)>>8))
+
 
 }

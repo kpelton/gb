@@ -106,7 +106,7 @@ func (m *ROM_MBC5) Write_b(addr uint16, val uint8) {
 	
 		m.bank_lo = val
 		m.bank = uint16(m.bank_hi) <<8 | uint16(m.bank_lo)
-		fmt.Println("ROM Bank ",m.bank)    
+		//fmt.Println("ROM Bank ",m.bank)    
 	} else if addr   <0x4000 {
 	 
 		m.bank_hi = val &1

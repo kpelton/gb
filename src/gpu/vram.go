@@ -33,7 +33,7 @@ func (m *VRAM)  Reset() {
 func (m *VRAM) Write_mmio(addr uint16,val uint8)  {
 	if addr == VBANK_MMIO {
 		m.VBANK = val & 0x1
-		fmt.Printf("VBANK:%x\n",m.VBANK)
+	//	fmt.Printf("VBANK:%x\n",m.VBANK)
 	} else { 
 		panic("VRAM:unhandled VRAM mmio write")
 	}

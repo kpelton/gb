@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"ic"
 	"time"
+	"component"
 )
 
 type Screen struct {
@@ -85,7 +86,7 @@ type GPU struct {
 	OCPS               uint8
 	OCPD               uint8
 	Vram               *VRAM
-
+	reg_list           component.RegList
 
 
 	mem_written        bool
@@ -236,14 +237,15 @@ func (g *GPU) Read_mmio(addr uint16) uint8 {
         val=g.Vram.Read_mmio(addr)
 	case 0xff68:
 		val = g.BCPS
-		fmt.Printf("<-BCPS:%04X\n", val &0x1)
+	//	fmt.Printf("<-BCPS:%04X\n", val &0x1)
 	case 0xff69:
 		val = g.Pal_mem[g.BC_index]
-		fmt.Printf("<-BCPD:%04X\n", val &0x1)
+	//	fmt.Printf("<-BCPD:%04X\n", val &0x1)
 	case 0xff6A:
-		fmt.Printf("<-OCPS:%04X\n", val &0x1)
+	//	fmt.Printf("<-OCPS:%04X\n", val &0x1)
 	case 0xff6B:
-		val = g.BCPS
+		//val = g.
+		val = g.Pal_oc_mem[g.OC_index]
 	default:
 		panic("unhandled read addr")
 	}
@@ -305,13 +307,13 @@ func (g *GPU) Write_mmio(addr uint16,val uint8) {
 		}
 	case 0xff6A:
 		g.OCPS = val
-		fmt.Printf("->OCPS:%04X\n", val)
+		//fmt.Printf("->OCPS:%04X\n", val)
 		g.OC_index = val & 0x3f
 		
 
 	case 0xff6B:
 		g.OCPD = val
-		fmt.Printf("->OCPDIN:%04X %X  %d \n", val,g.STAT,g.OC_index,)
+		//fmt.Printf("->OCPDIN:%04X %X  %d \n", val,g.STAT,g.OC_index,)
 		g.Pal_oc_mem[g.OC_index] = val
 		if g.OCPS  & 0x80 == 0x80  {
 			g.OC_index = (g.OC_index +1) %0x40
@@ -345,9 +347,33 @@ func (g *GPU) Update_paletteGBC(pal_mem  *[0x40]uint8, pal *[8]GBPalette) {
 	}
 }
 
-
+func (g* GPU) Get_reg_list() component.RegList{
+	return g.reg_list
+}
 func NewGPU(ic *ic.IC, scale int16) *GPU {
 	g := new(GPU)
+	g.reg_list = component.RegList{
+		{Name:"LCDC" , Addr:0xff40},
+		{Name:"STAT" , Addr:0xff41},
+		{Name:"SCY" ,  Addr:0xff42},
+		{Name:"SCX" ,  Addr:0xff43},
+		{Name:"LY" ,   Addr:0xff44},
+		{Name:"LYC" ,  Addr:0xff45},
+		{Name:"BGP" ,  Addr:0xff47},
+		{Name:"OBP0" , Addr:0xff48},
+		{Name:"OBP1" , Addr:0xff49},
+		{Name:"WY" ,   Addr:0xff4A},
+		{Name:"WX" ,   Addr:0xff4B},
+		{Name:"VBANK" ,Addr:VBANK_MMIO},
+		{Name:"BCPS" , Addr:0xff68},
+		{Name:"BCPD" , Addr:0xff69},
+		{Name:"OCPS" , Addr:0xff6A},
+		{Name:"OCPD" , Addr:0xff6B},
+	}
+
+
+
+
 	g.screen = newScreen(scale)
 	g.Vram = newVRAM()
 	g.last_update = time.Now()

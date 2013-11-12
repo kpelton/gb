@@ -2,7 +2,7 @@ package dram
 
 import (
 	"fmt"
-
+	"component"
 )
 
 type DRAM struct {
@@ -10,6 +10,7 @@ type DRAM struct {
     exp_ram     [0x7000]uint8
 	z_ram       [0x7f]uint8
 	SVBK  uint8
+	reg_list component.RegList
 }
 const (
 	BANK_0_LO = 0xc000
@@ -34,11 +35,15 @@ const (
 func NewDRAM() *DRAM {
 	m := new(DRAM)
 	m.SVBK = 1
-	
+	m.reg_list = component.RegList{
+		{Name:"SVBK",Addr:SVBK_MMIO},
+	}
 	return m
 
 }
-
+func (m* DRAM) Get_reg_list() component.RegList{
+	return m.reg_list
+}
 func (m *DRAM) Write_mmio(addr uint16,val uint8)  {
 	if addr == SVBK_MMIO {
 		m.SVBK = val & 0x7

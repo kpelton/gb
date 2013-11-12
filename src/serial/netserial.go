@@ -6,6 +6,7 @@ import (
 	"ic"
 	"net"
 	"time"
+	"component"
 )
 
 const (
@@ -24,6 +25,11 @@ type NetSerial struct {
 	bytes_sent bool
 	sock       net.Conn
 	count      uint16
+	reg_list    component.RegList
+
+}
+func (g* NetSerial) Get_reg_list() component.RegList{
+	return g.reg_list
 }
 
 func (s *NetSerial) listen() {
@@ -53,6 +59,10 @@ func (s *NetSerial) connect(addr string) {
 func NewNetSerial(ic *ic.IC, listen bool, addr string) *NetSerial {
 	serial := new(NetSerial)
 	serial.ic = ic
+	serial.reg_list = component.RegList{
+		{Name:"SC" , Addr:0xff01},
+		{Name:"SB" , Addr:0xff02},
+	}
 	if listen == true {
 		serial.listen()
 

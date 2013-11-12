@@ -5,7 +5,7 @@ import (
 	//"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 	//"github.com/banthar/Go-SDL/sdl"
 	"banthar/sdl"
-
+	"component"
 )
 const ( 
 	GP_MMIO = 0xff00
@@ -18,16 +18,26 @@ type GP struct {
 	K_DOWN  uint8
 	pad     uint8
 	other   uint8
+	reg_list component.RegList
+	
 }
 
 func NewGP() *GP {
 	g := new(GP)
+	g.Reset()
+	sdl.EnableKeyRepeat(1, 1)
+	g.reg_list = component.RegList{
+		{Name:"GP" , Addr:GP_MMIO},
+	}
+	return g
+}
+func (g* GP) Get_reg_list() component.RegList{
+	return g.reg_list
+}
+func (g *GP) Reset() {
 	g.P1 = 0x0f
 	g.other = 0x0f
 	g.pad = 0x0f
-	sdl.EnableKeyRepeat(1, 1)
-
-	return g
 }
 func (g *GP) Read_mmio(addr uint16) uint8 {
 	var val uint8
