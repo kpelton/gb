@@ -6,7 +6,7 @@ import (
     "component"
 )
 type mmio_connection struct {
-	comp component.Component
+	comp component.MMIOComponent
 	addr uint16
 	name string
 
@@ -18,7 +18,6 @@ type MMU struct {
 	cart   carts.Cart
 	cpu    *CPU
 	inbios bool
-    KEY1 uint8
 	HDMA_hi_src uint8
 	HDMA_lo_src uint8
 	HDMA_hi_dst uint8
@@ -40,7 +39,7 @@ func (m *MMU) Create_new_cart(filename string) {
 	m.cart = carts.Load_cart(filename)
 }
 
-func (m *MMU) Connect_mmio(addr uint16,name string,comp component.Component) {
+func (m *MMU) Connect_mmio(addr uint16,name string,comp component.MMIOComponent) {
 	if m.mmio_tail == MAX_MMIO {
 		panic("Unable to handle this mmio connection")
 	}
@@ -54,21 +53,6 @@ func (m *MMU) Connect_mmio(addr uint16,name string,comp component.Component) {
 	
 }
 
-
-
-
-
-func (m *MMU) exec_dma(addr uint8) {
-	var real_addr uint16
-	var i uint16
-	real_addr = uint16(addr) * 0x100
-	for i = 0; i < 160; i++ {
-		m.cpu.gpu.Oam[i] = m.read_b(real_addr + i)
-
-	}
-
-}
-
 func (m *MMU) write_mmio(addr uint16, val uint8) {
 	for i:=0; i<m.mmio_tail; i++ {
 		if m.mmio_connections[i].addr== addr {
@@ -77,51 +61,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 			return
 		}
 	}
-	switch addr {
-	case 0xff46:
-		// m.Dump_vm()
-		m.exec_dma(val)
-
-	case 0xff4D:
-		fmt.Printf("->KEY1:%04X\n", val &0x1)
-        m.KEY1= val &0x1
-        m.cpu.Ready_sswitch()
-
-	case 0xff51:
-		fmt.Printf("->SRC:HDMA_HIGH:%04X\n", val)
-        m.HDMA_hi_src = val
-	case 0xff52:
-		fmt.Printf("->SRC:HDMA_LOW:%04X\n", val)
-        m.HDMA_lo_src = val
-	case 0xff53:
-		fmt.Printf("->DST:HDMA_HIGH:%04X\n", val)
-        m.HDMA_hi_dst = val
-	case 0xff54:
-		fmt.Printf("->DST:HDMA_LOW:%04X\n", val)
-        m.HDMA_lo_dst = val
-	case 0xff55:
-		src := uint16(m.HDMA_hi_src) <<8 | uint16(m.HDMA_lo_src)
-		dst := uint16(m.HDMA_hi_dst) <<8 | uint16(m.HDMA_lo_dst)
-		if dst < 0x8000 {
-			dst+=0x8000
-		}
-		fmt.Printf("0x%x\n",val)
-		length := (uint16( (val & 0x7f)) + 1) *0x10
-
-		fmt.Printf("->START transfer:%04X %04x %x\n", src,dst,length)
-
-		var i uint16
-
-		for i = 0; i < uint16(length); i++ {
-			m.write_b(dst +i,m.read_b(src+i))
-		}
-	 
-	default:
-		fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
-
-	}
-
-
+	fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
 }
 
 func (m *MMU) read_mmio(addr uint16) uint8 {
@@ -132,24 +72,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 			return m.mmio_connections[i].comp.Read_mmio(addr)
 		}
 	}
-	switch addr {
-	case 0xff04:
-		val = m.cpu.DIV
-		//fmt.Printf("<-DIV:%04X\n",val)
-	case 0xff46:
-		val = 0xff
-    case 0xff4D:
-        fmt.Printf("<-KEY1:%04X\n", m.KEY1)
-        val = m.KEY1
-	case 0xff55:
-		val = m.HDMA_start
-		m.HDMA_start = 0
-	default:
-		fmt.Printf("unhandled read:%04x\n", addr)
-
-
-	}
-
+	fmt.Printf("unhandled read:%04x\n", addr)
 	return val
 }
 
@@ -217,8 +140,15 @@ func (m *MMU) read_b(addr uint16) uint8 {
 	return val
 }
 
+
 func (m *MMU) read_w(addr uint16) uint16 {
 	return uint16(m.read_b(addr)) | uint16((m.read_b(addr+1)))<<8
+}
+func (m *MMU) Read (addr uint16) uint8 {
+	return m.read_b(addr)
+}
+func (m *MMU) Write (addr uint16,val uint8) {
+	m.write_b(addr,val)
 }
 func (m *MMU) write_w(addr uint16, val uint16) {
 

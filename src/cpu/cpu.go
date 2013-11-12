@@ -10,6 +10,7 @@ import (
 	"sound"
 	"timer"
 	"dram"
+	"dmac"
 //"runtime/pprof"
 //"time"
 )
@@ -51,7 +52,10 @@ const (
 	n
 	invalid
 )
-
+const (
+	DIV_MMIO = 0xff04
+	KEY1_MMIO = 0xff4d
+)
 type Action func(*CPU)
 type SetVal func(*CPU, uint16)
 type GetVal func(*CPU) uint16
@@ -72,8 +76,10 @@ type CPU struct {
 	ic         *ic.IC
 	sound      *sound.Sound
 	dram       *dram.DRAM
+	dmac       *dmac.DMAC
 	is_halted  bool
 	DIV        uint8
+	KEY1       uint8
 	last_instr uint16
 	push_pc    Action
     sswitch    bool        
@@ -84,17 +90,45 @@ func (c *CPU) Ready_sswitch() {
     c.sswitch =true 
 }
 
+func (c *CPU) Read_mmio (addr uint16) uint8 {
+    
+	var val uint8 
+
+	switch addr {
+    case DIV_MMIO: //DIV counter register ... needs to go in timer
+		val = c.DIV
+    case KEY1_MMIO: //KEY1 clock register
+		val = c.KEY1
+	default:
+		panic("unhandled cpu mmio read")
+	}
+	return val
+}
+
+func (c *CPU) Write_mmio (addr uint16,val uint8)  {
+    
+	switch addr {
+    case KEY1_MMIO:
+		c.KEY1 = val & 0x1
+		//get ready to switch speed
+		c.Ready_sswitch()
+	default:
+		panic("unhandled cpu mmio write")
+	}
+}
+
+
 func (c *CPU) set_sswitch() {
     if c.sswitch == true {
         c.sswitch = false
         if c.clk_mul == 2 {
             c.clk_mul = 1
             fmt.Println("CLK to 4mhz")
-            c.mmu.KEY1 = 0 
+            c.KEY1 = 0 
         }else{
             c.clk_mul = 2
             fmt.Println("CLK to 8mhz") 
-            c.mmu.KEY1 = 0x80
+            c.KEY1 = 0x80
 
        }
     }
@@ -2025,12 +2059,26 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c.sound = sound.NewSound()
 	c.gpu = gpu.NewGPU(c.ic, int16(scale))
 	c.dram = dram.NewDRAM()
+	c.dmac = dmac.NewDMAC(c.mmu)
     c.mmu.Connect_mmio(0xff70,"SVBK",c.dram)
 	c.mmu.Connect_mmio(0xff00,"GP",c.gp)
 	c.mmu.Connect_mmio(0xff07,"TAC",c.timer)
 	c.mmu.Connect_mmio(0xff06,"TMA",c.timer)
 	c.mmu.Connect_mmio(0xff05,"TIMA",c.timer)
+	c.mmu.Connect_mmio(KEY1_MMIO,"KEY1",c)
+	c.mmu.Connect_mmio(DIV_MMIO,"DIV",c)
+
+
+	c.mmu.Connect_mmio(0xff46,"DMA",c.dmac)
+	c.mmu.Connect_mmio(0xff51,"DMA_SRC_HIGH",c.dmac)
+	c.mmu.Connect_mmio(0xff52,"DMA_SRC_LO",c.dmac)
+	c.mmu.Connect_mmio(0xff53,"DMA_DST_LO",c.dmac)
+	c.mmu.Connect_mmio(0xff54,"DMA_DST_HIGH",c.dmac)
+	c.mmu.Connect_mmio(0xff55,"DMA_START",c.dmac)
+
 	
+	
+
 	c.clk_mul = 1
 
     if serial_p != "" {
