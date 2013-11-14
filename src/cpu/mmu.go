@@ -55,19 +55,25 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	con := m.mmio_connections[addr &0xff]
 	if con != nil {
 		con.comp.Write_mmio(addr,val)
+	//	fmt.Printf("Writing %s %x\n",con.name,val) 
+	
+
 	
 		return
 	}
 	
 	fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
-}
+} 
 
 func (m *MMU) read_mmio(addr uint16) uint8 {
 	var val uint8 = 0
 	con := m.mmio_connections[addr &0xff]
 	if con != nil {
-		//fmt.Printf("Reading %s \n",con.name) 
-		return con.comp.Read_mmio(addr)
+		
+		val :=con.comp.Read_mmio(addr)
+	//	fmt.Printf("Reading %s %x \n",con.name,val) 
+	//	m.cpu.Dump()
+		return val
 	}
 	fmt.Printf("unhandled read:%04x\n", addr)
 	return val

@@ -100,7 +100,7 @@ func (c *CPU) Read_mmio (addr uint16) uint8 {
     case DIV_MMIO: //DIV counter register ... needs to go in timer
 		val = c.DIV
     case KEY1_MMIO: //KEY1 clock register
-		val = c.KEY1
+		val = c.KEY1  
 	default:
 		panic("unhandled cpu mmio read")
 	}
@@ -111,9 +111,11 @@ func (c *CPU) Write_mmio (addr uint16,val uint8)  {
     
 	switch addr {
     case KEY1_MMIO:
-		c.KEY1 = val & 0x1
+		
 		//get ready to switch speed
-		c.Ready_sswitch()
+		if val & 0x1 == 1 {
+			c.Ready_sswitch()
+		}
 	default:
 		panic("unhandled cpu mmio write")
 	}
@@ -130,7 +132,7 @@ func (c *CPU) set_sswitch() {
         }else{
             c.clk_mul = 2
             fmt.Println("CLK to 8mhz") 
-            c.KEY1 = 0x80
+            c.KEY1 = 0xFE
 
        }
     }

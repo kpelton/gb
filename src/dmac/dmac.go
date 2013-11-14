@@ -82,9 +82,12 @@ func (m *DMAC) Write_mmio(addr uint16,val uint8)  {
         m.HDMA_hi_dst = val
 	case 0xff54:
 		fmt.Printf("->DST:HDMA_LOW:%04X\n", val)
-    
+     
     m.HDMA_lo_dst = val
 	case 0xff55:
+		if val & 0x80 == 0x80 {
+			panic("unsupported hblank transfer")
+		}
 		src := uint16(m.HDMA_hi_src) <<8 | uint16(m.HDMA_lo_src)
 		dst := uint16(m.HDMA_hi_dst) <<8 | uint16(m.HDMA_lo_dst)
 		if dst < 0x8000 {
@@ -98,7 +101,7 @@ func (m *DMAC) Write_mmio(addr uint16,val uint8)  {
 		var i uint16
 
 		for i = 0; i < uint16(length); i++ {
-			m.mmu.Write(dst +i,m.mmu.Read(src+i))
+			m.mmu.Write(dst +i,m.mmu.Read(src+i)) 
 		}
 	default:
 		panic("unhandled dmac mmio write")
@@ -112,7 +115,7 @@ func (m *DMAC) Read_mmio(addr uint16) uint8  {
 	case MMIO_DMA:
 		val = 0xff
 	case MMIO_START:
-		val = m.HDMA_start
+		val = 0xff
 		m.HDMA_start = 0
 	default:
 		fmt.Printf("unhandled dmac mmio read:%04x\n", addr)
