@@ -11,6 +11,8 @@ type DRAM struct {
 	z_ram       [0x7f]uint8
 	SVBK  uint8
 	reg_list component.RegList
+	range_list component.RangeList
+
 }
 const (
 	BANK_0_LO = 0xc000
@@ -38,12 +40,21 @@ func NewDRAM() *DRAM {
 	m.reg_list = component.RegList{
 		{Name:"SVBK",Addr:SVBK_MMIO},
 	}
+	m.range_list = component.RangeList{
+		{Name:"DRAM",Addr_lo:0xc000,Addr_hi:0xfe00},
+		{Name:"Z_RAM",Addr_lo:Z_RAM_LO,Addr_hi:Z_RAM_HI},
+	}
 	return m
 
 }
 func (m* DRAM) Get_reg_list() component.RegList{
 	return m.reg_list
 }
+
+func (m* DRAM) Get_range_list() component.RangeList{
+	return m.range_list
+}
+
 func (m *DRAM) Write_mmio(addr uint16,val uint8)  {
 	if addr == SVBK_MMIO {
 		m.SVBK = val & 0x7
@@ -66,7 +77,7 @@ func (m *DRAM) Read_mmio(addr uint16) uint8  {
 }
 
 
-func (m *DRAM) Read_b(addr uint16) uint8 {
+func (m *DRAM) Read(addr uint16) uint8 {
 
 	//   fmt.Printf("write:%04x:%04x\n",addr,val)
 	var val uint8
@@ -90,7 +101,7 @@ func (m *DRAM) Read_b(addr uint16) uint8 {
 	return val
 }
 
-func (m *DRAM) Write_b(addr uint16,val uint8)  {
+func (m *DRAM) Write(addr uint16,val uint8)  {
 
 	//fmt.Printf("DRAM write:%04x:%04x\n",addr,val)
 

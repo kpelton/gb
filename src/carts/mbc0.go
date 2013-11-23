@@ -7,6 +7,7 @@ import (
 /////MBC0///////
 type MBC0 struct {
 	cart [0x8000]uint8
+	GenCart
 }
 
 func NewMBC0(cart_data []uint8) *MBC0 {
@@ -16,11 +17,11 @@ func NewMBC0(cart_data []uint8) *MBC0 {
 	return m
 }
 
-func (m *MBC0) Read_b(addr uint16) uint8 {
+func (m *MBC0) Read(addr uint16) uint8 {
 	return m.cart[addr]
 }
 
-func (m *MBC0) Write_b(addr uint16, val uint8) {
+func (m *MBC0) Write(addr uint16, val uint8) {
 	fmt.Printf("WRITE TO ROM FAILED!!\n")
 }
 

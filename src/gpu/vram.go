@@ -7,6 +7,7 @@ import (
 
 type VRAM struct {
 	Vm        [0x4000]uint8
+	Oam          [0xA0] uint8
 	VBANK      uint8
 }
 const (
@@ -60,6 +61,8 @@ func (m *VRAM) Read_b(addr uint16) uint8 {
 	if addr >= VRAM_LO && addr < VRAM_HI {
 		offset := (uint16(m.VBANK) *0x2000) +addr &0x1fff
 		val = m.Vm[offset]
+    }else if addr >= 0xfe00 && addr <= 0xfe9f {
+		val = m.Oam[addr&0x00ff]
 	} else {
 		fmt.Printf("VRAM:unhandled read:%04x:%04x\n", addr, val)
 	}
@@ -71,8 +74,10 @@ func (m *VRAM) Write_b(addr uint16,val uint8)  {
 	if addr >= VRAM_LO && addr < VRAM_HI {
 		offset := (uint16(m.VBANK) *0x2000) +addr &0x1fff
 		m.Vm[offset] = val
+	} else if addr >= 0xfe00 && addr <= 0xfe9f {
+		m.Oam[addr&0x00ff] = val
 	} else {
-		fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
+		fmt.Printf("VRAM:unhandled write:%04x:%04x\n", addr, val)
 	}
 }
 

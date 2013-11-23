@@ -4,17 +4,28 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"component"
 )
+type GenCart struct {
 
+}
 type Cart interface {
-	Read_b(uint16) uint8
-	Write_b(uint16, uint8)
+	Read(uint16) uint8
+	Write(uint16, uint8)
+	Get_range_list() component.RangeList
+
 }
 const (
 	SIXTEEN_MB = 0
 	FOUR_MB    = 1
 )
+func (c* GenCart ) Get_range_list() component.RangeList{
+	return component.RangeList{
+		{Name:"CART_ROM",Addr_lo:0x000,Addr_hi:0x8000},
+		{Name:"CART_RAM",Addr_lo:0xa000,Addr_hi:0xc000},
 
+	}
+}
 
 const (
 	REG_CART_TYPE       = 0x147

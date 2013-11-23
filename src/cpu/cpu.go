@@ -12,6 +12,7 @@ import (
 	"dram"
 	"dmac"
 	"component"
+	"clock"
 //"runtime/pprof"
 //"time"
 )
@@ -86,6 +87,7 @@ type CPU struct {
     sswitch    bool        
     clk_mul    uint16
 	reg_list   component.RegList
+	clock      *clock.Clock
 }
 
 func (c *CPU) Ready_sswitch() {
@@ -213,8 +215,8 @@ func (c *CPU) handleInterrupts() {
 			c.reg8[EI] = 0
 			c.push_pc(c) //push pc on stack
 			c.is_halted = false
-
-			// fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
+			c.last_instr+=20
+			 fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
 
 			c.reg16[PC] = vector
 
@@ -243,7 +245,10 @@ func (c *CPU) Exec() {
 			c.handleInterrupts()
 		}
 		//run op
+		c.gpu.Update(c.last_instr/4)
+
 		if !c.is_halted {
+
 			op = uint16(c.mmu.read_w(c.reg16[PC]))
 			//c.Dump()
 			//fmt.Println(c.gpu.LY)
@@ -275,7 +280,6 @@ func (c *CPU) Exec() {
 
 
 		//for i:=0; i< int(c.last_instr); i++ {
-		c.gpu.Update(uint16(c.last_instr/c.clk_mul  ))
 		//	}
 		raise_int := c.timer.Update(uint64(c.last_instr/c.clk_mul))
 		if raise_int > 0 {
@@ -287,8 +291,9 @@ func (c *CPU) Exec() {
 		//	pprof.StopCPUProfile()
 		//	 fmt.Println("STOPPED")
 		//	} 
+		c.clock.Cycles+=uint64(c.last_instr/4)
+		
 	}
-
 }
 
 func get_ld_type(arg string) int {
@@ -2057,8 +2062,14 @@ func setup_mmu_conn(c component.MMIOComponent, m *MMU) {
 	for i := range reg_list {
 		m.Connect_mmio(reg_list[i].Addr,reg_list[i].Name,c) 
 	}
-
 }
+func setup_mmu_range_conn(c component.MemComponent, m *MMU) {
+	range_list := c.Get_range_list()
+	for i := range range_list {
+		m.Connect_range(range_list[i],c) 
+	}
+}
+
 func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c := new(CPU)
 	c.reg_list = component.RegList{
@@ -2075,7 +2086,7 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c.dram = dram.NewDRAM()
 	c.dmac = dmac.NewDMAC(c.mmu)
 
-		
+	c.clock = clock.NewClock()
 	c.clk_mul = 1
 
     if serial_p != "" {
@@ -2091,10 +2102,15 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	setup_mmu_conn(c.ic,c.mmu)
 	setup_mmu_conn(c.gp,c.mmu)
 	setup_mmu_conn(c.dram,c.mmu)
+	setup_mmu_range_conn(c.dram,c.mmu)
 	setup_mmu_conn(c.dmac,c.mmu)
 	setup_mmu_conn(c.serial,c.mmu)
 	setup_mmu_conn(c,c.mmu)
+
+	//gpu
 	setup_mmu_conn(c.gpu,c.mmu)
+	setup_mmu_range_conn(c.gpu,c.mmu)
+
 
 
 	

@@ -30,7 +30,7 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
-	fullspeed     = false
+	fullspeed     = true
 )
 
 func newScreen(scale int16) *Screen {
@@ -87,6 +87,7 @@ type GPU struct {
 	OCPD               uint8
 	Vram               *VRAM
 	reg_list           component.RegList
+	range_list component.RangeList
 
 
 	mem_written        bool
@@ -121,7 +122,6 @@ type GPU struct {
 	last_lcdc    uint8
 	lyc_int      uint8
 	Gbc_mode     bool
-	Oam          [0xA0]uint8
 	ic           *ic.IC
 	Pal_mem      [0x40] uint8
 	Pal_oc_mem      [0x40] uint8
@@ -204,7 +204,12 @@ func (g *GPU) UpdatePaletteObp1(val uint8) {
 	g.UpdatePalette(&g.obp1_palette, val)
 
 }
-
+func (g *GPU) Write(addr uint16,val uint8){
+	g.Vram.Write_b(addr,val)
+}
+func (g *GPU) Read(addr uint16) uint8 {
+	return g.Vram.Read_b(addr)
+}
 func (g *GPU) Read_mmio(addr uint16) uint8 {
 	var val uint8
 	switch addr {
@@ -350,6 +355,9 @@ func (g *GPU) Update_paletteGBC(pal_mem  *[0x40]uint8, pal *[8]GBPalette) {
 func (g* GPU) Get_reg_list() component.RegList{
 	return g.reg_list
 }
+func (g* GPU) Get_range_list() component.RangeList{
+	return g.range_list
+}
 func NewGPU(ic *ic.IC, scale int16) *GPU {
 	g := new(GPU)
 	g.reg_list = component.RegList{
@@ -370,8 +378,11 @@ func NewGPU(ic *ic.IC, scale int16) *GPU {
 		{Name:"OCPS" , Addr:0xff6A},
 		{Name:"OCPD" , Addr:0xff6B},
 	}
+	g.range_list = component.RangeList{
+		{Name:"VRAM",Addr_lo:0x8000,Addr_hi:0xa000},
+		{Name:"OAM",Addr_lo:0xfe00,Addr_hi:0xfeA0},
 
-
+	}
 
 
 	g.screen = newScreen(scale)
@@ -830,13 +841,13 @@ func (g *GPU) print_sprites(line *Line) {
 
 	for i := 0x9f; i > 0; i -= 4 {
 		//Main attributes
-		sp.y = g.Oam[i-3]
+		sp.y = g.Vram.Oam[i-3]
 		pal = &g.obp0_palette
 
 		if sp.y > 155 {
 			continue
 		}
-		sp.x = g.Oam[i-2]
+		sp.x = g.Vram.Oam[i-2]
 
 		//tile number is uint
 
@@ -845,13 +856,13 @@ func (g *GPU) print_sprites(line *Line) {
 			size = 16
 		}
 
-		sp.num = g.Oam[i-1] & mask
+		sp.num = g.Vram.Oam[i-1] & mask
 
 		//Flags
-		sp.fl_pri = g.Oam[i] >> 7
-		sp.fl_y_flip = (g.Oam[i] & 0x40) >> 6
-		sp.fl_x_flip = (g.Oam[i] & 0x20) >> 5
-		sp.fl_pal = (g.Oam[i] & 0x10) >> 4
+		sp.fl_pri = g.Vram.Oam[i] >> 7
+		sp.fl_y_flip = (g.Vram.Oam[i] & 0x40) >> 6
+		sp.fl_x_flip = (g.Vram.Oam[i] & 0x20) >> 5
+		sp.fl_pal = (g.Vram.Oam[i] & 0x10) >> 4
 
 		yoff = sp.y - 16
 		ytoff = (g.LY - yoff)
@@ -906,12 +917,12 @@ func (g *GPU) print_sprites_gbc(line *Line) {
 
 	for i := 0x9f; i > 0; i -= 4 {
 		//Main attributes
-		sp.y = g.Oam[i-3]
+		sp.y = g.Vram.Oam[i-3]
 
 		if sp.y > 155 {
 			continue
 		}
-		sp.x = g.Oam[i-2]
+		sp.x = g.Vram.Oam[i-2]
 
 		//tile number is uint
 
@@ -920,14 +931,14 @@ func (g *GPU) print_sprites_gbc(line *Line) {
 			size = 16
 		}
 
-		sp.num = g.Oam[i-1] & mask
+		sp.num = g.Vram.Oam[i-1] & mask
 
 		//Flags
-		sp.fl_pri = g.Oam[i] >> 7
-		sp.fl_y_flip = (g.Oam[i] & 0x40) >> 6
-		sp.fl_x_flip = (g.Oam[i] & 0x20) >> 5
-		sp.bank = (g.Oam[i] & 0x8) >> 3
-		sp.pal = (g.Oam[i] & 0x07) 
+		sp.fl_pri = g.Vram.Oam[i] >> 7
+		sp.fl_y_flip = (g.Vram.Oam[i] & 0x40) >> 6
+		sp.fl_x_flip = (g.Vram.Oam[i] & 0x20) >> 5
+		sp.bank = (g.Vram.Oam[i] & 0x8) >> 3
+		sp.pal = (g.Vram.Oam[i] & 0x07) 
 		yoff = sp.y - 16
 		ytoff = (g.LY - yoff)
 		//fmt.Println(sp,yoff,g.LY,ytoff)	
@@ -1124,13 +1135,15 @@ func (g *GPU) Update(clocks uint16) {
 			g.STAT &= 0xfc
 
 			if g.line_done == 0 {
-				g.hblank(clocks)
-				g.check_stat_int_hblank()
+					g.hblank(clocks)
+
+			g.check_stat_int_hblank()
 
 			}
 
 		}
 		if g.cycle_count <= 0 {
+		
 			//fmt.Println(g.cycle_count,g.LY)
 			g.cycle_count += 456
 			g.line_done = 0

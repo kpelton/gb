@@ -10,6 +10,7 @@ import (
 type ROM_MBC2 struct {
 	cart [0x200000]uint8
 	bank uint16
+	GenCart
 }
 
 func NewROM_MBC2(cart_data []uint8, size int) *ROM_MBC2 {
@@ -19,7 +20,7 @@ func NewROM_MBC2(cart_data []uint8, size int) *ROM_MBC2 {
 	return m
 }
 
-func (m *ROM_MBC2) Read_b(addr uint16) uint8 {
+func (m *ROM_MBC2) Read(addr uint16) uint8 {
 	var retval uint8
 
 	if addr < 0x4000 {
@@ -31,7 +32,7 @@ func (m *ROM_MBC2) Read_b(addr uint16) uint8 {
 	return retval
 }
 
-func (m *ROM_MBC2) Write_b(addr uint16, val uint8) {
+func (m *ROM_MBC2) Write(addr uint16, val uint8) {
 	if addr > 0x2000 && addr < 0x4000 {
 		if val > 1 {
 

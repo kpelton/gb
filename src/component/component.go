@@ -4,8 +4,15 @@ type Register struct {
 	Name string
 	Addr uint16
 }
-type RegList []Register
 
+type Range struct {
+	Name string
+	Addr_lo uint16
+	Addr_hi uint16
+}
+
+type RegList []Register
+type RangeList []Range
 
 type MMIOComponent interface {
 	Read_mmio(uint16) uint8
@@ -14,10 +21,10 @@ type MMIOComponent interface {
 }
 
 
-
 type MemComponent interface {
 	Read(uint16) uint8
 	Write(uint16, uint8)
+	Get_range_list() RangeList
 }
 
 

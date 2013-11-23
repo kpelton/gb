@@ -23,6 +23,7 @@ type ROM_MBC5 struct {
 	has_battery bool
 	dirty       bool
 	count       uint32
+	GenCart
 }
 
 func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *ROM_MBC5 {
@@ -61,7 +62,7 @@ func (m *ROM_MBC5) Save_ram() {
 func (m *ROM_MBC5) Dump()  {
 	fmt.Println("BANK",m.bank)
 }
-func (m *ROM_MBC5) Read_b(addr uint16) uint8 {
+func (m *ROM_MBC5) Read(addr uint16) uint8 {
 	var retval uint8
 
 	if addr < 0x4000 {
@@ -89,7 +90,7 @@ func (m *ROM_MBC5) Read_b(addr uint16) uint8 {
 	return retval
 }
 
-func (m *ROM_MBC5) Write_b(addr uint16, val uint8) {
+func (m *ROM_MBC5) Write(addr uint16, val uint8) {
 	if addr < 0x2000 {
 			if val == 0x0A {
 				m.ram_enabled = true
