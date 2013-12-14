@@ -7,10 +7,10 @@ func Test_lo_ram(t *testing.T) {
 	c :=  NewDRAM()
 
    for i:= 0; i<0x1000; i++  {
-        c.Write_b(0xc000 +uint16(i),0x55)
+        c.Write(0xc000 +uint16(i),0x55)
     }
     for i:= 0; i<0x1000; i++  {
-        if c.Read_b(0xc000 +uint16(i)) != 0x55  {
+        if c.Read(0xc000 +uint16(i)) != 0x55  {
             t.Error("Failed to readback addr ",0xc000 +uint16(i))
         }
     }
@@ -21,10 +21,10 @@ func Test_z_ram(t *testing.T) {
 	c :=  NewDRAM()
 
    for i:= 0; i<0x7f; i++  {
-        c.Write_b(0xff80+uint16(i),0x55)
+        c.Write(0xff80+uint16(i),0x55)
     }
     for i:= 0; i<0x7f; i++  {
-        if c.Read_b(0xff80 +uint16(i)) != 0x55  {
+        if c.Read(0xff80 +uint16(i)) != 0x55  {
             t.Error("Failed to readback Z_ram addr ",0xc000 +uint16(i))
         }
     }
@@ -45,11 +45,11 @@ func test_hi_ram(c *DRAM,bank uint8, val uint8,t *testing.T) {
    // c.mmu.SVBK = bank
 	c.Write_mmio(0xff70,bank)
     for i:= 0; i<0x1000; i++  {
-        c.Write_b(0xd000 +uint16(i),val)
+        c.Write(0xd000 +uint16(i),val)
     }
 
     for i:= 0; i<0x1000; i++  {
-        if c.Read_b(0xd000 +uint16(i)) != val  {
+        if c.Read(0xd000 +uint16(i)) != val  {
             t.Error("Failed to readback addr ",0xc000 +uint16(i))
         }
     }
@@ -74,10 +74,10 @@ func Test_lo_ram_from_echo(t *testing.T) {
 	c :=  NewDRAM()
 
    for i:= 0; i<0x1000; i++  {
-        c.Write_b(0xe000 +uint16(i),0x55)
+        c.Write(0xe000 +uint16(i),0x55)
     }
     for i:= 0; i<0x1000; i++  {
-        if c.Read_b(0xc000 +uint16(i)) != 0x55  {
+        if c.Read(0xc000 +uint16(i)) != 0x55  {
             t.Error("Failed to readback addr ",0xc000 +uint16(i))
         }
     }
@@ -86,10 +86,10 @@ func Test_lo_ram_to_echo(t *testing.T) {
 	c :=  NewDRAM()
 
    for i:= 0; i<0x1000; i++  {
-        c.Write_b(0xc000 +uint16(i),0x55)
+        c.Write(0xc000 +uint16(i),0x55)
     }
     for i:= 0; i<0x1000; i++  {
-        if c.Read_b(0xe000 +uint16(i)) != 0x55  {
+        if c.Read(0xe000 +uint16(i)) != 0x55  {
             t.Error("Failed to readback addr ",0xc000 +uint16(i))
         }
     }
@@ -100,10 +100,10 @@ func Test_hi_ram_to_echo(t *testing.T) {
 	c :=  NewDRAM()
 
    for i:= 0; i<0xe00; i++  {
-        c.Write_b(0xd000 +uint16(i),0x55)
+        c.Write(0xd000 +uint16(i),0x55)
     }
     for i:= 0; i<0xe00; i++  {
-        if c.Read_b(0xf000 +uint16(i)) != 0x55  {
+        if c.Read(0xf000 +uint16(i)) != 0x55  {
             t.Error("Failed to readback addr ",i)
         }
     }
