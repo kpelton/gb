@@ -1,4 +1,4 @@
-package cpu
+package mmu
 
 import (
 	"testing"

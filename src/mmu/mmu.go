@@ -1,4 +1,4 @@
-package cpu
+package mmu
 
 import (
 	"carts"
@@ -24,7 +24,6 @@ const (
 )
 type MMU struct {
 	cart   carts.Cart
-	cpu    *CPU
 	inbios bool
 	HDMA_hi_src uint8
 	HDMA_lo_src uint8
@@ -37,10 +36,9 @@ type MMU struct {
 }
 
 
-func NewMMU(cpu *CPU) *MMU {
+func NewMMU() *MMU {
 	m := new(MMU)
 	m.inbios = false
-	m.cpu = cpu
 	return m
 }
 
@@ -92,8 +90,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	
 		return
 	}
-	
-	//fmt.Printf("unhandled write:%04x:%04x\n", addr, val)
+
 } 
 
 func (m *MMU) read_mmio(addr uint16) uint8 {
@@ -110,43 +107,28 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 	return val
 }
 
-func (m *MMU) write_b(addr uint16, val uint8) {
-
-
+func (m *MMU) Write_b(addr uint16, val uint8) {
 	
 	if addr >= 0xff00 && addr <= 0xff70 || addr == 0xffff {
 		m.write_mmio(addr, val)
 		return
 	}
+
 	var i uint8
 	for i=0; i<m.range_count; i++ {
 		if addr >= m.range_connections[i].addr_lo &&
 			addr < m.range_connections[i].addr_hi {
 			con := m.range_connections[i]
 			con.comp.Write(addr,val)
-			//fmt.Printf("%v:Writing %s %x:%x \n",m.cpu.clock.Cycles,con.name,addr,val)
+			//fmt.Printf("%v:Writing %s %x:%x \n",1,con.name,addr,val)
 			return 
 
 		} 
 	}
-
-	//if addr >= 0xff30 && addr < 0xff40 {
-		//fmt.Println(m.cpu.sound.Wram,(addr&0x00ff) - 0x30)
-		//m.cpu.sound.Wram[(addr&0x00ff)-0x30] = val
-//	if (addr >= 0xff10 && addr < 0xff27) {
-//		m.cpu.sound.Write_mmio(addr,val)
-//	} else 
-//	} else {
-	//	fmt.Printf("MMU unhandled write:%04x:%04x\n", addr, val)
-
-//	}
-
 }
 
+func (m *MMU) Read_b(addr uint16) uint8 {
 
-func (m *MMU) read_b(addr uint16) uint8 {
-
-	//   fmt.Printf("write:%04x:%04x\n",addr,val)
 	if addr >= 0xff00 && addr <= 0xff70 || addr == 0xffff {
 		return m.read_mmio(addr)
 	}
@@ -156,36 +138,28 @@ func (m *MMU) read_b(addr uint16) uint8 {
 			addr < m.range_connections[i].addr_hi {
 			con := m.range_connections[i]
 			val :=con.comp.Read(addr)
-			//fmt.Printf("%v:Reading %s %x:%x \n",m.cpu.clock.Cycles,con.name,addr,val)
+	//		fmt.Printf("%v:Reading %s %x:%x \n",m.cpu.clock.Cycles,con.name,addr,val)
 			return val
 
 		} 
 	}
-
-//	var val uint8
-//	if (addr >= 0xff10 && addr < 0xff27)  {
-//	    val = m.cpu.sound.Read_mmio(addr)
-//	} else {
-//	fmt.Printf("unhandled read:%04x\n", addr)
-        //panic("Fail")
-//	}
 	return 0
 }
 
 
-func (m *MMU) read_w(addr uint16) uint16 {
-	return uint16(m.read_b(addr)) | uint16((m.read_b(addr+1)))<<8
+func (m *MMU) Read_w(addr uint16) uint16 {
+	return uint16(m.Read_b(addr)) | uint16((m.Read_b(addr+1)))<<8
 }
 func (m *MMU) Read (addr uint16) uint8 {
-	return m.read_b(addr)
+	return m.Read_b(addr)
 }
 func (m *MMU) Write (addr uint16,val uint8) {
-	m.write_b(addr,val)
+	m.Write_b(addr,val)
 }
-func (m *MMU) write_w(addr uint16, val uint16) {
+func (m *MMU) Write_w(addr uint16, val uint16) {
 
-	m.write_b(addr, uint8(val&0x00ff))
-	m.write_b(addr+1, uint8((val&0xff00)>>8))
+	m.Write_b(addr, uint8(val&0x00ff))
+	m.Write_b(addr+1, uint8((val&0xff00)>>8))
 
 
 }

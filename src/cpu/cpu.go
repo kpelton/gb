@@ -13,6 +13,7 @@ import (
 	"dmac"
 	"component"
 	"clock"
+    "mmu"
 //"runtime/pprof"
 //"time"
 )
@@ -70,7 +71,7 @@ type CPU struct {
 	ops        OpMap
 	reg8       RegMap8
 	reg16      RegMap16
-	mmu        *MMU
+	mmu        *mmu.MMU
 	gpu        *gpu.GPU
 	gp         *gp.GP
 	serial     serial.Serial
@@ -216,7 +217,7 @@ func (c *CPU) handleInterrupts() {
 			c.push_pc(c) //push pc on stack
 			c.is_halted = false
 			c.last_instr+=20
-			 fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
+			//fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
 
 			c.reg16[PC] = vector
 
@@ -249,7 +250,7 @@ func (c *CPU) Exec() {
 
 		if !c.is_halted {
 
-			op = uint16(c.mmu.read_w(c.reg16[PC]))
+			op = uint16(c.mmu.Read_w(c.reg16[PC]))
 			//c.Dump()
 			//fmt.Println(c.gpu.LY)
 			if op&0x00ff != 0xcb {
@@ -360,7 +361,7 @@ func gen_set_val(a_type int, reg string) SetVal {
 		lambda = func(c *CPU, val uint16) { c.reg8[reg_id] = uint8(val) }
 	case regc:
 		lambda = func(c *CPU, val uint16) {
-			c.mmu.write_b(uint16(0xff00|uint16(c.reg8[C])), uint8(val))
+			c.mmu.Write_b(uint16(0xff00|uint16(c.reg8[C])), uint8(val))
 		}
 	case reg16_combo:
 		reg_0 := get_reg_id(string(reg[0]))
@@ -381,26 +382,26 @@ func gen_set_val(a_type int, reg string) SetVal {
 			reg_high := c.reg8[reg_0]
 			reg_low := c.reg8[reg_1]
 			addr := (uint16(reg_high) << 8) | uint16(reg_low)
-			c.mmu.write_b(addr, uint8(val))
+			c.mmu.Write_b(addr, uint8(val))
 		}
 
 	case memn:
 		lambda = func(c *CPU, val uint16) {
-			addr := 0xff00 | uint16(c.mmu.read_b(c.reg16[PC]+1))
-			c.mmu.write_b(addr, uint8(val))
+			addr := 0xff00 | uint16(c.mmu.Read_b(c.reg16[PC]+1))
+			c.mmu.Write_b(addr, uint8(val))
 
 		}
 	case memnn:
 		lambda = func(c *CPU, val uint16) {
-			addr := uint16(c.mmu.read_b(c.reg16[PC]+2))<<8 | uint16(c.mmu.read_b(c.reg16[PC]+1))
+			addr := uint16(c.mmu.Read_b(c.reg16[PC]+2))<<8 | uint16(c.mmu.Read_b(c.reg16[PC]+1))
 
-			c.mmu.write_w(addr, val)
+			c.mmu.Write_w(addr, val)
 		}
 	case memnn8:
 		lambda = func(c *CPU, val uint16) {
-			addr := uint16(c.mmu.read_b(c.reg16[PC]+2))<<8 | uint16(c.mmu.read_b(c.reg16[PC]+1))
+			addr := uint16(c.mmu.Read_b(c.reg16[PC]+2))<<8 | uint16(c.mmu.Read_b(c.reg16[PC]+1))
 
-			c.mmu.write_b(addr, uint8(val))
+			c.mmu.Write_b(addr, uint8(val))
 		}
 
 	case reghli:
@@ -415,7 +416,7 @@ func gen_set_val(a_type int, reg string) SetVal {
 			c.reg8[reg_0] = uint8(addr & 0xff00 >> 8)
 			c.reg8[reg_1] = uint8(addr & 0x00ff)
 
-			c.mmu.write_b(addr, uint8(val))
+			c.mmu.Write_b(addr, uint8(val))
 			f(c)
 		}
 	case reghld:
@@ -430,7 +431,7 @@ func gen_set_val(a_type int, reg string) SetVal {
 			c.reg8[reg_0] = uint8(addr & 0xff00 >> 8)
 			c.reg8[reg_1] = uint8(addr & 0x00ff)
 			f(c)
-			c.mmu.write_b(addr, uint8(val))
+			c.mmu.Write_b(addr, uint8(val))
 		}
 	default:
 		lambda = func(c *CPU, val uint16) {
@@ -452,14 +453,14 @@ func gen_get_val(a_type int, reg string) GetVal {
 		lambda = func(c *CPU) uint16 { return uint16(c.reg8[reg_id]) }
 	case memn:
 		lambda = func(c *CPU) uint16 {
-			addr := uint16(0xff00 | uint16(c.mmu.read_b(c.reg16[PC]+1)))
-			return c.mmu.read_w(addr)
+			addr := uint16(0xff00 | uint16(c.mmu.Read_b(c.reg16[PC]+1)))
+			return c.mmu.Read_w(addr)
 		}
 
 	case regc:
 		lambda = func(c *CPU) uint16 {
 			addr := uint16(0xff00 | uint16(c.reg8[C]))
-			return uint16(c.mmu.read_b(addr))
+			return uint16(c.mmu.Read_b(addr))
 		}
 
 	case memreg:
@@ -470,7 +471,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 			reg_low := c.reg8[reg_1]
 			addr := (uint16(reg_high) << 8) | uint16(reg_low)
 
-			return uint16(c.mmu.read_b(addr))
+			return uint16(c.mmu.Read_b(addr))
 		}
 	case reg16:
 		lambda = func(c *CPU) uint16 {
@@ -480,7 +481,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 	case memreg16:
 		lambda = func(c *CPU) uint16 {
 			//	fmt.Println("CALLEDDD!!!")
-			return c.mmu.read_w(c.reg16[reg_id])
+			return c.mmu.Read_w(c.reg16[reg_id])
 		}
 
 	case reg16_combo:
@@ -495,18 +496,18 @@ func gen_get_val(a_type int, reg string) GetVal {
 
 	case memnn:
 		lambda = func(c *CPU) uint16 {
-			addr := uint16(c.mmu.read_b(c.reg16[PC]+2))<<8 | uint16(c.mmu.read_b(c.reg16[PC]+1))
-			//		fmt.Printf("%04x,%04x\n",addr,c.mmu.read_w(addr))
-			return c.mmu.read_w(addr)
+			addr := uint16(c.mmu.Read_b(c.reg16[PC]+2))<<8 | uint16(c.mmu.Read_b(c.reg16[PC]+1))
+			//		fmt.Printf("%04x,%04x\n",addr,c.mmu.Read_w(addr))
+			return c.mmu.Read_w(addr)
 		}
 
 	case n:
 		lambda = func(c *CPU) uint16 {
-			return uint16(c.mmu.read_b(c.reg16[PC] + 1))
+			return uint16(c.mmu.Read_b(c.reg16[PC] + 1))
 		}
 	case nn:
 		lambda = func(c *CPU) uint16 {
-			return uint16(c.mmu.read_b(c.reg16[PC]+2))<<8 | uint16(c.mmu.read_b(c.reg16[PC]+1))
+			return uint16(c.mmu.Read_b(c.reg16[PC]+2))<<8 | uint16(c.mmu.Read_b(c.reg16[PC]+1))
 		}
 
 	case reghld:
@@ -524,7 +525,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 			c.reg8[reg_0] = uint8(addr & 0xff00 >> 8)
 			c.reg8[reg_1] = uint8(addr & 0x00ff)
 			f(c)
-			return uint16(c.mmu.read_w(addr))
+			return uint16(c.mmu.Read_w(addr))
 
 		}
 
@@ -540,7 +541,7 @@ func gen_get_val(a_type int, reg string) GetVal {
 			c.reg8[reg_0] = uint8(addr & 0xff00 >> 8)
 			c.reg8[reg_1] = uint8(addr & 0x00ff)
 			f(c)
-			return uint16(c.mmu.read_b(addr))
+			return uint16(c.mmu.Read_b(addr))
 		}
 
 	}
@@ -947,7 +948,7 @@ func gen_push_pop(left string, reg_right string) Action {
 		lambda = func(c *CPU) {
 			//write word to mem
 			c.reg16[SP] -= 2
-			c.mmu.write_w(c.reg16[SP], f_get_val(c))
+			c.mmu.Write_w(c.reg16[SP], f_get_val(c))
 			c.do_instr(desc, 16, 1)
 		}
 	} else if left == "PUSHAF" {
@@ -971,7 +972,7 @@ func gen_push_pop(left string, reg_right string) Action {
 
 			c.reg16[SP] -= 2
 
-			c.mmu.write_w(c.reg16[SP], f_get_val(c))
+			c.mmu.Write_w(c.reg16[SP], f_get_val(c))
 
 			c.do_instr(desc, 16, 1)
 
@@ -980,7 +981,7 @@ func gen_push_pop(left string, reg_right string) Action {
 
 		f_set_val := gen_set_val(type_right, reg_right)
 		lambda = func(c *CPU) {
-			val := c.mmu.read_w(c.reg16[SP])
+			val := c.mmu.Read_w(c.reg16[SP])
 			c.reg16[SP] += 2
 			f_set_val(c, val)
 
@@ -992,7 +993,7 @@ func gen_push_pop(left string, reg_right string) Action {
 		f_set_val := gen_set_val(type_right, reg_right)
 		lambda = func(c *CPU) {
 
-			val := c.mmu.read_w(c.reg16[SP])
+			val := c.mmu.Read_w(c.reg16[SP])
 			//fmt.Printf("read 0x%04x to 0x%04x",val,c.reg16[SP])
 			//fmt.Println(val)
 			new_val := uint8(val & 0x00ff)
@@ -1053,7 +1054,7 @@ func gen_jmp(left string, reg_right string, skip_flags uint8, signed uint8, mask
 			reg_low := c.reg8[reg_1]
 			addr := (uint16(reg_high) << 8) | uint16(reg_low)
 			//only case that reads word from (HL)
-			return uint16(c.mmu.read_w(addr))
+			return uint16(c.mmu.Read_w(addr))
 		}
 	}
 
@@ -1441,8 +1442,8 @@ func gen_ldh(reg_left string, reg_right string, ticks uint16, args uint16) Actio
 	if reg_left == "(n)" {
 
 		lambda = func(c *CPU) {
-			valn := c.mmu.read_b(c.reg16[PC] + 1)
-			c.mmu.write_b(0xff00+uint16(valn), c.reg8[A])
+			valn := c.mmu.Read_b(c.reg16[PC] + 1)
+			c.mmu.Write_b(0xff00+uint16(valn), c.reg8[A])
 			c.do_instr(desc, (ticks), (args))
 			//	fmt.Printf("->%04x,%04x\n",0xff00+uint16(valn),valn)
 
@@ -1451,8 +1452,8 @@ func gen_ldh(reg_left string, reg_right string, ticks uint16, args uint16) Actio
 
 		lambda = func(c *CPU) {
 
-			valn := c.mmu.read_b(c.reg16[PC] + 1)
-			valff := c.mmu.read_b(0xff00 + uint16(valn))
+			valn := c.mmu.Read_b(c.reg16[PC] + 1)
+			valff := c.mmu.Read_b(0xff00 + uint16(valn))
 			c.reg8[A] = valff
 			c.do_instr(desc, (ticks), (args))
 			//fmt.Printf("<-%04x,%04x\n",0xff00+uint16(valn),valn)
@@ -2057,13 +2058,13 @@ func createOps(c *CPU) {
 func (c *CPU) Get_reg_list() component.RegList {
 	return c.reg_list
 }
-func setup_mmu_conn(c component.MMIOComponent, m *MMU) {
+func setup_mmu_conn(c component.MMIOComponent, m *mmu.MMU) {
 	reg_list := c.Get_reg_list()
 	for i := range reg_list {
 		m.Connect_mmio(reg_list[i].Addr,reg_list[i].Name,c) 
 	}
 }
-func setup_mmu_range_conn(c component.MemComponent, m *MMU) {
+func setup_mmu_range_conn(c component.MemComponent, m *mmu.MMU) {
 	range_list := c.Get_range_list()
 	for i := range range_list {
 		m.Connect_range(range_list[i],c) 
@@ -2077,7 +2078,7 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 		{Name:"DIV",Addr:DIV_MMIO},
 	}
 	
-	c.mmu = NewMMU(c)
+	c.mmu = mmu.NewMMU()
 	c.timer = timer.NewTimer()
 	c.ic = ic.NewIC()
 	c.gp = gp.NewGP()
