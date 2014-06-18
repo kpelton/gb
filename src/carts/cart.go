@@ -117,8 +117,8 @@ func create_new_cart(data []uint8, size int) Cart {
 		fmt.Printf("ROM_RAM\n")
 	default:
 
-		fmt.Printf("Unknown!\n")
-		  panic("Unsupported cart!!!!")
+//		fmt.Printf("Unknown!\n")
+//		  panic("Unsupported cart!!!!")
 		cart = NewROM_MBC1(cart_name, data, size, true)
 
 	}

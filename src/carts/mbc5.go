@@ -35,7 +35,9 @@ func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *RO
 	if has_battery == true {
 		m.Load_ram()
 	}
+     m.bank=1
 	return m
+   
 }
 func (m *ROM_MBC5) Load_ram() {
 	save_name := m.name + ".data"
@@ -68,6 +70,7 @@ func (m *ROM_MBC5) Read(addr uint16) uint8 {
 	if addr < 0x4000 {
 		retval = m.cart[addr]
 	} else if addr < 0x8000 {
+        
 		retval = m.cart[uint32(addr)+(uint32(m.bank-1)*0x4000)]
 	} else {
 		if m.ram_enabled {

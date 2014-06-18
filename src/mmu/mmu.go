@@ -2,7 +2,7 @@ package mmu
 
 import (
 	"carts"
-	//"fmt"
+	"fmt"
     "component"
 )
 type mmio_connection struct {
@@ -84,6 +84,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	con := m.mmio_connections[addr &0xff]
 	if con != nil {
 		con.comp.Write_mmio(addr,val)
+
 	//	fmt.Printf("%v:Writing %s %x\n",m.cpu.clock.Cycles,con.name,val) 
 	
 
@@ -113,7 +114,7 @@ func (m *MMU) Write_b(addr uint16, val uint8) {
 		m.write_mmio(addr, val)
 		return
 	}
-
+    //m.Print_map()
 	var i uint8
 	for i=0; i<m.range_count; i++ {
 		if addr >= m.range_connections[i].addr_lo &&
@@ -127,11 +128,24 @@ func (m *MMU) Write_b(addr uint16, val uint8) {
 	}
 }
 
+func (m *MMU) Print_map() {
+    fmt.Printf("===Address Map===\n")
+    var i uint8
+    for i=0; i<m.range_count; i++ {
+        fmt.Printf("%v:%x-%x\n",m.range_connections[i].name, m.range_connections[i].addr_lo,m.range_connections[i].addr_hi)
+    }
+
+
+
+}
 func (m *MMU) Read_b(addr uint16) uint8 {
 
 	if addr >= 0xff00 && addr <= 0xff70 || addr == 0xffff {
 		return m.read_mmio(addr)
 	}
+    
+
+
 	var i uint8
 	for i=0; i<m.range_count; i++ {
 		if addr >= m.range_connections[i].addr_lo &&
