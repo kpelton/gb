@@ -11,4 +11,5 @@ type Serial interface {
 	Read_mmio(addr uint16) uint8
 	Write_mmio(addr uint16, val uint8)
 	Get_reg_list() component.RegList
+    Reset()
 }

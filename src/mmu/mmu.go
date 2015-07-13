@@ -25,11 +25,6 @@ const (
 type MMU struct {
 	cart   carts.Cart
 	inbios bool
-	HDMA_hi_src uint8
-	HDMA_lo_src uint8
-	HDMA_hi_dst uint8
-	HDMA_lo_dst uint8
-    HDMA_start uint8
 	mmio_connections [MAX_MMIO]*mmio_connection
 	range_connections [MAX_MMIO]*range_connection
 	range_count uint8
@@ -41,7 +36,9 @@ func NewMMU() *MMU {
 	m.inbios = false
 	return m
 }
+func (m *MMU) Reset () {
 
+}
 func (m *MMU) Create_new_cart(filename string) {
 	m.cart = carts.Load_cart(filename)
 	range_list := m.cart.Get_range_list()
@@ -114,7 +111,7 @@ func (m *MMU) Write_b(addr uint16, val uint8) {
 		m.write_mmio(addr, val)
 		return
 	}
-    //m.Print_map()
+   // m.Print_map()
 	var i uint8
 	for i=0; i<m.range_count; i++ {
 		if addr >= m.range_connections[i].addr_lo &&

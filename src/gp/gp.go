@@ -1,7 +1,7 @@
 package gp
 
 import (
-	//	"fmt"
+		"fmt"
 	//"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 	//"github.com/banthar/Go-SDL/sdl"
 	"banthar/sdl"
@@ -18,6 +18,7 @@ type GP struct {
 	K_DOWN  uint8
 	pad     uint8
 	other   uint8
+   
 	reg_list component.RegList
 	
 }
@@ -86,7 +87,7 @@ func (g *GP) handleKeyDown(e *sdl.KeyboardEvent) {
 	}
 }
 
-func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) {
+func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) bool {
 
 
 	switch e.Keysym.Sym {
@@ -98,8 +99,10 @@ func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) {
 		g.other |= 0x02
 	case sdl.K_z:
 		g.other |= 0x01
+    case sdl.K_F1:
 
-
+       //return true to indicate global event
+       return true
 
 	}
 
@@ -115,7 +118,7 @@ func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) {
 
 
 	}
-
+    return false
 	//fmt.Printf("P1:0x%02x\n",g.P1)
 }
 func (g *GP) LoopUpdate() (uint8) {
@@ -135,9 +138,13 @@ func (g *GP) Update() (uint8) {
 				g.handleKeyDown(e)
                 int_raised = 0x10	    
 			} else {
-				g.handleKeyUp(e)
-                int_raised = 0x10	    
-
+                //check for global reset key
+				if  g.handleKeyUp(e) == true {
+                    int_raised = 0xff
+                    fmt.Println("gp global")
+                }else {
+                    int_raised = 0x10	    
+                }
 			}
 
 		default:

@@ -13,12 +13,17 @@ type Cart interface {
 	Read(uint16) uint8
 	Write(uint16, uint8)
 	Get_range_list() component.RangeList
+    Reset()    
 
 }
+
 const (
 	SIXTEEN_MB = 0
 	FOUR_MB    = 1
 )
+func (c* GenCart) Reset() {
+    
+}
 func (c* GenCart ) Get_range_list() component.RangeList{
 	return component.RangeList{
 		{Name:"CART_ROM",Addr_lo:0x000,Addr_hi:0x8000},

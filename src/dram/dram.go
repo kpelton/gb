@@ -36,7 +36,6 @@ const (
 
 func NewDRAM() *DRAM {
 	m := new(DRAM)
-	m.SVBK = 1
 	m.reg_list = component.RegList{
 		{Name:"SVBK",Addr:SVBK_MMIO},
 	}
@@ -44,9 +43,16 @@ func NewDRAM() *DRAM {
 		{Name:"DRAM",Addr_lo:0xc000,Addr_hi:0xfe00},
 		{Name:"Z_RAM",Addr_lo:Z_RAM_LO,Addr_hi:Z_RAM_HI},
 	}
+    m.Reset()
 	return m
 
 }
+
+func  (m* DRAM) Reset() {
+	m.SVBK = 1
+    //leave random 
+
+} 
 func (m* DRAM) Get_reg_list() component.RegList{
 	return m.reg_list
 }

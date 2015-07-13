@@ -18,6 +18,7 @@ type MMIOComponent interface {
 	Read_mmio(uint16) uint8
 	Write_mmio(uint16, uint8)
 	Get_reg_list() RegList
+    Reset()
 }
 
 
@@ -25,6 +26,7 @@ type MemComponent interface {
 	Read(uint16) uint8
 	Write(uint16, uint8)
 	Get_range_list() RangeList
+    Reset()
 }
 
 

@@ -74,6 +74,11 @@ func NewNetSerial(ic *ic.IC, listen bool, addr string) *NetSerial {
 	}
 	return serial
 }
+func (s *NetSerial) Reset() { 
+   s.SC = 0
+   s.SB =0
+}
+
 
 func (s *NetSerial) sendBytes(cmd uint8, value uint8) {
 	var msg [2]byte

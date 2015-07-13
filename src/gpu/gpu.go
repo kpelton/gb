@@ -30,7 +30,7 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
-	fullspeed     = false
+	fullspeed     = true
 )
 
 func newScreen(scale int16) *Screen {
@@ -62,7 +62,6 @@ func (s *Screen) PutPixel(x int16, y int16, color uint32) {
 	s.rect.Y = y * s.scale
 	s.screen.FillRect(&s.rect, color)
 }
-
 
 
 type GPU struct {
@@ -168,6 +167,9 @@ type TileAttr  [32][32] bg_attr
 type GBPalette [4]uint32
 
 type Line [160]uint8
+func (g *GPU) Reset() {
+
+}
 
 func (g *GPU) get_palette_color(selection uint8) uint32 {
 	var retval uint32 = 0

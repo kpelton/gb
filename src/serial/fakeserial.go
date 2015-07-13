@@ -57,6 +57,11 @@ func (s *FakeSerial) Read_mmio(addr uint16) uint8 {
 	}
 }
 
+func (s *FakeSerial) Reset() {
+    s.SB=0
+    s.SC=0
+}
+
 func (s *FakeSerial) Write_mmio(addr uint16, val uint8) {
 	switch addr {
 

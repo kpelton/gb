@@ -142,6 +142,26 @@ func (c *CPU) set_sswitch() {
     
 }
 
+func (c *CPU) Reset() {
+	c.reg16[PC] = 0x100
+	c.reg16[SP] = 0xfffe
+	c.reg8[A] = 0x11
+	c.reg8[B] = 0x00
+	c.reg8[C] = 0x13
+	c.reg8[D] = 0x00
+	c.reg8[E] = 0xd8
+	c.reg8[F] = 0x90
+	c.reg8[H] = 0x01
+	c.reg8[L] = 0x4d
+	c.reg8[FL_Z] = 0x1
+	c.reg8[FL_C] = 0x1
+	c.reg8[FL_H] = 0x0
+	c.reg8[FL_N] = 0x0
+	c.reg8[EI] = 0x0
+	c.gpu.STAT = 0x85
+	c.gpu.LCDC = 0x91
+}
+
 func (c *CPU) load_bios() {
 
 	c.mmu.Create_new_cart(os.Args[len(os.Args)-1])
@@ -269,11 +289,14 @@ func (c *CPU) Exec() {
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
-		if c.ic.IE&0x10 == 0x10 && count >= 20 {
+		if count >= 2000 {
 			raise_int := c.gp.Update()
 			count = 0
-			if raise_int > 0 {
-				c.ic.Assert(raise_int)
+            if raise_int == 0xff {
+              fmt.Println("GLOBAL RESET")
+              c.Reset()
+             }else if raise_int > 0  {
+				//c.ic.Assert(raise_int)
 			}
 		}
 			c.serial.Update(c.last_instr/c.clk_mul)

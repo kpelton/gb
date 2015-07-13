@@ -44,6 +44,11 @@ func NewRealSerial(ic *ic.IC, port string) *RealSerial {
 	return nserial
 
 }
+func (g* RealSerial) Reset() {
+    g.SC = 0
+    g.SB = 0
+}
+
 
 func (s *RealSerial) Update(cycles uint16) uint8 {
 	var buf [1]uint8
