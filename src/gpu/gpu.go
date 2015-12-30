@@ -1,16 +1,18 @@
 package gpu
 
 import (
-	"banthar/sdl"
+	"github.com/veandco/go-sdl2/sdl"
 	"constants"
 	"fmt"
 	"ic"
 	"time"
 	"component"
+    "os"
 )
 
 type Screen struct {
-	screen *sdl.Surface
+	screen *sdl.Window
+    renderer *sdl.Renderer
 	rect   sdl.Rect
 	scale  int16
 }
@@ -43,24 +45,38 @@ func newScreen(scale int16) *Screen {
 
 func (s *Screen) initSDL() {
 
-	if sdl.Init(sdl.INIT_EVERYTHING) != 0 {
-		fmt.Println(sdl.GetError())
-	}
+   sdl.Init(sdl.INIT_EVERYTHING)
 
-	s.screen = sdl.SetVideoMode(160*int(s.scale), 144*int(s.scale), 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
-	if s.screen == nil {
-		fmt.Println(sdl.GetError())
-	}
+	//s.screen = sdl.SetVideoMode(160*int(s.scale), 144*int(s.scale), 32, sdl.HWSURFACE|sdl.DOUBLEBUF|sdl.ASYNCBLIT)
+//	if s.screen == nil {
+//		fmt.Println(sdl.GetError())
+//	}
 
-	sdl.WM_SetCaption("Monko's Gameboy", "")
+    screen, err := sdl.CreateWindow("gameboy", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+        160*int(s.scale), 144*int(s.scale), sdl.WINDOW_SHOWN)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Failed to create window: %s\n", err)
+    }
+
+    renderer, err := sdl.CreateRenderer(screen, -1, sdl.RENDERER_ACCELERATED)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Failed to create renderer: %s\n", err)
+    }
+    s.screen = screen
+    s.renderer = renderer
 
 }
 func (s *Screen) PutPixel(x int16, y int16, color uint32) {
-	s.rect.H = uint16(s.scale)
-	s.rect.W = uint16(s.scale)
-	s.rect.X = x * s.scale
-	s.rect.Y = y * s.scale
-	s.screen.FillRect(&s.rect, color)
+	s.rect.H = int32(s.scale)
+	s.rect.W = int32(s.scale)
+	s.rect.X = int32(x * s.scale)
+	s.rect.Y = int32(y * s.scale)
+	//s.screen.FillRect(&s.rect, color)
+    
+    s.renderer.SetDrawColor((uint8(color&0xff000000)>>20),uint8((color&0x00ff0000)>>16),uint8((color&0x0000ff00)>>8),uint8(color &0xff))
+
+    //s.renderer.SetDrawColor(0, 255, 0, 255)
+    s.renderer.DrawRect(&s.rect)
 }
 
 
@@ -974,26 +990,30 @@ func (g *GPU) print_sprites_gbc(line *Line) {
 
 func (g *GPU) display_line(y int16, line *Line, pal *GBPalette) {
     //minimize draws to lines that have more than one color.
-	g.rect.H = uint16(g.scale)
-	g.rect.Y = y * g.scale
+	g.rect.H = int32(g.scale)
+	g.rect.Y = int32(y * g.scale)
 	var x int16
 	for x = 0; x < 160; x++ {
-		g.rect.X = x * g.scale
-		g.rect.W = uint16(g.scale)
+		g.rect.X = int32(x * g.scale)
+		g.rect.W = int32(g.scale)
 		col := pal[line[x]]
 		for j := x + 1; j < 160; j++ {
 			col2 := pal[line[j]]
 			if col2 != col {
 				break
 			}
-			g.rect.W += uint16(g.scale)
+			g.rect.W += int32(g.scale)
 			x++
 
 		}
+        color := pal[line[x]] 
+        g.screen.renderer.SetDrawColor(0xff,00,00,0xff)
+        g.screen.renderer.SetDrawColor((uint8(color&0xff000000)>>24),uint8((color&0x00ff0000)>>16),uint8((color&0x0000ff00)>>8),0xff)
+   g.screen.renderer.DrawRect(&g.screen.rect)
 
-		g.screen.screen.FillRect(&g.rect, pal[line[x]])
+    }
+
 	}
-}
 func (g *GPU) hblank(clocks uint16) {
 	var line Line
 
@@ -1085,7 +1105,7 @@ func (g *GPU) vblank(clocks uint16) {
 		g.STAT = (g.STAT & 0xfc) | 0x01
 		//ASSERT vblank int
 		g.ic.Assert(constants.V_BLANK)
-		g.screen.screen.Flip()
+		g.screen.renderer.Present()
 		g.frames += 1
 		
 		if !fullspeed {

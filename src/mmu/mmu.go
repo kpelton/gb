@@ -111,7 +111,7 @@ func (m *MMU) Write_b(addr uint16, val uint8) {
 		m.write_mmio(addr, val)
 		return
 	}
-   // m.Print_map()
+    //m.Print_map()
 	var i uint8
 	for i=0; i<m.range_count; i++ {
 		if addr >= m.range_connections[i].addr_lo &&
