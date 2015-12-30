@@ -72,11 +72,12 @@ func (s *Screen) PutPixel(x int16, y int16, color uint32) {
 	s.rect.X = int32(x * s.scale)
 	s.rect.Y = int32(y * s.scale)
 	//s.screen.FillRect(&s.rect, color)
-    
-    s.renderer.SetDrawColor((uint8(color&0xff000000)>>20),uint8((color&0x00ff0000)>>16),uint8((color&0x0000ff00)>>8),uint8(color &0xff))
-
-    //s.renderer.SetDrawColor(0, 255, 0, 255)
-    s.renderer.DrawRect(&s.rect)
+    r := color &0xff0000 >>16
+    gr := color &0xff00 >>8
+    b := color &0xff
+ 
+    s.renderer.SetDrawColor(uint8(r),uint8(gr),uint8(b),0xff)
+    s.renderer.FillRect(&s.rect)
 }
 
 
@@ -1007,11 +1008,14 @@ func (g *GPU) display_line(y int16, line *Line, pal *GBPalette) {
 
 		}
         color := pal[line[x]] 
-        g.screen.renderer.SetDrawColor(0xff,00,00,0xff)
-        g.screen.renderer.SetDrawColor((uint8(color&0xff000000)>>24),uint8((color&0x00ff0000)>>16),uint8((color&0x0000ff00)>>8),0xff)
-   g.screen.renderer.DrawRect(&g.screen.rect)
+  r := color &0xff0000 >>16
+    gr:= color &0xff00 >>8
+    b := color &0xff
+ 
+    g.screen.renderer.SetDrawColor(uint8(r),uint8(gr),uint8(b),0xff)
+    g.screen.renderer.FillRect(&g.rect)
+}
 
-    }
 
 	}
 func (g *GPU) hblank(clocks uint16) {
