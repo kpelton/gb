@@ -4,7 +4,7 @@ import (
 		"fmt"
 	//"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 	//"github.com/banthar/Go-SDL/sdl"
-	"banthar/sdl"
+	"github.com/veandco/go-sdl2/sdl"
 	"component"
 )
 const ( 
@@ -26,7 +26,7 @@ type GP struct {
 func NewGP() *GP {
 	g := new(GP)
 	g.Reset()
-	sdl.EnableKeyRepeat(1, 1)
+	//:sdl.EnableKeyRepeat(1, 1)
 	g.reg_list = component.RegList{
 		{Name:"GP" , Addr:GP_MMIO},
 	}
@@ -61,7 +61,7 @@ func (g *GP) Write_mmio(addr uint16,val uint8) {
 }
 
 
-func (g *GP) handleKeyDown(e *sdl.KeyboardEvent) {
+func (g *GP) handleKeyDown(e *sdl.KeyDownEvent) {
 
 	switch e.Keysym.Sym {
 	case sdl.K_RETURN:
@@ -87,7 +87,7 @@ func (g *GP) handleKeyDown(e *sdl.KeyboardEvent) {
 	}
 }
 
-func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) bool {
+func (g *GP) handleKeyUp(e *sdl.KeyUpEvent) bool {
 
 
 	switch e.Keysym.Sym {
@@ -130,22 +130,19 @@ func (g *GP) Update() (uint8) {
     var int_raised uint8 = 0
 		ev := sdl.PollEvent()
 
-		//fmt.Println(ev)
 		switch e := ev.(type) {
 
-		case *sdl.KeyboardEvent:
-    		if e.Type == sdl.KEYDOWN {
-				g.handleKeyDown(e)
-                int_raised = 0x10	    
-			} else {
-                //check for global reset key
-				if  g.handleKeyUp(e) == true {
+		case *sdl.KeyUpEvent:
+                if  g.handleKeyUp(e) == true {
                     int_raised = 0xff
                     fmt.Println("gp global")
                 }else {
-                    int_raised = 0x10	    
+                    int_raised = 0x10
                 }
-			}
+
+		case *sdl.KeyDownEvent:
+				g.handleKeyDown(e)
+                int_raised = 0x10	    
 
 		default:
 			break

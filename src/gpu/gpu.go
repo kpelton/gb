@@ -1109,9 +1109,9 @@ func (g *GPU) vblank(clocks uint16) {
 		g.STAT = (g.STAT & 0xfc) | 0x01
 		//ASSERT vblank int
 		g.ic.Assert(constants.V_BLANK)
-		g.screen.renderer.Present()
 		g.frames += 1
 		
+		g.screen.renderer.Present()
 		if !fullspeed {
 			if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
 				time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
@@ -1137,7 +1137,8 @@ func (g *GPU) vblank(clocks uint16) {
 //		fmt.Println(g.bg_attr_map)
 		//fmt.Println(g.cycle_count)        
 		//	time.Sleep(time.Duration(5) * time.Millisecond)
-	}
+	
+}
 
 }
 
