@@ -1,34 +1,33 @@
 package carts
 
 import (
+	"component"
 	"fmt"
 	"os"
 	"strings"
-	"component"
 )
-type GenCart struct {
 
+type GenCart struct {
 }
 type Cart interface {
 	Read(uint16) uint8
 	Write(uint16, uint8)
 	Get_range_list() component.RangeList
-    Reset()    
-
+	Reset()
 }
 
 const (
 	SIXTEEN_MB = 0
 	FOUR_MB    = 1
 )
-func (c* GenCart) Reset() {
-    
-}
-func (c* GenCart ) Get_range_list() component.RangeList{
-	return component.RangeList{
-		{Name:"CART_ROM",Addr_lo:0x000,Addr_hi:0x8000},
-		{Name:"CART_RAM",Addr_lo:0xa000,Addr_hi:0xc000},
 
+func (c *GenCart) Reset() {
+
+}
+func (c *GenCart) Get_range_list() component.RangeList {
+	return component.RangeList{
+		{Name: "CART_ROM", Addr_lo: 0x000, Addr_hi: 0x8000},
+		{Name: "CART_RAM", Addr_lo: 0xa000, Addr_hi: 0xc000},
 	}
 }
 
@@ -45,12 +44,12 @@ const (
 	C_ROM_MBC2          = 5
 	C_ROM_MBC2_BATT     = 6
 	C_ROM_MBC3_RAM_BATT = 13
-	C_ROM_MBC5 = 0x19
-	C_ROM_MBC5_RAM_BATT  = 0x1b
+	C_ROM_MBC5          = 0x19
+	C_ROM_MBC5_RAM_BATT = 0x1b
 
-	C_ROM_MBC5_RUM  = 0x1C
-	C_ROM_MBC5_RUM_RAM_BATT  = 0x1e
-	C_ROM_RAM           = 8
+	C_ROM_MBC5_RUM          = 0x1C
+	C_ROM_MBC5_RUM_RAM_BATT = 0x1e
+	C_ROM_RAM               = 8
 )
 
 func Load_cart(filename string) Cart {
@@ -117,16 +116,14 @@ func create_new_cart(data []uint8, size int) Cart {
 	case C_ROM_MBC5_RUM_RAM_BATT:
 		cart = NewROM_MBC5(cart_name, data, size, true)
 
-
 	case C_ROM_RAM:
 		fmt.Printf("ROM_RAM\n")
 	default:
 
-//		fmt.Printf("Unknown!\n")
-//		  panic("Unsupported cart!!!!")
+		//		fmt.Printf("Unknown!\n")
+		//		  panic("Unsupported cart!!!!")
 		cart = NewROM_MBC1(cart_name, data, size, true)
 
 	}
 	return cart
 }
-

@@ -1,21 +1,21 @@
 package cpu
 
 import (
+	"clock"
+	"component"
+	"dmac"
+	"dram"
 	"fmt"
 	"gp"
 	"gpu"
 	"ic"
+	"mmu"
 	"os"
 	"serial"
 	"sound"
 	"timer"
-	"dram"
-	"dmac"
-	"component"
-	"clock"
-    "mmu"
-//"runtime/pprof"
-//"time"
+	//"runtime/pprof"
+	//"time"
 )
 
 const (
@@ -56,14 +56,15 @@ const (
 	invalid
 )
 const (
-	DIV_MMIO = 0xff04
+	DIV_MMIO  = 0xff04
 	KEY1_MMIO = 0xff4d
 )
+
 type Action func(*CPU)
 type SetVal func(*CPU, uint16)
 type GetVal func(*CPU) uint16
 type OpMap [0xffff]Action
-type RegMap8 [13]uint8  //12 registers one uint for each of the 
+type RegMap8 [13]uint8  //12 registers one uint for each of the
 type RegMap16 [2]uint16 //2 registers
 type OpCall map[uint16]uint32
 
@@ -85,38 +86,38 @@ type CPU struct {
 	KEY1       uint8
 	last_instr uint16
 	push_pc    Action
-    sswitch    bool        
-    clk_mul    uint16
+	sswitch    bool
+	clk_mul    uint16
 	reg_list   component.RegList
 	clock      *clock.Clock
 }
 
 func (c *CPU) Ready_sswitch() {
-    c.sswitch =true 
+	c.sswitch = true
 }
 
-func (c *CPU) Read_mmio (addr uint16) uint8 {
-    
-	var val uint8 
+func (c *CPU) Read_mmio(addr uint16) uint8 {
+
+	var val uint8
 
 	switch addr {
-    case DIV_MMIO: //DIV counter register ... needs to go in timer
+	case DIV_MMIO: //DIV counter register ... needs to go in timer
 		val = c.DIV
-    case KEY1_MMIO: //KEY1 clock register
-		val = c.KEY1  
+	case KEY1_MMIO: //KEY1 clock register
+		val = c.KEY1
 	default:
 		panic("unhandled cpu mmio read")
 	}
 	return val
 }
 
-func (c *CPU) Write_mmio (addr uint16,val uint8)  {
-    
+func (c *CPU) Write_mmio(addr uint16, val uint8) {
+
 	switch addr {
-    case KEY1_MMIO:
-		
+	case KEY1_MMIO:
+
 		//get ready to switch speed
-		if val & 0x1 == 1 {
+		if val&0x1 == 1 {
 			c.Ready_sswitch()
 		}
 	default:
@@ -124,22 +125,21 @@ func (c *CPU) Write_mmio (addr uint16,val uint8)  {
 	}
 }
 
-
 func (c *CPU) set_sswitch() {
-    if c.sswitch == true {
-        c.sswitch = false
-        if c.clk_mul == 2 {
-            c.clk_mul = 1
-            fmt.Println("CLK to 4mhz")
-            c.KEY1 = 0 
-        }else{
-            c.clk_mul = 2
-            fmt.Println("CLK to 8mhz") 
-            c.KEY1 = 0xFE
+	if c.sswitch == true {
+		c.sswitch = false
+		if c.clk_mul == 2 {
+			c.clk_mul = 1
+			fmt.Println("CLK to 4mhz")
+			c.KEY1 = 0
+		} else {
+			c.clk_mul = 2
+			fmt.Println("CLK to 8mhz")
+			c.KEY1 = 0xFE
 
-       }
-    }
-    
+		}
+	}
+
 }
 
 func (c *CPU) Reset() {
@@ -236,7 +236,7 @@ func (c *CPU) handleInterrupts() {
 			c.reg8[EI] = 0
 			c.push_pc(c) //push pc on stack
 			c.is_halted = false
-			c.last_instr+=20
+			c.last_instr += 20
 			//fmt.Println("Handled at at LY",c.gpu.LY,c.gpu.LYC,vector)
 
 			c.reg16[PC] = vector
@@ -256,7 +256,7 @@ func (c *CPU) Exec() {
 	//	fo, err := os.Create("output.txt")
 	//	if err != nil { panic(err) }
 	////		  defer fo.Close()
-	//		pprof.StartCPUProfile(fo) 
+	//		pprof.StartCPUProfile(fo)
 	//	last_update := time.Now()
 	count := uint(0)
 	for {
@@ -266,7 +266,7 @@ func (c *CPU) Exec() {
 			c.handleInterrupts()
 		}
 		//run op
-		c.gpu.Update(c.last_instr/4)
+		c.gpu.Update(c.last_instr / 4)
 
 		if !c.is_halted {
 
@@ -279,33 +279,31 @@ func (c *CPU) Exec() {
 			} else {
 				op = 0xcb00 | ((op & 0xff00) >> 8)
 			}
-			// c.Dump()		
+			// c.Dump()
 			c.ops[op](c)
 			//c.last_instr /=2
 			count++
 
 		}
-		//c.Dump()		
+		//c.Dump()
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
 		if count >= 2000 {
 			raise_int := c.gp.Update()
 			count = 0
-            if raise_int == 0xff {
-              fmt.Println("GLOBAL RESET")
-              c.Reset()
-             }else if raise_int > 0  {
+			if raise_int == 0xff {
+				fmt.Println("GLOBAL RESET")
+				c.Reset()
+			} else if raise_int > 0 {
 				//c.ic.Assert(raise_int)
 			}
 		}
-			c.serial.Update(c.last_instr/c.clk_mul)
-	
-
+		c.serial.Update(c.last_instr / c.clk_mul)
 
 		//for i:=0; i< int(c.last_instr); i++ {
 		//	}
-		raise_int := c.timer.Update(uint64(c.last_instr/c.clk_mul))
+		raise_int := c.timer.Update(uint64(c.last_instr / c.clk_mul))
 		if raise_int > 0 {
 			c.ic.Assert(raise_int)
 		}
@@ -314,9 +312,9 @@ func (c *CPU) Exec() {
 
 		//	pprof.StopCPUProfile()
 		//	 fmt.Println("STOPPED")
-		//	} 
-		c.clock.Cycles+=uint64(c.last_instr/4)
-		
+		//	}
+		c.clock.Cycles += uint64(c.last_instr / 4)
+
 	}
 }
 
@@ -626,14 +624,14 @@ func gen_alu(op_type string, reg_left string, reg_right string, ticks uint16, ar
 			lambda = func(c *CPU) {
 				n := f_right_get_val(c)
 				prev := f_left_get_val(c)
-				//fmt.Println("before",n)					
+				//fmt.Println("before",n)
 
 				if n > 127 {
 
 					val := ^uint8((n & 0x00ff))
 					val += 1
 
-					//	fmt.Println(val)					
+					//	fmt.Println(val)
 					f_set_val(c, prev-uint16(val))
 
 				} else {
@@ -1083,7 +1081,7 @@ func gen_jmp(left string, reg_right string, skip_flags uint8, signed uint8, mask
 
 	lambda := func(c *CPU) {
 		n := f_get_val(c)
-		//	fmt.Printf("JMP ADDR:0x%X,mask:0x%X,check:0x%X\n",n,mask,skip_flags)   
+		//	fmt.Printf("JMP ADDR:0x%X,mask:0x%X,check:0x%X\n",n,mask,skip_flags)
 		reg := FL_Z
 		switch mask {
 		case 0x10:
@@ -1147,7 +1145,7 @@ func gen_call(left string, reg_right string, skip_flags uint8, signed uint8, mas
 
 		}
 	}
-	//hack to fix ticks		
+	//hack to fix ticks
 
 	return lambda
 }
@@ -2084,23 +2082,23 @@ func (c *CPU) Get_reg_list() component.RegList {
 func setup_mmu_conn(c component.MMIOComponent, m *mmu.MMU) {
 	reg_list := c.Get_reg_list()
 	for i := range reg_list {
-		m.Connect_mmio(reg_list[i].Addr,reg_list[i].Name,c) 
+		m.Connect_mmio(reg_list[i].Addr, reg_list[i].Name, c)
 	}
 }
 func setup_mmu_range_conn(c component.MemComponent, m *mmu.MMU) {
 	range_list := c.Get_range_list()
 	for i := range range_list {
-		m.Connect_range(range_list[i],c) 
+		m.Connect_range(range_list[i], c)
 	}
 }
 
-func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
+func NewCpu(listen bool, connect string, scale int, serial_p string) *CPU {
 	c := new(CPU)
 	c.reg_list = component.RegList{
-		{Name:"KEY1",Addr:KEY1_MMIO},
-		{Name:"DIV",Addr:DIV_MMIO},
+		{Name: "KEY1", Addr: KEY1_MMIO},
+		{Name: "DIV", Addr: DIV_MMIO},
 	}
-	
+
 	c.mmu = mmu.NewMMU()
 	c.timer = timer.NewTimer()
 	c.ic = ic.NewIC()
@@ -2113,31 +2111,28 @@ func NewCpu(listen bool, connect string, scale int,serial_p string) *CPU {
 	c.clock = clock.NewClock()
 	c.clk_mul = 1
 
-    if serial_p != "" {
+	if serial_p != "" {
 		c.serial = serial.NewRealSerial(c.ic, serial_p)
 	} else if listen != false || connect != "" {
 		c.serial = serial.NewNetSerial(c.ic, listen, connect)
 	} else {
 		c.serial = serial.NewFakeSerial(c.ic)
 	}
-	
+
 	///setup mmu conns
-	setup_mmu_conn(c.timer,c.mmu)
-	setup_mmu_conn(c.ic,c.mmu)
-	setup_mmu_conn(c.gp,c.mmu)
-	setup_mmu_conn(c.dram,c.mmu)
-	setup_mmu_range_conn(c.dram,c.mmu)
-	setup_mmu_conn(c.dmac,c.mmu)
-	setup_mmu_conn(c.serial,c.mmu)
-	setup_mmu_conn(c,c.mmu)
+	setup_mmu_conn(c.timer, c.mmu)
+	setup_mmu_conn(c.ic, c.mmu)
+	setup_mmu_conn(c.gp, c.mmu)
+	setup_mmu_conn(c.dram, c.mmu)
+	setup_mmu_range_conn(c.dram, c.mmu)
+	setup_mmu_conn(c.dmac, c.mmu)
+	setup_mmu_conn(c.serial, c.mmu)
+	setup_mmu_conn(c, c.mmu)
 
 	//gpu
-	setup_mmu_conn(c.gpu,c.mmu)
-	setup_mmu_range_conn(c.gpu,c.mmu)
+	setup_mmu_conn(c.gpu, c.mmu)
+	setup_mmu_range_conn(c.gpu, c.mmu)
 
-
-
-	
 	createOps(c)
 
 	return c

@@ -2,9 +2,7 @@ package carts
 
 import (
 	"fmt"
-
 )
-
 
 /////MBC2///////
 type ROM_MBC2 struct {

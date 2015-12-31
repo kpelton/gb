@@ -3,12 +3,9 @@ package carts
 import (
 	"fmt"
 	"os"
-
 )
 
 ////MBC5///////
-
-
 
 type ROM_MBC5 struct {
 	cart        [0x600000]uint8
@@ -35,9 +32,9 @@ func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *RO
 	if has_battery == true {
 		m.Load_ram()
 	}
-     m.bank=1
+	m.bank = 1
 	return m
-   
+
 }
 func (m *ROM_MBC5) Load_ram() {
 	save_name := m.name + ".data"
@@ -61,8 +58,8 @@ func (m *ROM_MBC5) Save_ram() {
 		m.dirty = false
 	}
 }
-func (m *ROM_MBC5) Dump()  {
-	fmt.Println("BANK",m.bank)
+func (m *ROM_MBC5) Dump() {
+	fmt.Println("BANK", m.bank)
 }
 func (m *ROM_MBC5) Read(addr uint16) uint8 {
 	var retval uint8
@@ -70,7 +67,7 @@ func (m *ROM_MBC5) Read(addr uint16) uint8 {
 	if addr < 0x4000 {
 		retval = m.cart[addr]
 	} else if addr < 0x8000 {
-        
+
 		retval = m.cart[uint32(addr)+(uint32(m.bank-1)*0x4000)]
 	} else {
 		if m.ram_enabled {
@@ -80,7 +77,7 @@ func (m *ROM_MBC5) Read(addr uint16) uint8 {
 
 			retval = m.ram[fixed_addr]
 		} else {
-			retval=0
+			retval = 0
 			fmt.Println("Tried to read from ram that wasn't enabled!")
 		}
 	}
@@ -95,34 +92,34 @@ func (m *ROM_MBC5) Read(addr uint16) uint8 {
 
 func (m *ROM_MBC5) Write(addr uint16, val uint8) {
 	if addr < 0x2000 {
-			if val == 0x0A {
-				m.ram_enabled = true
-				fmt.Println("RAM enabled", val)
+		if val == 0x0A {
+			m.ram_enabled = true
+			fmt.Println("RAM enabled", val)
 
-			} else {
-				fmt.Println("RAM Disabled", val)
-				m.ram_enabled = false
+		} else {
+			fmt.Println("RAM Disabled", val)
+			m.ram_enabled = false
 
-			}
+		}
 
 	} else if addr < 0x3000 {
-			//fmt.Println("ROM Bank from",m.bank,val-1)
-	
-		m.bank_lo = val
-		m.bank = uint16(m.bank_hi) <<8 | uint16(m.bank_lo)
-		//fmt.Println("ROM Bank ",m.bank)    
-	} else if addr   <0x4000 {
-	 
-		m.bank_hi = val &1
-	   	m.bank = uint16(m.bank_hi) <<8 | uint16(m.bank_lo)
-		fmt.Println("ROM Bank ",m.bank)    
+		//fmt.Println("ROM Bank from",m.bank,val-1)
 
-	} else if  addr < 0x6000 {
+		m.bank_lo = val
+		m.bank = uint16(m.bank_hi)<<8 | uint16(m.bank_lo)
+		//fmt.Println("ROM Bank ",m.bank)
+	} else if addr < 0x4000 {
+
+		m.bank_hi = val & 1
+		m.bank = uint16(m.bank_hi)<<8 | uint16(m.bank_lo)
+		fmt.Println("ROM Bank ", m.bank)
+
+	} else if addr < 0x6000 {
 
 		fmt.Println("RAM bank", "from", m.ram_bank, "to", val&0xf)
 		m.ram_bank = (val & 0xf)
 	} else if addr >= 0xA000 && addr < 0xc000 {
-		if  m.ram_enabled == true  {
+		if m.ram_enabled == true {
 
 			bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
 			fixed_addr := uint16(addr-0xa000) + bank_offset
@@ -133,7 +130,7 @@ func (m *ROM_MBC5) Write(addr uint16, val uint8) {
 				m.dirty = true
 			}
 		} else {
-		        fmt.Println("DROPPED:Tried to write to ram that wasn't enabled")
+			fmt.Println("DROPPED:Tried to write to ram that wasn't enabled")
 		}
 	}
 }

@@ -3,11 +3,9 @@ package carts
 import (
 	"fmt"
 	"os"
-
 )
 
 ////MBC1///////
-
 
 type ROM_MBC1 struct {
 	cart        [0x200000]uint8

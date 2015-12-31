@@ -24,4 +24,3 @@ func (m *MBC0) Read(addr uint16) uint8 {
 func (m *MBC0) Write(addr uint16, val uint8) {
 	fmt.Printf("WRITE TO ROM FAILED!!\n")
 }
-
