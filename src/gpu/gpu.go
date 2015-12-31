@@ -184,6 +184,7 @@ type TileAttr  [32][32] bg_attr
 type GBPalette [4]uint32
 
 type Line [160]uint8
+type CLine [160]uint32
 func (g *GPU) Reset() {
 
 }
@@ -720,7 +721,7 @@ func (g *GPU) get_attr_map(map_base uint16, map_limit uint16, attr * TileAttr)  
 
 
 
-func (g *GPU) print_tile_line(line uint, scanline *Line) {
+func (g *GPU) print_tile_line(line uint, scanline *CLine) {
 	tile_line := (uint8(line) + g.SCY) & 7
 	map_line := (uint8(line) + g.SCY) >> 3
 	//tile_line := (uint8(line)) & 7
@@ -735,7 +736,7 @@ func (g *GPU) print_tile_line(line uint, scanline *Line) {
 			val := (g.bg_tmap[0][i][map_line][j][tile_line])
 			//g.screen.PutPixel(int16(x), int16(line), g.bg_palette[val])
 			if x < 160 {
-				scanline[x] = val
+				scanline[x] =g.bg_palette[val] 
 			}
 			j++
 			x++
@@ -746,7 +747,7 @@ func (g *GPU) print_tile_line(line uint, scanline *Line) {
 	}
 
 }
-func (g *GPU) print_tile_line_gbc(line uint, scanline *Line) {
+func (g *GPU) print_tile_line_gbc(line uint, scanline *CLine) {
 	tile_line := (uint8(line) + g.SCY) & 7
 	map_line := (uint8(line) + g.SCY) >> 3
 	//tile_line := (uint8(line)) & 7
@@ -764,8 +765,8 @@ func (g *GPU) print_tile_line_gbc(line uint, scanline *Line) {
 			val := (g.bg_tmap[attr.bank][i][map_line][j][tile_line])
 
 			if x < 160 {
-				//scanline[x] = val
-				g.screen.PutPixel(int16(x), int16(line), g.gbc_palette[attr.pal][val])
+				scanline[x] = g.gbc_palette[attr.pal][val]
+				//g.screen.PutPixel(int16(x), int16(line), g.gbc_palette[attr.pal][val])
 
 			}
 			j++
@@ -779,7 +780,7 @@ func (g *GPU) print_tile_line_gbc(line uint, scanline *Line) {
 }
 
 
-func (g *GPU) print_tile_line_w(line uint, scanline *Line) {
+func (g *GPU) print_tile_line_w(line uint, scanline *CLine) {
 	var x uint8
 	tile_line := (g.window_line - g.WY) & 7
 	map_line := (g.window_line - g.WY) >> 3
@@ -795,7 +796,8 @@ func (g *GPU) print_tile_line_w(line uint, scanline *Line) {
 				val := g.w_tmap[0][i][map_line][j][tile_line]
 
 			if x < 160 {
-				scanline[x] = val
+				scanline[x] = g.bg_palette[val]
+
 
 			}				
 
@@ -808,7 +810,7 @@ func (g *GPU) print_tile_line_w(line uint, scanline *Line) {
 	}
 }
 
-func (g *GPU) print_tile_line_w_gbc(line uint, scanline *Line) {
+func (g *GPU) print_tile_line_w_gbc(line uint, scanline *CLine) {
 	var x uint8
 	tile_line := (g.window_line - g.WY) & 7
 	map_line := (g.window_line - g.WY) >> 3
@@ -825,7 +827,9 @@ func (g *GPU) print_tile_line_w_gbc(line uint, scanline *Line) {
 
 			val := (g.w_tmap[attr.bank][i][map_line][j][tile_line])
 			if x < 160 {
-				g.screen.PutPixel(int16(x), int16(line), g.gbc_palette[attr.pal][val])
+        		
+				scanline[x] = g.gbc_palette[attr.pal][val]
+		        //g.screen.PutPixel(int16(x), int16(line), g.gbc_palette[attr.pal][val])
 
 			}
 			j++
@@ -1015,11 +1019,42 @@ func (g *GPU) display_line(y int16, line *Line, pal *GBPalette) {
     g.screen.renderer.SetDrawColor(uint8(r),uint8(gr),uint8(b),0xff)
     g.screen.renderer.FillRect(&g.rect)
 }
+}
+
+func (g *GPU) display_line_gbc(y int16, line *CLine ) {
+    //minimize draws to lines that have more than one color.
+	g.rect.H = int32(g.scale)
+	g.rect.Y = int32(y * g.scale)
+	var x int16
+	for x = 0; x < 160; x++ {
+		g.rect.X = int32(x * g.scale)
+		g.rect.W = int32(g.scale)
+		col := line[x]
+		for j := x + 1; j < 160; j++ {
+			col2 := line[j]
+			if col2 != col {
+				break
+			}
+			g.rect.W += int32(g.scale)
+			x++
+
+		}
+        color := line[x] 
+    r := color &0xff0000 >>16
+    gr:= color &0xff00 >>8
+    b := color &0xff
+ 
+    g.screen.renderer.SetDrawColor(uint8(r),uint8(gr),uint8(b),0xff)
+    g.screen.renderer.FillRect(&g.rect)
+    }
 
 
-	}
+
+}
+
 func (g *GPU) hblank(clocks uint16) {
 	var line Line
+	var cline CLine
 
 	if g.LY == 0 {
 		g.get_tile_map()
@@ -1036,11 +1071,11 @@ func (g *GPU) hblank(clocks uint16) {
 		if g.Gbc_mode == true {		
 			//g.get_tile_map()
 
-			g.print_tile_line_gbc(uint(g.LY), &line)
+			g.print_tile_line_gbc(uint(g.LY), &cline)
 		//g.screen.screen.Flip()
 
 		} else {
-			g.print_tile_line(uint(g.LY), &line)
+			g.print_tile_line(uint(g.LY), &cline)
 
 		}
 		
@@ -1049,9 +1084,9 @@ func (g *GPU) hblank(clocks uint16) {
 			if g.WX < 166 {
 				if g.LY >= g.WY {
 					if g.Gbc_mode == true {		
-						g.print_tile_line_w_gbc(uint(g.LY), &line)
+						g.print_tile_line_w_gbc(uint(g.LY), &cline)
 					} else {
-						g.print_tile_line_w(uint(g.LY), &line)
+						g.print_tile_line_w(uint(g.LY), &cline)
 					}
 				
 				}
@@ -1060,9 +1095,7 @@ func (g *GPU) hblank(clocks uint16) {
 			}
 		}
 
-		if g.Gbc_mode != true {	
-			g.display_line(int16(g.LY), &line, &g.bg_palette)
-		}
+			g.display_line_gbc(int16(g.LY), &cline)
 		if g.LCDC&0x82 == 0x82 {
 			if g.Gbc_mode == true {	
 				g.print_sprites_gbc(&line)
