@@ -2128,7 +2128,7 @@ func NewCpu(listen bool, connect string, scale int, serial_p string) *CPU {
 	setup_mmu_conn(c.dmac, c.mmu)
 	setup_mmu_conn(c.serial, c.mmu)
 	setup_mmu_conn(c, c.mmu)
-	//setup_mmu_conn(c, c.sound)
+	setup_mmu_conn(c.sound, c.mmu)
 
 	//gpu
 	setup_mmu_conn(c.gpu, c.mmu)

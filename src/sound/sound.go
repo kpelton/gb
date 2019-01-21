@@ -1,10 +1,11 @@
 package sound
 
 import (
-		"fmt"
+	"fmt"
 	//"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 	//"github.com/banthar/Go-SDL/sdl"
 	"banthar/mixer"
+	"component"
 )
 
 type Sound struct {
@@ -34,6 +35,7 @@ type Sound struct {
 	SND_TERM_OUTPUT uint8 //0xff25
 	SND_MASTER_CTRL uint8 //0xff26
 	Wram            [0x10]uint8
+	reg_list        component.RegList
 }
 
 const (
@@ -42,15 +44,47 @@ const (
 	samples     = 2048
 )
 
-func NewSound() *Sound {
-	s := new(Sound)
+func (g *Sound) Get_reg_list() component.RegList {
+	return g.reg_list
+}
+func (s *Sound) Setup_SDL() {
 	mixer.OpenAudio(sample_rate, mixer.AUDIO_S16, channels, samples)
 	mixer.ResumeMusic()
+}
+func (s *Sound) Reset() {
+}
+func NewSound() *Sound {
+	s := new(Sound)
+	s.Setup_SDL()
+	s.reg_list = component.RegList{
+		{Name: "SND_MODE_1_SWP ", Addr: 0xff10},
+		{Name: "SND_MODE_1_LEN", Addr: 0xff11},
+		{Name: "SND_MODE_1_ENVP ", Addr: 0xff12},
+		{Name: "SND_MODE_1_FREQ_LOW", Addr: 0xff13},
+		{Name: "SND_MODE_1_FREQ_HI", Addr: 0xff14},
+		{Name: "SND_MODE_2_LEN ", Addr: 0xff16},
+		{Name: "SND_MODE_2_ENVP", Addr: 0xff17},
+		{Name: "SND_MODE_2_FREQ_LOW", Addr: 0xff18},
+		{Name: "SND_MODE_2_FREQ_HI", Addr: 0xff19},
+		{Name: "SND_MODE_3", Addr: 0xff1a},
+		{Name: "SND_MODE_3_LEN", Addr: 0xff1b},
+		{Name: "SND_MODE_3_OUTPUT", Addr: 0xff1c},
+		{Name: "SND_MODE_3_FREQ_LOW", Addr: 0xff1d},
+		{Name: "SND_MODE_3_FREQ_HI", Addr: 0xff1e},
+		{Name: "SND_MODE_4_LEN", Addr: 0xff20},
+		{Name: "SND_MODE_4_ENVP", Addr: 0xff21},
+		{Name: "SND_MODE_4_POLY", Addr: 0xff22},
+		{Name: "SND_MODE_4_COUNTER", Addr: 0xff23},
+		{Name: "SND_CHN_CTRL", Addr: 0xff24},
+		{Name: "SND_TERM_OUTPUT", Addr: 0xff25},
+		{Name: "SND_MASTER_CTRL", Addr: 0xff26},
+	}
+
 	return s
 }
 
-func (s *Sound) Write_mmio(addr uint16 ,val uint8) {
-	switch (addr) {
+func (s *Sound) Write_mmio(addr uint16, val uint8) {
+	switch addr {
 	case 0xff10:
 		s.SND_MODE_1_SWP = val
 	case 0xff11:
@@ -100,8 +134,7 @@ func (s *Sound) Write_mmio(addr uint16 ,val uint8) {
 		s.SND_MASTER_CTRL = val
 
 	default:
-		fmt.Println("SOUND: unhandled sound write",addr)
-
+		fmt.Println("SOUND: unhandled sound write", addr)
 
 	}
 }
@@ -158,8 +191,7 @@ func (s *Sound) Read_mmio(addr uint16) uint8 {
 		val = s.SND_MASTER_CTRL
 
 	default:
-		fmt.Printf("SOUND: unhandled sound read %x\n",addr)
+		fmt.Printf("SOUND: unhandled sound read %x\n", addr)
 	}
 	return val
 }
-
