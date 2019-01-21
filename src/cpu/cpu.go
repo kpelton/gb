@@ -2092,14 +2092,14 @@ func setup_mmu_range_conn(c component.MemComponent, m *mmu.MMU) {
 	}
 }
 
-func NewCpu(listen bool, connect string, scale int, serial_p string) *CPU {
+func NewCpu(listen bool, connect string, scale int, serial_p string,debug int) *CPU {
 	c := new(CPU)
 	c.reg_list = component.RegList{
 		{Name: "KEY1", Addr: KEY1_MMIO},
 		{Name: "DIV", Addr: DIV_MMIO},
 	}
 
-	c.mmu = mmu.NewMMU()
+	c.mmu = mmu.NewMMU(debug)
 	c.timer = timer.NewTimer()
 	c.ic = ic.NewIC()
 	c.gp = gp.NewGP()

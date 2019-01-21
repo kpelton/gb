@@ -11,11 +11,12 @@ func main() {
     var serv = flag.String("connect", "", "connect to server")
     var scale = flag.Int("s", 4, "window scale")
     var serialp = flag.String("serial", "", "Use real link port - arduino usb device")
+    var debuglevel = flag.Int("debug", 0, "Debug level")
     runtime.LockOSThread() 
     flag.Parse()
 
     fmt.Println(*host)
-    var c = cpu.NewCpu(*host,*serv,*scale,*serialp)
+    var c = cpu.NewCpu(*host,*serv,*scale,*serialp,*debuglevel)
     c.Exec()
 
 }

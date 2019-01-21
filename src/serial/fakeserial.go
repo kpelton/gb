@@ -2,7 +2,7 @@ package serial
 
 import (
 	"constants"
-	"fmt"
+//	"fmt"
 	"ic"
 	"component"
 )
@@ -66,11 +66,11 @@ func (s *FakeSerial) Write_mmio(addr uint16, val uint8) {
 	switch addr {
 
 	case SB_ADDR:
-		fmt.Printf("->SERIALB:%04X\n", val)
+		//fmt.Printf("->SERIALB:%04X\n", val)
 		s.SB = val
 	case SC_ADDR:
 		s.SC = val
-		fmt.Printf("->SERIALC:%04X\n", val)
+		//fmt.Printf("->SERIALC:%04X\n", val)
 		if !s.started && val&0x81 == 0x81 {
 			s.started = true
 			s.cycle_count = HZ_8192_t

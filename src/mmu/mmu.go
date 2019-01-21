@@ -4,6 +4,7 @@ import (
 	"carts"
 	"fmt"
     "component"
+    "constants"
 )
 type mmio_connection struct {
 	comp component.MMIOComponent
@@ -28,11 +29,13 @@ type MMU struct {
 	mmio_connections [MAX_MMIO]*mmio_connection
 	range_connections [MAX_MMIO]*range_connection
 	range_count uint8
+	debug_mode int
 }
 
 
-func NewMMU() *MMU {
+func NewMMU(debug int) *MMU {
 	m := new(MMU)
+	m.debug_mode = debug
 	m.inbios = false
 	return m
 }
@@ -60,7 +63,6 @@ func (m *MMU) Connect_mmio(addr uint16,name string,comp component.MMIOComponent)
 	con.name = name
 	con.comp = comp
 	m.mmio_connections[addr &0xff] = con
-	
 }
 
 func (m *MMU) Connect_range(r component.Range,comp component.MemComponent) {
@@ -81,23 +83,24 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	con := m.mmio_connections[addr &0xff]
 	if con != nil {
 		con.comp.Write_mmio(addr,val)
-
-	//	fmt.Printf("%v:Writing %s %x\n",m.cpu.clock.Cycles,con.name,val) 
-	
-
-	
+		if m.debug_mode >=constants.DEBUG_LEVEL_1 {
+			fmt.Printf("Writing %s %x\n",con.name,val) 
+		}
 		return
 	}
 
-} 
+}
 
 func (m *MMU) read_mmio(addr uint16) uint8 {
 	var val uint8 = 0
 	con := m.mmio_connections[addr &0xff]
 	if con != nil {
-		
+
 		val :=con.comp.Read_mmio(addr)
-	//	fmt.Printf("%v:Reading %s %x \n",m.cpu.clock.Cycles,con.name,val) 
+
+		if m.debug_mode >=constants.DEBUG_LEVEL_1 {
+			fmt.Printf("Reading %s %x \n",con.name,val) 
+		}
 	//	m.cpu.Dump()
 		return val
 	}
@@ -118,7 +121,10 @@ func (m *MMU) Write_b(addr uint16, val uint8) {
 			addr < m.range_connections[i].addr_hi {
 			con := m.range_connections[i]
 			con.comp.Write(addr,val)
-			//fmt.Printf("%v:Writing %s %x:%x \n",1,con.name,addr,val)
+
+			if m.debug_mode >=constants.DEBUG_LEVEL_2 {
+				fmt.Printf("%v:Writing %s %04x:%x \n",1,con.name,addr,val)
+			}
 			return 
 
 		} 
@@ -149,7 +155,9 @@ func (m *MMU) Read_b(addr uint16) uint8 {
 			addr < m.range_connections[i].addr_hi {
 			con := m.range_connections[i]
 			val :=con.comp.Read(addr)
-	//		fmt.Printf("%v:Reading %s %x:%x \n",m.cpu.clock.Cycles,con.name,addr,val)
+			if m.debug_mode >=constants.DEBUG_LEVEL_2 {
+				fmt.Printf("%v:Reading %s %04x:%x \n",1,con.name,addr,val)
+			}
 			return val
 
 		} 
