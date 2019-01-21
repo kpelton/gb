@@ -32,7 +32,6 @@ const (
 	HBLANK_CYCLES = 204
 	OAM_CYCLES    = 80
 	RAM_CYCLES    = 172
-	fullspeed     = true
 )
 
 func newScreen(scale int16) *Screen {
@@ -138,6 +137,7 @@ type GPU struct {
 	ic           *ic.IC
 	Pal_mem      [0x40]uint8
 	Pal_oc_mem   [0x40]uint8
+	fullspeed    bool
 }
 
 type sprite struct {
@@ -369,8 +369,9 @@ func (g *GPU) Get_reg_list() component.RegList {
 func (g *GPU) Get_range_list() component.RangeList {
 	return g.range_list
 }
-func NewGPU(ic *ic.IC, scale int16) *GPU {
+func NewGPU(ic *ic.IC, scale int16,maxfps bool) *GPU {
 	g := new(GPU)
+	g.fullspeed = maxfps
 	g.reg_list = component.RegList{
 		{Name: "LCDC", Addr: 0xff40},
 		{Name: "STAT", Addr: 0xff41},
@@ -1119,7 +1120,7 @@ func (g *GPU) vblank(clocks uint16) {
 		g.frames += 1
 
 		g.screen.renderer.Present()
-		if !fullspeed {
+		if !g.fullspeed {
 			if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
 				time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
 				//		 time.Sleep((time.Duration(1) * time.Microsecond) - time.Since(g.frame_time))

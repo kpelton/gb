@@ -2092,7 +2092,7 @@ func setup_mmu_range_conn(c component.MemComponent, m *mmu.MMU) {
 	}
 }
 
-func NewCpu(listen bool, connect string, scale int, serial_p string,debug int) *CPU {
+func NewCpu(listen bool, connect string, scale int, serial_p string,debug int,maxfps bool) *CPU {
 	c := new(CPU)
 	c.reg_list = component.RegList{
 		{Name: "KEY1", Addr: KEY1_MMIO},
@@ -2104,7 +2104,7 @@ func NewCpu(listen bool, connect string, scale int, serial_p string,debug int) *
 	c.ic = ic.NewIC()
 	c.gp = gp.NewGP()
 	c.sound = sound.NewSound()
-	c.gpu = gpu.NewGPU(c.ic, int16(scale))
+	c.gpu = gpu.NewGPU(c.ic, int16(scale),maxfps)
 	c.dram = dram.NewDRAM()
 	c.dmac = dmac.NewDMAC(c.mmu)
 
