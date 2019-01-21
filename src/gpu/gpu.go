@@ -53,7 +53,7 @@ func (s *Screen) initSDL() {
 	//	}
 
 	screen, err := sdl.CreateWindow("gameboy", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		160*int(s.scale), 144*int(s.scale), sdl.WINDOW_SHOWN)
+		int32(160*s.scale), int32(144*s.scale), sdl.WINDOW_SHOWN)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create window: %s\n", err)
 	}

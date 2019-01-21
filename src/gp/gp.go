@@ -1,15 +1,17 @@
 package gp
 
 import (
-		"fmt"
+	"fmt"
 	//"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 	//"github.com/banthar/Go-SDL/sdl"
-	"github.com/veandco/go-sdl2/sdl"
 	"component"
+	"github.com/veandco/go-sdl2/sdl"
 )
-const ( 
+
+const (
 	GP_MMIO = 0xff00
 )
+
 type GP struct {
 	P1      uint8
 	K_LEFT  uint8
@@ -18,9 +20,8 @@ type GP struct {
 	K_DOWN  uint8
 	pad     uint8
 	other   uint8
-   
+
 	reg_list component.RegList
-	
 }
 
 func NewGP() *GP {
@@ -28,11 +29,11 @@ func NewGP() *GP {
 	g.Reset()
 	//:sdl.EnableKeyRepeat(1, 1)
 	g.reg_list = component.RegList{
-		{Name:"GP" , Addr:GP_MMIO},
+		{Name: "GP", Addr: GP_MMIO},
 	}
 	return g
 }
-func (g* GP) Get_reg_list() component.RegList{
+func (g *GP) Get_reg_list() component.RegList {
 	return g.reg_list
 }
 func (g *GP) Reset() {
@@ -51,7 +52,7 @@ func (g *GP) Read_mmio(addr uint16) uint8 {
 	}
 	return val
 }
-func (g *GP) Write_mmio(addr uint16,val uint8) {
+func (g *GP) Write_mmio(addr uint16, val uint8) {
 	switch addr {
 	case GP_MMIO:
 		g.P1 = val
@@ -60,8 +61,7 @@ func (g *GP) Write_mmio(addr uint16,val uint8) {
 	}
 }
 
-
-func (g *GP) handleKeyDown(e *sdl.KeyDownEvent) {
+func (g *GP) handleKeyDown(e *sdl.KeyboardEvent) {
 
 	switch e.Keysym.Sym {
 	case sdl.K_RETURN:
@@ -87,8 +87,7 @@ func (g *GP) handleKeyDown(e *sdl.KeyDownEvent) {
 	}
 }
 
-func (g *GP) handleKeyUp(e *sdl.KeyUpEvent) bool {
-
+func (g *GP) handleKeyUp(e *sdl.KeyboardEvent) bool {
 
 	switch e.Keysym.Sym {
 	case sdl.K_RETURN:
@@ -99,10 +98,10 @@ func (g *GP) handleKeyUp(e *sdl.KeyUpEvent) bool {
 		g.other |= 0x02
 	case sdl.K_z:
 		g.other |= 0x01
-    case sdl.K_F1:
+	case sdl.K_F1:
 
-       //return true to indicate global event
-       return true
+		//return true to indicate global event
+		return true
 
 	}
 
@@ -116,38 +115,37 @@ func (g *GP) handleKeyUp(e *sdl.KeyUpEvent) bool {
 	case sdl.K_RIGHT:
 		g.pad |= 0x01
 
-
 	}
-    return false
+	return false
 	//fmt.Printf("P1:0x%02x\n",g.P1)
 }
-func (g *GP) LoopUpdate() (uint8) {
-    for {
-    g.Update()
-    }
+func (g *GP) LoopUpdate() uint8 {
+	for {
+		g.Update()
+	}
 }
-func (g *GP) Update() (uint8) {
-    var int_raised uint8 = 0
-		ev := sdl.PollEvent()
+func (g *GP) Update() uint8 {
+	var int_raised uint8 = 0
+	ev := sdl.PollEvent()
 
-		switch e := ev.(type) {
+	switch e := ev.(type) {
 
-		case *sdl.KeyUpEvent:
-                if  g.handleKeyUp(e) == true {
-                    int_raised = 0xff
-                    fmt.Println("gp global")
-                }else {
-                    int_raised = 0x10
-                }
-
-		case *sdl.KeyDownEvent:
-				g.handleKeyDown(e)
-                int_raised = 0x10	    
-
-		default:
-			break
+	case *sdl.KeyboardEvent:
+		if e.Type == sdl.KEYUP {
+			if g.handleKeyUp(e) == true {
+				int_raised = 0xff
+				fmt.Println("gp global")
+			} else {
+				int_raised = 0x10
+			}
+		} else {
+			g.handleKeyDown(e)
+			int_raised = 0x10
 		}
-
+		break
+	default:
+		break
+	}
 
 	if g.P1&0x20 == 0x20 {
 		g.P1 |= g.pad
@@ -155,5 +153,5 @@ func (g *GP) Update() (uint8) {
 	if g.P1&0x10 == 0x10 {
 		g.P1 |= g.other
 	}
-    return int_raised
+	return int_raised
 }
