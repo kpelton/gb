@@ -267,6 +267,7 @@ func (c *CPU) Exec() {
 		}
 		//run op
 		c.gpu.Update(c.last_instr / 4)
+		c.sound.Update(c.last_instr / 4)
 
 		if !c.is_halted {
 
