@@ -2,8 +2,6 @@ package gp
 
 import (
 	"fmt"
-	//"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
-	//"github.com/banthar/Go-SDL/sdl"
 	"component"
 	"github.com/veandco/go-sdl2/sdl"
 )
