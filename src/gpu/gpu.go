@@ -138,6 +138,7 @@ type GPU struct {
 	Pal_mem      [0x40]uint8
 	Pal_oc_mem   [0x40]uint8
 	fullspeed    bool
+	ticks int
 }
 
 type sprite struct {
@@ -1138,14 +1139,14 @@ func (g *GPU) vblank(clocks uint16) {
 	//fmt.Println(g.vblank_cycle_count)
 
 	//fmt.Println(g.vblank_cycle_count)
-	if g.LY > 153 {
+	if g.LY > 152 {
 		g.LY = 0
 		g.line_done = 0
 		g.cycle_count += 456
 		//		fmt.Println(g.bg_attr_map)
 		//fmt.Println(g.cycle_count)
 		//	time.Sleep(time.Duration(5) * time.Millisecond)
-
+		g.ticks=0
 	}
 
 }
@@ -1153,12 +1154,18 @@ func (g *GPU) vblank(clocks uint16) {
 func (g *GPU) Update(clocks uint16) {
 
 	g.check_stat_int()
+	g.ticks+=int(clocks)
+//	fmt.Printf("ticks:%d cycle_count:%d LY:%d, STAT:0x%02x LCDC:%02x\n",g.ticks,g.cycle_count,g.LY,g.STAT,g.LCDC)
+	
+	g.cycle_count -= int16(clocks)
 	if g.LCDC&0x80 == 0x80 {
 		//	fmt.Printf("STAT:0x%04u\n",g.LY)
 
 		if g.LY >= 144 {
 			g.vblank(clocks)
-
+		} else if g.cycle_count >=  456 {
+			g.STAT &= 0xfc
+			g.STAT |=1
 		} else if g.cycle_count >= 456-OAM_CYCLES {
 			g.STAT &= 0xfc
 			g.STAT |= 2
@@ -1171,9 +1178,7 @@ func (g *GPU) Update(clocks uint16) {
 
 			if g.line_done == 0 {
 				g.hblank(clocks)
-
 				g.check_stat_int_hblank()
-
 			}
 
 		}
@@ -1186,11 +1191,11 @@ func (g *GPU) Update(clocks uint16) {
 
 		}
 
-		g.cycle_count -= int16(clocks)
 	} else {
 		g.STAT &= 0xfc
 		g.cycle_count = 456
 		g.LY = 0
+		g.ticks=0
 	}
 
 }

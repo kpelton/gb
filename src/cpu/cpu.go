@@ -16,6 +16,7 @@ import (
 	"timer"
 	//"runtime/pprof"
 	//"time"
+	//"bufio"
 )
 
 const (
@@ -266,7 +267,10 @@ func (c *CPU) Exec() {
 			c.handleInterrupts()
 		}
 		//run op
-		c.gpu.Update(c.last_instr / 4)
+//		for i:=0; i<int(c.last_instr/c.clk_mul); i++ {
+			c.gpu.Update((c.last_instr/c.clk_mul ))
+//			c.gpu.Update(1)
+//		}
 		c.sound.Update(c.last_instr / 4)
 
 		if !c.is_halted {
@@ -286,7 +290,6 @@ func (c *CPU) Exec() {
 			count++
 
 		}
-		//c.Dump()
 
 		//fmt.Println(count)
 		//Update gamepad/buttons
