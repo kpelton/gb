@@ -85,7 +85,6 @@ func (m *DRAM) Read_mmio(addr uint16) uint8  {
 
 func (m *DRAM) Read(addr uint16) uint8 {
 
-	//   fmt.Printf("write:%04x:%04x\n",addr,val)
 	var val uint8
 
 	if addr >= BANK_0_LO && addr < BANK_0_HI {
@@ -104,6 +103,8 @@ func (m *DRAM) Read(addr uint16) uint8 {
 	} else {
 		fmt.Printf("unhandled read:%04x:%04x\n", addr, val)
 	}
+
+	  // fmt.Printf("write:%04x:%04x\n",addr,val)
 	return val
 }
 

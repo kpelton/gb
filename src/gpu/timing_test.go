@@ -3,7 +3,7 @@ package gpu
 import "testing"
 
 func TestGpuTiming(t *testing.T) {
-	c := NewCpu()
+	 := NewCpu()
 	c.gpu.LCDC = 0x81
 	c.gpu.LYC = 0xff
 	for i := 0; i < 70224; i++ {
@@ -16,6 +16,7 @@ func TestGpuTiming(t *testing.T) {
 	t.Log("AFTER STAT ", c.gpu.STAT)
 	t.Log("AFTER cycle_count ", c.gpu.cycle_count)
 }
+/*
 func TestGpuTimingOAM(t *testing.T) {
 	c := NewCpu()
 	c.gpu.LCDC = 0x81
@@ -27,6 +28,7 @@ func TestGpuTimingOAM(t *testing.T) {
 	t.Log("AFTER STAT ", c.gpu.STAT)
 	t.Log("AFTER cycle_count ", c.gpu.cycle_count)
 }
+/*
 func TestGpuTimingHbl(t *testing.T) {
 	c := NewCpu()
 	c.gpu.LCDC = 0x81
@@ -39,7 +41,7 @@ func TestGpuTimingHbl(t *testing.T) {
 	t.Log("AFTER cycle_count ", c.gpu.cycle_count)
 }
 
-/*
+
 func TestTimer(t *testing.T) {
     c := NewCpu()
     //Set TMA to on

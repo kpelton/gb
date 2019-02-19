@@ -34,7 +34,7 @@ func (m *VRAM)  Reset() {
 func (m *VRAM) Write_mmio(addr uint16,val uint8)  {
 	if addr == VBANK_MMIO {
 		m.VBANK = val & 0x1
-	//	fmt.Printf("VBANK:%x\n",m.VBANK)
+		//fmt.Printf("VBANK:%x\n",m.VBANK)
 	} else { 
 		panic("VRAM:unhandled VRAM mmio write")
 	}
@@ -55,7 +55,6 @@ func (m *VRAM) Read_mmio(addr uint16) uint8  {
 
 func (m *VRAM) Read_b(addr uint16) uint8 {
 
-	//   fmt.Printf("write:%04x:%04x\n",addr,val)
 	var val uint8
 
 	if addr >= VRAM_LO && addr < VRAM_HI {
@@ -63,9 +62,11 @@ func (m *VRAM) Read_b(addr uint16) uint8 {
 		val = m.Vm[offset]
     }else if addr >= 0xfe00 && addr <= 0xfe9f {
 		val = m.Oam[addr&0x00ff]
+	//	fmt.Printf("oam read:%04x:%04x\n",addr,val)
 	} else {
 		fmt.Printf("VRAM:unhandled read:%04x:%04x\n", addr, val)
 	}
+	
 	return val
 }
 
@@ -74,11 +75,16 @@ func (m *VRAM) Write_b(addr uint16,val uint8)  {
 	if addr >= VRAM_LO && addr < VRAM_HI {
 		offset := (uint16(m.VBANK) *0x2000) +addr &0x1fff
 		m.Vm[offset] = val
+		//fmt.Printf("%v:VRAM::%04x:%04x\n",m.VBANK, addr, val)
 	} else if addr >= 0xfe00 && addr <= 0xfe9f {
 		m.Oam[addr&0x00ff] = val
+
+	//	fmt.Printf("oam write:%04x:%04x\n",addr,val)
 	} else {
+
 		fmt.Printf("VRAM:unhandled write:%04x:%04x\n", addr, val)
 	}
+
 }
 
 

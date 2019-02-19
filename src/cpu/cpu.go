@@ -122,7 +122,7 @@ func (c *CPU) Write_mmio(addr uint16, val uint8) {
 			c.Ready_sswitch()
 		}
 	default:
-		panic("unhandled cpu mmio write")
+		fmt.Printf("unhandled cpu mmio write addr:%x val:%x\n",addr,val)
 	}
 }
 
@@ -247,7 +247,7 @@ func (c *CPU) handleInterrupts() {
 	}
 }
 func (c *CPU) Dump() {
-	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x LY:%02x  g_clocks:%d \n", c.reg16[PC], c.reg16[SP], c.reg8[A], c.reg8[B], c.reg8[C], c.reg8[D], c.reg8[E], c.reg8[H], c.reg8[L], c.reg8[FL_Z], c.reg8[FL_C], c.reg8[FL_H], c.gpu.LY, c.gpu.LY) //,c.reg8[FL_N]);
+	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x LY:%02x  STAT:%x \n", c.reg16[PC], c.reg16[SP], c.reg8[A], c.reg8[B], c.reg8[C], c.reg8[D], c.reg8[E], c.reg8[H], c.reg8[L], c.reg8[FL_Z], c.reg8[FL_C], c.reg8[FL_H], c.gpu.LY, c.gpu.STAT) //,c.reg8[FL_N]);
 }
 func (c *CPU) Exec() {
 
@@ -266,13 +266,21 @@ func (c *CPU) Exec() {
 		if c.ic.IF > 0 {
 			c.handleInterrupts()
 		}
+		//gameboy color executes oam dma in 76 cycles not 80
+		dma_clocks := c.dmac.Update()
+
+		c.last_instr +=dma_clocks
+		in_oam := false
+		if dma_clocks > 0 {
+			in_oam = true
+		}
 		//run op
 //		for i:=0; i<int(c.last_instr/c.clk_mul); i++ {
-			c.gpu.Update((c.last_instr/c.clk_mul ))
+			c.gpu.Update(c.last_instr/c.clk_mul,in_oam)
 //			c.gpu.Update(1)
 //		}
 		c.sound.Update(c.last_instr / 4)
-
+		c.mmu.Update(c.reg16[PC],c.gpu.LY)
 		if !c.is_halted {
 
 			op = uint16(c.mmu.Read_w(c.reg16[PC]))
@@ -284,7 +292,7 @@ func (c *CPU) Exec() {
 			} else {
 				op = 0xcb00 | ((op & 0xff00) >> 8)
 			}
-			// c.Dump()
+//			c.Dump()
 			c.ops[op](c)
 			//c.last_instr /=2
 			count++
@@ -307,7 +315,7 @@ func (c *CPU) Exec() {
 
 		//for i:=0; i< int(c.last_instr); i++ {
 		//	}
-		raise_int := c.timer.Update(uint64(c.last_instr / c.clk_mul))
+		raise_int := c.timer.Update(uint64(c.last_instr))
 		if raise_int > 0 {
 			c.ic.Assert(raise_int)
 		}
@@ -2108,9 +2116,10 @@ func NewCpu(listen bool, connect string, scale int, serial_p string,debug int,ma
 	c.ic = ic.NewIC()
 	c.gp = gp.NewGP()
 	c.sound = sound.NewSound()
-	c.gpu = gpu.NewGPU(c.ic, int16(scale),maxfps)
-	c.dram = dram.NewDRAM()
+
 	c.dmac = dmac.NewDMAC(c.mmu)
+	c.gpu = gpu.NewGPU(c.ic, c.dmac,int16(scale),maxfps)
+	c.dram = dram.NewDRAM()
 
 	c.clock = clock.NewClock()
 	c.clk_mul = 1

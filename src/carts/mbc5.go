@@ -8,7 +8,7 @@ import (
 ////MBC5///////
 
 type ROM_MBC5 struct {
-	cart        [0x600000]uint8
+	cart        [0x800000]uint8
 	bank        uint16
 	bank_lo     uint8
 	bank_hi     uint8
@@ -67,13 +67,17 @@ func (m *ROM_MBC5) Read(addr uint16) uint8 {
 	if addr < 0x4000 {
 		retval = m.cart[addr]
 	} else if addr < 0x8000 {
-
-		retval = m.cart[uint32(addr)+(uint32(m.bank-1)*0x4000)]
+		//fmt.Printf("%x\n",uint32(addr)+(uint32(m.bank-1)*0x4000))
+		if m.bank >0 {
+			retval = m.cart[uint32(addr)+(uint32(m.bank-1)*0x4000)]
+		}else {
+			retval = m.cart[uint32(0x4000-addr)]
+		}
 	} else {
 		if m.ram_enabled {
 			bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
 			fixed_addr := uint16(addr-0xa000) + bank_offset
-			//fmt.Printf("RAM  BANK READ:%v  %04X->%04X:%x\n", m.ram_bank, addr, fixed_addr, retval)
+			fmt.Printf("RAM  BANK READ:%v  %04X->%04X:%x\n", m.ram_bank, addr, fixed_addr, retval)
 
 			retval = m.ram[fixed_addr]
 		} else {
@@ -123,7 +127,7 @@ func (m *ROM_MBC5) Write(addr uint16, val uint8) {
 
 			bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
 			fixed_addr := uint16(addr-0xa000) + bank_offset
-			//fmt.Printf("RAM  BANK WRITE:%v  %04X->%04X:%x\n", m.ram_bank, addr, fixed_addr, val)
+			fmt.Printf("RAM  BANK WRITE:%v  %04X->%04X:%x\n", m.ram_bank, addr, fixed_addr, val)
 
 			m.ram[fixed_addr] = val
 			if m.has_battery {

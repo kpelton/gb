@@ -30,7 +30,11 @@ type MMU struct {
 	range_connections [MAX_MMIO]*range_connection
 	range_count uint8
 	debug_mode int
+	pc	uint16
+	ly	uint8
 }
+
+
 
 
 func NewMMU(debug int) *MMU {
@@ -41,6 +45,10 @@ func NewMMU(debug int) *MMU {
 }
 func (m *MMU) Reset () {
 
+}
+func (m *MMU) Update (pc uint16,ly uint8) {
+	m.pc = pc
+	m.ly = ly
 }
 func (m *MMU) Create_new_cart(filename string) {
 	m.cart = carts.Load_cart(filename)
@@ -84,7 +92,7 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	if con != nil {
 		con.comp.Write_mmio(addr,val)
 		if m.debug_mode >=constants.DEBUG_LEVEL_1 {
-			fmt.Printf("Writing %s %x\n",con.name,val) 
+			fmt.Printf("PC:0x%04x:Writing %s %x\n",m.pc,con.name,val) 
 		}
 		return
 	}
@@ -99,7 +107,7 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		val :=con.comp.Read_mmio(addr)
 
 		if m.debug_mode >=constants.DEBUG_LEVEL_1 {
-			fmt.Printf("Reading %s %x \n",con.name,val) 
+			fmt.Printf("PC:0x%04x:Reading %s %x \n",m.pc,con.name,val) 
 		}
 	//	m.cpu.Dump()
 		return val
@@ -121,13 +129,14 @@ func (m *MMU) Write_b(addr uint16, val uint8) {
 			addr < m.range_connections[i].addr_hi {
 			con := m.range_connections[i]
 			con.comp.Write(addr,val)
-
+			
 			if m.debug_mode >=constants.DEBUG_LEVEL_2 {
-				fmt.Printf("%v:Writing %s %04x:%x \n",1,con.name,addr,val)
+				fmt.Printf("PC:%04x:Writing %s %04x:%x \n",m.pc,con.name,addr,val)
 			}
 			return 
 
 		} 
+
 	}
 }
 
@@ -135,7 +144,7 @@ func (m *MMU) Print_map() {
     fmt.Printf("===Address Map===\n")
     var i uint8
     for i=0; i<m.range_count; i++ {
-        fmt.Printf("%v:%x-%x\n",m.range_connections[i].name, m.range_connections[i].addr_lo,m.range_connections[i].addr_hi)
+        fmt.Printf("PC:%04x:%x-%x\n",m.range_connections[i].name, m.range_connections[i].addr_lo,m.range_connections[i].addr_hi)
     }
 
 
@@ -156,7 +165,7 @@ func (m *MMU) Read_b(addr uint16) uint8 {
 			con := m.range_connections[i]
 			val :=con.comp.Read(addr)
 			if m.debug_mode >=constants.DEBUG_LEVEL_2 {
-				fmt.Printf("%v:Reading %s %04x:%x \n",1,con.name,addr,val)
+				fmt.Printf("PC:%04x:Reading %s %04x:%x \n",m.pc,con.name,addr,val)
 			}
 			return val
 
