@@ -95,7 +95,7 @@ func (s *NetSerial) sendBytes(cmd uint8, value uint8) {
 
 func (s *NetSerial) getBytes() {
 	var msg [2]byte
-	s.sock.SetReadDeadline(time.Now().Add(time.Duration(1) * time.Millisecond))
+	s.sock.SetReadDeadline(time.Now().Add(time.Duration(500) * time.Microsecond))
 
 	count, err := s.sock.Read(msg[0:])
 	if err != nil {

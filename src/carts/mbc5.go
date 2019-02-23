@@ -100,14 +100,14 @@ func (m *ROM_MBC5) Write(addr uint16, val uint8) {
 			m.ram_enabled = true
 			fmt.Println("RAM enabled", val)
 
-		} else {
+		} else if val == 0x0 {
 			fmt.Println("RAM Disabled", val)
 			m.ram_enabled = false
 
 		}
 
 	} else if addr < 0x3000 {
-		//fmt.Println("ROM Bank from",m.bank,val-1)
+		fmt.Println("ROM Bank from",m.bank,val-1)
 
 		m.bank_lo = val
 		m.bank = uint16(m.bank_hi)<<8 | uint16(m.bank_lo)

@@ -54,24 +54,24 @@ func (g *Sound) Get_reg_list() component.RegList {
 	return g.reg_list
 }
 func (s *Sound) Play_sound(freq uint32,channel uint32) {
-	SamplesPerSecond := uint32(32000);
-	ToneHz := freq;
+	//SamplesPerSecond := uint32(32000);
+	//ToneHz := freq;
 	//ToneVolume := 3000;
 	//RunningSampleIndex := 0;
-	SquareWavePeriod := uint32(SamplesPerSecond / ToneHz);
-	HalfSquareWavePeriod := uint32(SquareWavePeriod );
+	//SquareWavePeriod := uint32(SamplesPerSecond / ToneHz);
+	//HalfSquareWavePeriod := uint32(SquareWavePeriod );
 	//BytesPerSample := 2 * 2;
 	//BytesToWrite := 800 * BytesPerSample;
-	var RunningSampleIndex uint32
-	SampleCount:=32000
-	for SampleIndex := 0; SampleIndex < SampleCount; SampleIndex++ {
-		if (RunningSampleIndex / HalfSquareWavePeriod) % 2 == 1 {
-			s.samples[channel][SampleIndex] =byte(30)
-		}else {
-			s.samples[channel][SampleIndex] =byte(0x00)
-		}
-		RunningSampleIndex+=1;
-	}
+	//var RunningSampleIndex uint32
+	//SampleCount:=32000
+	//for SampleIndex := 0; SampleIndex < SampleCount; SampleIndex++ {
+	//	if (RunningSampleIndex / HalfSquareWavePeriod) % 2 == 1 {
+	//		s.samples[channel][SampleIndex] =byte(30)
+	//	}else {
+	//		s.samples[channel][SampleIndex] =byte(0x00)
+	//	}
+	//	RunningSampleIndex+=1;
+	//}
 }
 func (s *Sound) Setup_SDL() {
 	var desired sdl.AudioSpec

@@ -141,6 +141,8 @@ type GPU struct {
 	Pal_oc_mem   [0x40]uint8
 	fullspeed    bool
 	ticks int
+	linecache Linecache
+	last_hdma_cycles uint16 
 }
 
 type sprite struct {
@@ -181,6 +183,7 @@ type TileAttr [32][32]bg_attr
 type GBPalette [4]uint32
 
 type CLine [160]uint32
+type Linecache [144]CLine
 type PalLine [160]uint8
 
 func (g *GPU) Reset() {
@@ -1064,8 +1067,10 @@ func (g *GPU) hblank(clocks uint16) {
 				g.print_sprites(&cline,&palline)
 			}
 		}
-
-		g.display_line_gbc(int16(g.LY), &cline)
+		if g.linecache[g.LY] != cline {
+			g.display_line_gbc(int16(g.LY), &cline)
+			g.linecache[g.LY] = cline
+		}
 	}
 
 	g.line_done = 1
@@ -1162,12 +1167,17 @@ func (g *GPU) Update(clocks uint16,oam_dma  bool) {
 
 		} else if g.cycle_count >= 456-HBLANK_CYCLES-OAM_CYCLES-RAM_CYCLES {
 			g.STAT &= 0xfc
+			g.last_hdma_cycles+=clocks
 
+			if g.last_hdma_cycles >= 16 {
+				g.dmac.Hblank_DMA()
+				g.last_hdma_cycles=0
+			}
 			//if oam_dma == false && g.line_done == 0 {
 			if  g.line_done == 0 {
 				g.check_stat_int_hblank()
+
 				g.hblank(clocks)
-				g.dmac.Hblank_DMA()
 			}
 
 		}
