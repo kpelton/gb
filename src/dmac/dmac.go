@@ -30,6 +30,7 @@ type DMAC struct {
 	HDMA_lo_dst_shadow uint8
 
 	hblank_bytes_done uint16
+	hdma_complete_cycles uint16
 	hblank_dma_active bool
 	oam_dma_active bool
 	oam_dma_addr uint8
@@ -83,6 +84,10 @@ func (m* DMAC) Update() uint16 {
 		m.exec_dma(m.oam_dma_addr)
 		cycles=60
 	}
+	if m.hdma_complete_cycles > 0 {
+		cycles+=m.hdma_complete_cycles
+		m.hdma_complete_cycles=0
+	}
 	return cycles
 
 
@@ -107,12 +112,6 @@ func  (m *DMAC) Hblank_DMA() {
 	
 	length := (uint16( (val & 0x7f)) +1) *0x10
 		fmt.Printf("->HDMA Hblank transfer:%04X %04x %x %x\n", src,dst,length,m.hblank_bytes_done)
-		if length == m.hblank_bytes_done {
-			m.hblank_dma_active = false
-			m.HDMA_start=0xff
-			fmt.Printf("->DONE HDMA Hblank transfer:%04X %04x %x\n", src,dst,0x10)
-			return
-		}
 
 
 		var i uint16
@@ -120,13 +119,22 @@ func  (m *DMAC) Hblank_DMA() {
 			m.mmu.Write(dst +i,m.mmu.Read(src+i))
 		}
 		m.HDMA_start=uint8((length-(m.hblank_bytes_done))/0x10)-1 | 0x80
-
-		//m.HDMA_lo_src  = uint8((src+0x10) &0xff)
-		//m.HDMA_hi_src = uint8((src+0x10)&0xff00)
-		//m.HDMA_lo_dst  = uint8((dst+0x10) &0xff)
-		//m.HDMA_hi_dst = uint8((dst+0x10)&0xff00)
+        src+=0x10
+        dst+=0x10
+	    m.HDMA_lo_src  = uint8((src) &0xf0)
+		m.HDMA_hi_src = uint8((src&0xff00 >>8))
+		m.HDMA_lo_dst  = uint8((dst) &0xf0)
+		m.HDMA_hi_dst = uint8((dst&0xff00 >>8))
 		m.hblank_bytes_done +=0x10
+		if length == m.hblank_bytes_done {
+			m.hblank_dma_active = false
+			m.HDMA_start=0xff
+			fmt.Printf("->DONE HDMA Hblank transfer:%04X %04x %x\n", src,dst,0x10)
+			return
+		}
+
 		//fmt.Printf("Blocks remaining:%x\n",length/m.hblank_bytes_done)
+        fmt.Printf("0x%x 0x%x 0x%x 0x%x\n",m.HDMA_lo_src,m.HDMA_hi_src,m.HDMA_lo_dst,m.HDMA_hi_dst)
 	}
 func (m *DMAC) gen_dma() {
 	val:= m.HDMA_start_shadow
@@ -137,13 +145,18 @@ func (m *DMAC) gen_dma() {
 	fmt.Printf("->DONE HDMA transfer:%04X %04x %x\n", src,dst,length)
 	var i uint16
 	for i = 0; i < uint16(length); i++ {
-		m.mmu.Write(dst +i,m.mmu.Read(src+i))
+		m.mmu.Write(dst,m.mmu.Read(src))
+        src+=1
+        dst+=1
 	}
-	m.HDMA_lo_src  = uint8((src+length) &0xff)
-	m.HDMA_hi_src = uint8((src+length)&0xff00)
-	m.HDMA_lo_dst  = uint8((dst+length) &0xff)
-	m.HDMA_hi_dst = uint8((dst+length)&0xff00)
+	m.HDMA_lo_src  = uint8((src) &0xf0)
+	m.HDMA_hi_src = uint8(((src)&0xff00)>>8)
+	m.HDMA_lo_dst  = uint8((dst) &0xf0)
+	m.HDMA_hi_dst = uint8(((dst)&0xff00)>>8)
 	m.HDMA_start=0xff
+	m.hdma_complete_cycles =(length/0x10)*16*4
+	fmt.Println("HDMA cycles completed:",m.hdma_complete_cycles)
+    fmt.Printf("0x%x 0x%x 0x%x 0x%x\n",m.HDMA_lo_src,m.HDMA_hi_src,m.HDMA_lo_dst,m.HDMA_hi_dst)
 }
 
 func (m *DMAC) Write_mmio(addr uint16,val uint8)  {
@@ -170,7 +183,7 @@ func (m *DMAC) Write_mmio(addr uint16,val uint8)  {
 			m.HDMA_lo_src_shadow =m.HDMA_lo_src
 			m.HDMA_hi_dst_shadow =m.HDMA_hi_dst
 			m.HDMA_lo_dst_shadow =m.HDMA_lo_dst
-			m.HDMA_start = val &0x7f
+			m.HDMA_start = val 
 			m.hblank_bytes_done = 0
 			m.hblank_dma_active = true
 			fmt.Println("HDMA STARTED")

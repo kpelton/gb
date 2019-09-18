@@ -32,6 +32,7 @@ func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *RO
 	if has_battery == true {
 		m.Load_ram()
 	}
+    m.ram_enabled=true
 	m.bank = 1
 	return m
 

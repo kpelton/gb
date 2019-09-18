@@ -1149,6 +1149,7 @@ func (g *GPU) Update(clocks uint16,oam_dma  bool) {
 //	fmt.Printf("ticks:%d cycle_count:%d LY:%d, STAT:0x%02x LCDC:%02x\n",g.ticks,g.cycle_count,g.LY,g.STAT,g.LCDC)
 	
 	g.cycle_count -= int16(clocks)
+	
 	if g.LCDC&0x80 == 0x80 {
 		//	fmt.Printf("STAT:0x%04u\n",g.LY)
 

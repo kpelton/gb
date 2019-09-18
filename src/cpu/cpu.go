@@ -275,10 +275,10 @@ func (c *CPU) Exec() {
 			in_oam = true
 		}
 		//run op
-//		for i:=0; i<int(c.last_instr/c.clk_mul); i++ {
-			c.gpu.Update(c.last_instr/c.clk_mul,in_oam)
-//			c.gpu.Update(1)
-//		}
+		for i:=0; i<int(c.last_instr/c.clk_mul); i++ {
+		//	c.gpu.Update(c.last_instr/c.clk_mul,in_oam)
+			c.gpu.Update(1,in_oam)
+		}
 		c.sound.Update(c.last_instr / 4)
 		c.mmu.Update(c.reg16[PC],c.gpu.LY)
 		if !c.is_halted {
@@ -1541,7 +1541,6 @@ func createOps(c *CPU) {
 	c.ops[0x45] = gen_ld("B", "L", 4, 1)
 	c.ops[0x46] = gen_ld("B", "(HL)", 8, 1)
 	c.ops[0x47] = gen_ld("B", "A", 4, 1)
-
 	c.ops[0x48] = gen_ld("C", "B", 4, 1)
 	c.ops[0x49] = gen_ld("C", "C", 4, 1)
 	c.ops[0x4A] = gen_ld("C", "D", 4, 1)
