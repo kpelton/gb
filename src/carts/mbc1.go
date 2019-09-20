@@ -130,7 +130,7 @@ func (m *ROM_MBC1) Write(addr uint16, val uint8) {
 				m.dirty = true
 			}
 		} else {
-			panic("Tried to read from ram that wasn't enabled!")
+			//panic("Tried to read from ram that wasn't enabled!")
 		}
 	}
 

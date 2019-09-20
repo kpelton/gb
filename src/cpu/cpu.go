@@ -266,6 +266,7 @@ func (c *CPU) Exec() {
 		if c.ic.IF > 0 {
 			c.handleInterrupts()
 		}
+		c.sound.Update(c.last_instr/c.clk_mul)
 		//gameboy color executes oam dma in 76 cycles not 80
 		dma_clocks := c.dmac.Update()
 
@@ -279,7 +280,6 @@ func (c *CPU) Exec() {
 		//	c.gpu.Update(c.last_instr/c.clk_mul,in_oam)
 			c.gpu.Update(1,in_oam)
 		}
-		c.sound.Update(c.last_instr / 4)
 		c.mmu.Update(c.reg16[PC],c.gpu.LY)
 		if !c.is_halted {
 

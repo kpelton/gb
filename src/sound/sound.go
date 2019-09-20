@@ -40,44 +40,91 @@ type Sound struct {
 	chan3_curr_freq uint32;
 	chan2_real_freq uint32;
 	chan3_real_freq uint32;
-	samples[4][32000] byte;
-	csample[32000] byte;
+
+
+
+	dac_power bool
+
+	chan1_duty uint8;
+	chan1_hi_freq uint16;
+	chan1_lo_freq uint16;
+	chan1_freq uint16;
+	chan1_timer uint16;
+	chan1_len_mode uint16;
+	chan1_len uint8;
+	chan1_len_enable uint8;
+	chan1_enabled bool
+
+	chan1_swp_shadow uint16
+	chan1_swp_period uint8
+	chan1_swp_period_load uint8
+	chan1_swp_negate uint8
+	chan1_swp_shift uint8
+	chan1_swp_enable uint8
+
+	chan1_vol uint8;
+	chan1_vol_initial uint8
+	chan1_duty_pointer uint8;
+	chan1_vol_period uint8;
+	chan1_vol_period_load uint8;
+	chan1_vol_op uint8;
+
+
+	chan2_duty uint8;
+	chan2_hi_freq uint16;
+	chan2_lo_freq uint16;
+	chan2_freq uint16;
+	chan2_timer uint16;
+	chan2_len_mode uint16;
+	chan2_len uint8;
+	chan2_len_enable uint8;
+	chan2_enabled bool
+	chan2_duty_pointer uint8;
+
+	chan2_vol uint8;
+	chan2_vol_initial uint8
+	chan2_vol_period uint8;
+	chan2_vol_period_load uint8;
+
+	chan2_vol_op uint8;
+
+
+	chan1_sample_p uint32;
+	sample_timer uint32;
+	csample[sample_size] byte;
+
+	square_duty[4][8] bool;
+	channel_enables[4][2] uint8;
+
+	frame_seq_counter uint32
+	frame_seq_step uint8
+
+
+
+	
+
+
 }
 
 const (
-	sample_rate = 44100
+	sample_rate = 48000
 	channels    = 2
 	samples     = 2048
+	sample_size=4096
+	frame_seq_clocks = 8192
 )
 
 func (g *Sound) Get_reg_list() component.RegList {
 	return g.reg_list
 }
-func (s *Sound) Play_sound(freq uint32,channel uint32) {
-	SamplesPerSecond := uint32(32000);
-	ToneHz := freq;
-	var RunningSampleIndex uint32
-	RunningSampleIndex = 0;
-	SquareWavePeriod := uint32(SamplesPerSecond / ToneHz);
-	HalfSquareWavePeriod := uint32(SquareWavePeriod );
-	SampleCount:=32000
-	for SampleIndex := 0; SampleIndex < SampleCount; SampleIndex++ {
-		if (HalfSquareWavePeriod >0) && (RunningSampleIndex / HalfSquareWavePeriod) % 2 == 1 {
-			s.samples[channel][SampleIndex] =byte(30)
-		} else {
-			s.samples[channel][SampleIndex] =byte(0x00)
-		}
-		RunningSampleIndex+=1;
-	}
-}
+
 func (s *Sound) Setup_SDL() {
 	var desired sdl.AudioSpec
-	desired.Freq = 32000
+	desired.Freq = sample_rate
 	desired.Format =sdl.AUDIO_U8
 	desired.Channels=2
 	desired.Silence = 0
-	desired.Samples = 1024
-	desired.Size = 32000
+	desired.Samples = sample_size
 	var recv sdl.AudioSpec
 
 	sdl.OpenAudio(&desired,&recv)
@@ -87,86 +134,312 @@ func (s *Sound) Setup_SDL() {
 }
 func (s *Sound) Reset() {
 }
+func (s *Sound) Update_channel1() {
+	s.chan1_timer-=1
+	if s.chan1_timer == 0 {
 
-func (s *Sound) Update(clocks uint16) {
-	s.clocks += uint64(clocks/4)
-	SampleCount := 32000
-	var sample byte
-	if s.clocks % 50 == 1{
-		chan1_val :=  s.Update_channel1()
-		chan2_val :=  s.Update_channel2()
-	//	chan3_val :=  s.Update_channel3()
-		chan3_val := false
-		if chan1_val || chan2_val || chan3_val {
-			for i := 0; i < SampleCount; i++ {
-			s.csample[i]= 0
-			sample = s.samples[1][i]
-			sample +=s.samples[2][i]
-	//		sample +=s.samples[3][i]
-			s.csample[i] = sample;
+		s.chan1_duty_pointer += 1
+		s.chan1_duty_pointer &= 7
+		//fmt.Println(s.clocks,"Current Timer",s.chan1_timer)
+		//fmt.Println(s.clocks,"Duty",s.chan1_duty_pointer,s.square_duty[s.chan1_duty][s.chan1_duty_pointer],s.chan1_sample_p)
+		s.chan1_timer = (2048 - s.chan1_freq)*4;
+
+	}
+	if ! s.chan1_enabled {
+
+	}
+}
+
+func (s *Sound) Update_channel2() {
+	s.chan2_timer-=1
+	if s.chan2_timer == 0 {
+
+		s.chan2_duty_pointer += 1
+		s.chan2_duty_pointer &= 7
+		//fmt.Println(s.clocks,"Current Timer",s.chan1_timer)
+		//fmt.Println(s.clocks,"Duty",s.chan1_duty_pointer,s.square_duty[s.chan1_duty][s.chan1_duty_pointer],s.chan1_sample_p)
+		s.chan2_timer = (2048 - s.chan2_freq)*4;
+
+	}
+	if ! s.chan2_enabled {
+		s.chan2_vol = 0
+	}
+}
+func (s *Sound) Sampler() {
+	s.sample_timer -=1
+	if s.sample_timer == 0 {
+
+		s.sample_timer= (4194304 / sample_rate)
+		s.csample[s.chan1_sample_p]=0
+		s.csample[s.chan1_sample_p+1]=0
+		
+		chan1_vol :=s.square_duty[s.chan1_duty][s.chan1_duty_pointer]
+		chan2_vol :=s.square_duty[s.chan2_duty][s.chan2_duty_pointer]
+
+		if s.channel_enables[0][0] == 1  && s.dac_power {
+			if chan1_vol == true{
+				s.csample[s.chan1_sample_p] += 0;
+			}else {
+				
+				s.csample[s.chan1_sample_p] +=(uint8(int(s.chan1_vol)*30)/15);
 
 			}
-			sdl.ClearQueuedAudio(1)
-		p := s.csample
-		sdl.QueueAudio(1,p[0:SampleCount])
+		}
+
+		if s.channel_enables[1][0] == 1 && s.dac_power {
+			if chan2_vol == true{
+				s.csample[s.chan1_sample_p] += 0;
+			}else {
+				s.csample[s.chan1_sample_p] +=(uint8(int(s.chan2_vol)*30)/15);
+			}
+		}
+
+		fmt.Println("wave Left:",s.csample[s.chan1_sample_p])
+
+		if s.channel_enables[0][1] == 1  && s.dac_power {
+			if chan1_vol == true{
+				s.csample[s.chan1_sample_p+1] += 0;
+			}else {
+				s.csample[s.chan1_sample_p+1] +=(uint8(int(s.chan1_vol)*30)/15)
+			}
+		}	
+
+		if s.channel_enables[1][1] == 1 && s.dac_power {
+			if chan2_vol == true{
+				s.csample[s.chan1_sample_p+1] += 0;
+			}else {
+				s.csample[s.chan1_sample_p+1] += uint8((int(s.chan2_vol)*30)/15);
+			}
+		}
+		fmt.Println("wave right:",s.csample[s.chan1_sample_p])
+
+
+		if s.chan1_sample_p+2 >= sample_size-1 {
+			p := s.csample
+			s.chan1_sample_p =0
+			sdl.QueueAudio(1,p[0:sample_size])
+
+
+		}else
+		{
+			s.chan1_sample_p += 2
+		}
+
+
+		for ((sdl.GetQueuedAudioSize(1)) > sample_size) {
+		}
+
+	}
+
+}
+func (s *Sound) channel1_len_clock() {
+	if s.chan1_len_enable  == 1  {
+		s.chan1_len-=1
+		if s.chan1_len ==0 {
+			fmt.Println("Disabled due to timer")
+			s.chan1_enabled = false
+			s.chan1_len_enable= 0
 		}
 	}
 }
-func (s *Sound) Update_channel1() bool {
-	//First 3 bits of Freq_Hi is part of the 11bit freq
+
+func (s *Sound) channel2_len_clock() {
+	if s.chan2_len_enable  == 1  {
+		s.chan2_len-=1
+		if s.chan2_len ==0 {
+			fmt.Println("Disabled 2 due to timer")
+			s.chan2_enabled = false
+			s.chan2_len_enable= 0
+		}
+	}
+}
+
+func (s *Sound) channel1_vol_clock() {
+	if s.chan1_vol_period  != 0  {
+		s.chan1_vol_period -=1
+		if s.chan1_vol_period ==0 {
+			if s.chan1_vol_op == 1  && s.chan1_vol <15 {
+				s.chan1_vol +=1
+			}
+			if s.chan1_vol_op == 0  && s.chan1_vol >0 {
+				s.chan1_vol -=1
+			}
+			s.chan1_vol_period = s.chan1_vol_period_load
+			fmt.Println("KYLEtest chan1",s.chan1_vol,s.chan1_vol_period)
+
+		}
+	}
+}
+
+func (s *Sound) channel2_vol_clock() {
+	if s.chan2_vol_period  != 0  {
+		s.chan2_vol_period -=1
+		if s.chan2_vol_period ==0 {
+			if s.chan2_vol_op == 1  && s.chan2_vol <15 {
+				s.chan2_vol +=1
+			}
+			if s.chan2_vol_op == 0  && s.chan2_vol >0 {
+				s.chan2_vol -=1
+			}
+			s.chan2_vol_period = s.chan2_vol_period_load
+			fmt.Println("KYLEtest chan2",s.chan2_vol,s.chan2_vol_period)
+
+
+		}
+	}
+}
+func (s *Sound) channel1_swp_calc () uint16 {
+	new_freq := s.chan1_swp_shadow >>  s.chan1_swp_shift
+
+	if s.chan1_swp_negate == 1 {
+		new_freq -= s.chan1_swp_shadow
+	}else {
+		new_freq += s.chan1_swp_shadow
+
+	}
+	if new_freq > 2047 {
+		s.chan1_enabled = false
+		s.chan1_swp_enable = 0
+		fmt.Println("SWP Disabled channel 1 due to freq overflow")
+	}
+	return new_freq
+
+}
+func (s *Sound) channel1_swp_clock() {
+
+	s.chan1_swp_period -=1 
+	if s.chan1_swp_enable == 1 &&  s.chan1_swp_period_load >0 {
+		if s.chan1_swp_period == 0 {
+			s.chan1_swp_period = s.chan1_swp_period_load
+			new_calc := s.channel1_swp_calc()
+			if s.chan1_swp_shift >0 && new_calc < 2047 {
+				fmt.Println("SWP New freq",new_calc,s.chan1_freq)
+				s.chan1_freq = new_calc
+				s.chan1_swp_shadow = new_calc
+			}
+			s.channel1_swp_calc()
+				
+
+		}
+	}
+}
+
+
+
+func (s *Sound) Freq_sampler() {
+	s.frame_seq_counter -= 1
+
+	if 	s.frame_seq_counter	== 0 {
+		s.frame_seq_counter = frame_seq_clocks
+		switch s.frame_seq_step {
+
+			case 0:
+				s.channel1_len_clock()
+				s.channel2_len_clock()
+			case 2:
+				s.channel1_len_clock()
+				s.channel1_swp_clock()
+				s.channel2_len_clock()
+			case 4:
+				s.channel1_len_clock()
+				s.channel2_len_clock()
+			case 6:
+				s.channel1_len_clock()
+				s.channel1_swp_clock()
+				s.channel2_len_clock()
+			case 7:
+				s.channel1_vol_clock()
+				s.channel2_vol_clock()
+		}
+		//0-7 steps
+		s.frame_seq_step +=1
+		s.frame_seq_step &=7
+
+	}
+
+}
+func (s *Sound) Update(clocks uint16) {
+	for i := 1;  i<=int(clocks); i++ {
+
+		s.Update_channel1()
+		s.Update_channel2()
+		s.Freq_sampler()
+		s.Sampler()
+
+}
+		
+
+}
+func (s *Sound) Update_channel1_regs()  {
 	hi_freq := uint16(s.SND_MODE_1_FREQ_HI &0x7)
-	hi_freq = hi_freq <<8
-	lo_freq := uint16(s.SND_MODE_1_FREQ_LOW&0xfe)
-	len_mode := uint16(s.SND_MODE_3_FREQ_HI &0x40)
-	snd_len :=s.SND_MODE_1_LEN &0x1f
-	freq:=hi_freq+lo_freq
-	real_freq := 131072/uint32((2048-freq))
-	//fmt.Println(131072/uint32((2048-freq)),snd_len)
-	if (snd_len  >0 || len_mode == 0) && real_freq > 100 && s.chan1_curr_freq != real_freq {
-		s.chan1_curr_freq = real_freq
-		s.Play_sound((real_freq),1)
-		return true;
-	}
-	s.chan1_curr_freq = real_freq
-	return false;
+	s.chan1_hi_freq = hi_freq <<8
+	s.chan1_lo_freq = uint16(s.SND_MODE_1_FREQ_LOW)
+	s.chan1_len_enable = uint8(s.SND_MODE_1_FREQ_HI &0x40) >>6
+	s.chan1_len =s.SND_MODE_1_LEN &0x1f
+	s.chan1_freq =s.chan1_hi_freq+s.chan1_lo_freq
+	//real_freq := 131072/uint32((2048-freq))
+	//NR11 FF11 DDLL LLLL Duty, Length load (64-L)
+	s.chan1_duty = s.SND_MODE_1_LEN >> 6
+	s.chan1_timer = (2048 - s.chan1_freq)*4;
+
+	//fmt.Println("Duty Cycle1:",s.chan1_duty)
+	//fmt.Println(s.chan1_freq)
+	//fmt.Println("Len:",s.chan1_len)
 }
-func (s *Sound) Update_channel2() bool {
-	//First 3 bits of Freq_Hi is part of the 11bit freq
+func (s *Sound) Update_channel2_regs()  {
 	hi_freq := uint16(s.SND_MODE_2_FREQ_HI &0x7)
-	hi_freq = hi_freq <<8
+	s.chan2_hi_freq = hi_freq <<8
+	s.chan2_lo_freq = uint16(s.SND_MODE_2_FREQ_LOW&0xfe)
+	s.chan2_len_enable = uint8(s.SND_MODE_2_FREQ_HI &0x40) >>6
+	s.chan2_len =s.SND_MODE_2_LEN &0x1f
+	s.chan2_freq =s.chan2_hi_freq+s.chan2_lo_freq 
+	//real_freq := 131072/uint32((2048-freq))
+	//NR11 FF11 DDLL LLLL Duty, Length load (64-L)
+	s.chan2_duty = s.SND_MODE_2_LEN >> 6
+	s.chan2_timer = (2048 - s.chan2_freq)*4;
 
-	len_mode := uint16(s.SND_MODE_3_FREQ_HI &0x40)
-	lo_freq := uint16(s.SND_MODE_2_FREQ_LOW)
-	snd_len :=s.SND_MODE_1_LEN &0x1f
-	freq:=hi_freq+lo_freq
-	real_freq := 131072/uint32((2048-freq))
-	//fmt.Println("2nd",131072/uint32((2048-freq)),snd_len)
-	if (snd_len >0 || len_mode ==0 )  && real_freq > 100 && s.chan2_curr_freq != real_freq {
-		s.chan2_curr_freq = real_freq
-		s.Play_sound((real_freq),2)
-		return true;
-	}
-	s.chan2_curr_freq = real_freq
-	return false;
+	//fmt.Println(s.chan2_freq)
 
 }
-func (s *Sound) Update_channel3() bool {
-	//First 3 bits of Freq_Hi is part of the 11bit freq
-	hi_freq := uint16(s.SND_MODE_3_FREQ_HI &0x7)
-	len_mode := uint16(s.SND_MODE_3_FREQ_HI &0x40)
-	hi_freq = hi_freq <<8
-	lo_freq := uint16(s.SND_MODE_3_FREQ_LOW)
-	snd_len :=s.SND_MODE_3_LEN &0x1f
-	freq:=hi_freq+lo_freq
-	real_freq := 131072/uint32((2048-freq))
-	//fmt.Println("3rd",131072/uint32((2048-freq)),snd_len,len_mode)
-	if (snd_len >0 || len_mode ==0) && real_freq > 100 && s.chan3_curr_freq != real_freq {
-		s.chan3_curr_freq = real_freq
-		s.Play_sound((real_freq),3)
-		return true;
+func (s *Sound) chan1_trigger()  {
+	s.chan1_enabled = true
+	s.chan1_vol_period = s.chan1_vol_period_load
+	s.chan1_vol =  s.chan1_vol_initial
+	//sweep
+	s.chan1_swp_shadow = s.chan1_freq
+	s.chan1_swp_period = s.chan1_swp_period_load
+	
+	//The internal enabled flag is set if either the sweep period or shift are non-zero, cleared otherwise.
+	if s.chan1_swp_shift != 0 || s.chan1_swp_negate != 0 {
+		s.chan1_swp_enable = 1
+	}else {
+		s.chan1_swp_enable = 0
 	}
-	s.chan3_curr_freq = real_freq
-	return false;
+	//If the sweep shift is non-zero, frequency calculation and the overflow check are performed immediately.
+	if s.chan1_swp_shift != 0 {
+		s.channel1_swp_calc()
+	}
+	//len
+	s.chan1_len_enable = 0
+	if s.chan1_len == 0 {
+		s.chan1_len =64
+	}
+	s.chan1_timer = (2048 - s.chan1_freq)*4
+	fmt.Println("Trigger 1")
+
+}
+
+func (s *Sound) chan2_trigger()  {
+	s.chan2_enabled = true
+	s.chan2_len_enable = 0
+	if s.chan2_len == 0 {
+		s.chan2_len =64
+	}
+	s.chan2_vol_period = s.chan2_vol_period_load
+	s.chan2_vol =  s.chan2_vol_initial
+
+	s.chan2_timer = (2048 - s.chan2_freq)*4
+	fmt.Println("Trigger 2")
 
 }
 
@@ -174,6 +447,30 @@ func (s *Sound) Update_channel3() bool {
 func NewSound() *Sound {
 	s := new(Sound)
 	s.Setup_SDL()
+/*	Duty   Waveform    Ratio
+-------------------------
+0      00000001    12.5%
+1      10000001    25%
+2      10000111    50%
+3      01111110    75%
+*/
+	s.square_duty = [4][8]bool{
+		{false,false,false,false,false,false,false,true},
+		{true,false,false,false,false,false,false,true},
+		{true,false,false,false,false,true,true,true},
+		{false,true,true,true,true,true,true,false},
+	}
+	s.chan1_sample_p = 0
+	s.sample_timer = 4194304 / sample_rate
+	s.frame_seq_counter  = frame_seq_clocks
+	s.chan1_enabled = true
+	s.chan2_enabled = true
+	s.chan1_vol = 30
+	s.chan2_vol =30
+	s.dac_power = false
+	
+	
+
 	s.reg_list = component.RegList{
 		{Name: "SND_MODE_1_SWP ", Addr: 0xff10},
 		{Name: "SND_MODE_1_LEN", Addr: 0xff11},
@@ -204,27 +501,73 @@ func NewSound() *Sound {
 func (s *Sound) Write_mmio(addr uint16, val uint8) {
 	switch addr {
 	case 0xff10:
+		//NR10 FF10 -PPP NSSS Sweep period, negate, shift
 		s.SND_MODE_1_SWP = val
+		s.chan1_swp_period = (val & 0x70) >>4
+		s.chan1_swp_period_load = s.chan1_swp_period
+		s.chan1_swp_negate = (val &0x8) >> 3
+		s.chan1_swp_shift = val &0x7
+		
 	case 0xff11:
 		s.SND_MODE_1_LEN = val
+		s.Update_channel1_regs()
 	case 0xff12:
 		s.SND_MODE_1_ENVP = val
+		s.Update_channel1_regs()
+		s.chan1_vol = (val >> 4) & 0xF
+		s.chan1_vol_initial = s.chan1_vol
+		s.chan1_vol_period = val & 7
+		s.chan1_vol_period_load = s.chan1_vol_period
+
+		s.chan1_vol_op = (val >>3) &1
 	case 0xff13:
 		s.SND_MODE_1_FREQ_LOW = val
+		s.Update_channel1_regs()
 	case 0xff14:
 		s.SND_MODE_1_FREQ_HI = val
+		s.Update_channel1_regs()
+
+		//trigger bit has been set
+
+		if val & 0x80 == 0x80 { 
+			s.chan1_trigger()
+		}
 
 	case 0xff16:
 		s.SND_MODE_2_LEN = val
+		s.Update_channel2_regs()
+
 	case 0xff17:
 		s.SND_MODE_2_ENVP = val
+		s.chan2_vol = (val >> 4) & 0xF
+		s.chan2_vol_period = val & 7
+		s.chan2_vol_initial  =s.chan2_vol
+		s.chan2_vol_period_load = s.chan2_vol_period
+		s.chan2_vol_op = (val >>3) &1
 	case 0xff18:
 		s.SND_MODE_2_FREQ_LOW = val
+		s.Update_channel2_regs()
+
+
 	case 0xff19:
 		s.SND_MODE_2_FREQ_HI = val
+		s.Update_channel2_regs()
+
+		//trigger bit has been set
+		if val & 0x80 == 0x80 { 
+			s.chan2_trigger()
+		}
+
 
 	case 0xff1a:
 		s.SND_MODE_3 = val
+		//if DAC is 0x80  bit is set
+		if s.SND_MODE_3 & 0xf8 != 0x00 {
+			s.dac_power = true
+		}else{
+			s.dac_power = false
+		}
+		
 	case 0xff1b:
 		s.SND_MODE_3_LEN = val
 		//fmt.Println(val)
@@ -248,8 +591,12 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		s.SND_CHN_CTRL = val
 	case 0xff25:
 		s.SND_TERM_OUTPUT = val
-	//	s.Update_channel1()
-		//s.Update_channel2()
+		//chan 1
+		s.channel_enables[0][0] = val &1
+		s.channel_enables[0][1] = (val & 0x10) >>4
+		//chan 2
+		s.channel_enables[1][0] = (val &2) >>1
+		s.channel_enables[1][1] = (val & 0x20) >>5
 	case 0xff26:
 		s.SND_MASTER_CTRL = val
 
@@ -286,6 +633,7 @@ func (s *Sound) Read_mmio(addr uint16) uint8 {
 	case 0xff1a:
 		val = 0x80
 	//	val = s.SND_MODE_3
+		
 	case 0xff1b:
 		val = s.SND_MODE_3_LEN
 	case 0xff1c:

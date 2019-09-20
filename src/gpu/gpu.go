@@ -1112,6 +1112,7 @@ func (g *GPU) vblank(clocks uint16) {
 		g.frames += 1
 
 		g.screen.renderer.Present()
+		/*
 		if !g.fullspeed {
 			if time.Since(g.frame_time) < time.Duration(17)*time.Millisecond {
 				time.Sleep((time.Duration(16700) * time.Microsecond) - time.Since(g.frame_time))
@@ -1119,6 +1120,7 @@ func (g *GPU) vblank(clocks uint16) {
 
 			}
 		}
+		*/
 		if time.Since(g.last_update) > time.Second {
 			fmt.Println("FPS", int(g.frames))
 			g.frames = 0
