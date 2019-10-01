@@ -214,14 +214,14 @@ func (s *Sound) Update_channel3() {
 		
 		data := s.Wram[pos]
 		//if pos is even then grab 2nd nibble else first
-		if s.chan3_pos %2 == 0 {
+		if s.chan3_pos %2 != 0 {
 			data = data >>4
 		}
 		data &=0xf
-		fmt.Println("CHAN3 update",s.chan3_pos,pos,data,s.Wram[pos])
+		//fmt.Println("CHAN3 update",s.chan3_pos,pos,data,s.Wram[pos])
 
 		//if code != 0 do the shift otherwise output is 0
-		if s.chan3_vol == 0 {
+		if s.chan3_vol > 0 {
 			data >>= s.chan3_vol
 		}else{
 			data = 0
@@ -811,7 +811,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		s.SND_CHN_CTRL = val
 	case 0xff25:
 		s.SND_TERM_OUTPUT = val
-		/*
+		
 		//chan 1
 		s.channel_enables[0][0] = val &1
 		s.channel_enables[0][1] = (val & 0x10) >>4
@@ -822,7 +822,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		//chan4
 		s.channel_enables[3][0] = (val &8) >>3
 		s.channel_enables[3][1] = (val & 0x80) >>7
-*/
+
 		//chan3
 		s.channel_enables[2][0] = (val &4) >>2
 		s.channel_enables[2][1] = (val & 0x40) >>6
@@ -831,15 +831,18 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		s.SND_MASTER_CTRL = val
 
 	default:
-		fmt.Println("SOUND: unhandled sound write", addr)
-
-	}
-
-	if addr >= 0xff30 &&  addr < 0xff40 {
+		if addr >= 0xff30 &&  addr < 0xff40 {
 			baseaddr := (addr & 0x3f) >>2 
 			s.Wram[baseaddr] = val
 			fmt.Println("wram")
+		}else {
+			fmt.Println("SOUND: unhandled sound write", addr)
+
 		}
+
+	}
+
+
 }
 
 func (s *Sound) Read_mmio(addr uint16) uint8 {
