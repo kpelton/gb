@@ -148,6 +148,10 @@ const (
 	samples     = 2048
 	sample_size=4096
 	frame_seq_clocks = 8192
+	chan1_global_enable = 1
+	chan2_global_enable = 1
+	chan3_global_enable = 1
+	chan4_global_enable = 1
 )
 
 func (g *Sound) Get_reg_list() component.RegList {
@@ -182,7 +186,7 @@ func (s *Sound) Update_channel1() {
 
 	}
 	if ! s.chan1_enabled {
-
+		s.chan1_vol = 0
 	}
 }
 
@@ -221,8 +225,17 @@ func (s *Sound) Update_channel3() {
 		//fmt.Println("CHAN3 update",s.chan3_pos,pos,data,s.Wram[pos])
 
 		//if code != 0 do the shift otherwise output is 0
+		/*
+		Code   Shift   Volume
+		-----------------------
+		0      4         0% (silent)
+		1      0       100%
+		2      1        50%
+		3      2        25%
+		*/
 		if s.chan3_vol > 0 {
-			data >>= s.chan3_vol
+			shift_amt := s.chan3_vol -1
+			data >>= shift_amt
 		}else{
 			data = 0
 		}
@@ -277,7 +290,7 @@ func (s *Sound) Sampler() {
 		chan2_vol :=s.square_duty[s.chan2_duty][s.chan2_duty_pointer]
 
 		if s.channel_enables[0][0] == 1  && s.dac_power {
-			if chan1_vol == true{
+			if chan1_vol == false {
 				s.csample[s.sample_p] += 0;
 			}else {
 				
@@ -288,7 +301,7 @@ func (s *Sound) Sampler() {
 		
 
 		if s.channel_enables[1][0] == 1 && s.dac_power {
-			if chan2_vol == true{
+			if chan2_vol == false{
 				s.csample[s.sample_p] += 0;
 			}else {
 				s.csample[s.sample_p] +=(uint8(int(s.chan2_vol)*30)/15);
@@ -354,7 +367,7 @@ func (s *Sound) channel1_len_clock() {
 	if s.chan1_len_enable  == 1  {
 		s.chan1_len-=1
 		if s.chan1_len ==0 {
-			fmt.Println("Disabled due to timer")
+			fmt.Println(" SWP Disabled due to timer")
 			s.chan1_enabled = false
 			s.chan1_len_enable= 0
 		}
@@ -447,20 +460,25 @@ func (s *Sound) channel4_vol_clock() {
 	}
 }
 func (s *Sound) channel1_swp_calc () uint16 {
-	new_freq := s.chan1_swp_shadow >>  s.chan1_swp_shift
+
+	curr_val :=s.chan1_swp_shadow
+	val := s.chan1_swp_shadow >>  s.chan1_swp_shift
 
 	if s.chan1_swp_negate == 1 {
-		new_freq -= s.chan1_swp_shadow
+		curr_val -=val
+		fmt.Println("SWP negate calc",curr_val,s.chan1_swp_shift,val)
+
 	}else {
-		new_freq += s.chan1_swp_shadow
+		curr_val +=val
+		fmt.Println("SWP add calc",curr_val,s.chan1_swp_shift,val)
 
 	}
-	if new_freq > 2047 {
+	if curr_val > 2047 {
 		s.chan1_enabled = false
 		s.chan1_swp_enable = 0
 		fmt.Println("SWP Disabled channel 1 due to freq overflow")
 	}
-	return new_freq
+	return curr_val
 
 }
 func (s *Sound) channel1_swp_clock() {
@@ -471,9 +489,11 @@ func (s *Sound) channel1_swp_clock() {
 			s.chan1_swp_period = s.chan1_swp_period_load
 			new_calc := s.channel1_swp_calc()
 			if s.chan1_swp_shift >0 && new_calc < 2047 {
-				fmt.Println("SWP New freq",new_calc,s.chan1_freq)
-				s.chan1_freq = new_calc
-				s.chan1_swp_shadow = new_calc
+				if s.chan1_enabled {
+					fmt.Println("SWP New freq",new_calc,s.chan1_freq)
+					s.chan1_freq = new_calc
+					s.chan1_swp_shadow = new_calc
+				}
 			}
 			s.channel1_swp_calc()
 				
@@ -498,10 +518,10 @@ func (s *Sound) Freq_sampler() {
 				s.channel4_len_clock()
 
 			case 2:
+				s.channel1_swp_clock()
 				s.channel1_len_clock()
 				s.channel2_len_clock()
 				s.channel3_len_clock()
-				s.channel1_swp_clock()
 				s.channel4_len_clock()
 
 			case 4:
@@ -510,11 +530,12 @@ func (s *Sound) Freq_sampler() {
 				s.channel3_len_clock()
 				s.channel4_len_clock()
 			case 6:
+				s.channel1_swp_clock()
+
 				s.channel1_len_clock()
 				s.channel2_len_clock()
 				s.channel3_len_clock()
 				s.channel4_len_clock()
-				s.channel1_swp_clock()
 			case 7:
 				s.channel1_vol_clock()
 				s.channel2_vol_clock()
@@ -550,7 +571,7 @@ func (s *Sound) chan1_trigger()  {
 	s.chan1_swp_period = s.chan1_swp_period_load
 	
 	//The internal enabled flag is set if either the sweep period or shift are non-zero, cleared otherwise.
-	if s.chan1_swp_shift != 0 || s.chan1_swp_negate != 0 {
+	if s.chan1_swp_shift != 0 || s.chan1_swp_period != 0 {
 		s.chan1_swp_enable = 1
 	}else {
 		s.chan1_swp_enable = 0
@@ -565,7 +586,7 @@ func (s *Sound) chan1_trigger()  {
 		s.chan1_len =64
 	}
 	s.chan1_timer = (2048 - s.chan1_freq)*4
-	fmt.Println("Trigger 1")
+	fmt.Println("SND_MODE_1 Trigger 1")
 
 }
 
@@ -634,9 +655,9 @@ func NewSound() *Sound {
 	s.chan1_enabled = true
 	s.chan2_enabled = true
 	s.chan4_enabled = true
-	s.chan1_vol = 30
-	s.chan2_vol =30
-	s.chan4_vol =30
+	s.chan1_vol =0xf
+	s.chan2_vol =0xf
+	s.chan4_vol =0xf
 	s.dac_power = false
 	
 	
@@ -693,7 +714,11 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		s.chan1_swp_period_load = s.chan1_swp_period
 		s.chan1_swp_negate = (val &0x8) >> 3
 		s.chan1_swp_shift = val &0x7
-		
+		fmt.Println("SWP negate",s.chan1_swp_negate)
+		fmt.Println("SWP shift",s.chan1_swp_shift)
+		fmt.Println("SWP period",s.chan1_swp_period)
+
+
 	case 0xff11:
 		s.SND_MODE_1_LEN = val
 		s.chan1_len = val &0x1f
@@ -720,7 +745,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		if val & 0x80 == 0x80 { 
 			s.chan1_trigger()
 		}
-		s.chan1_len_enable = uint8(val &0x40) >>6
+		//s.chan1_len_enable = uint8(val &0x40) >>6
     //chan2
 	case 0xff16:
 		s.SND_MODE_2_LEN = val 
@@ -813,19 +838,20 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		s.SND_TERM_OUTPUT = val
 		
 		//chan 1
-		s.channel_enables[0][0] = val &1
-		s.channel_enables[0][1] = (val & 0x10) >>4
+		s.channel_enables[0][0] = (val &1) & chan1_global_enable
+		s.channel_enables[0][1] = ((val & 0x10) >>4) & chan1_global_enable
 		//chan 2
-		s.channel_enables[1][0] = (val &2) >>1
-		s.channel_enables[1][1] = (val & 0x20) >>5
+		s.channel_enables[1][0] = ((val &2) >>1) & chan2_global_enable
+		s.channel_enables[1][1] = ((val & 0x20) >>5) & chan2_global_enable
+		//chan3
+		s.channel_enables[2][0] = ((val &4) >>2) & chan3_global_enable
+		s.channel_enables[2][1] = ((val & 0x40) >>6) & chan3_global_enable
 
 		//chan4
-		s.channel_enables[3][0] = (val &8) >>3
-		s.channel_enables[3][1] = (val & 0x80) >>7
+		s.channel_enables[3][0] = ((val &8) >>3) & chan4_global_enable
+		s.channel_enables[3][1] = ((val & 0x80) >>7) & chan4_global_enable
 
-		//chan3
-		s.channel_enables[2][0] = (val &4) >>2
-		s.channel_enables[2][1] = (val & 0x40) >>6
+
 		
 	case 0xff26:
 		s.SND_MASTER_CTRL = val
