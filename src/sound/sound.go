@@ -222,7 +222,7 @@ func (s *Sound) Update_channel3() {
 			data = data >>4
 		}
 		data &=0xf
-		//fmt.Println("CHAN3 update",s.chan3_pos,pos,data,s.Wram[pos])
+		//fmt.Printf("WRAM update %x %x %x %x\n",s.chan3_pos,pos,data,s.Wram[pos])
 
 		//if code != 0 do the shift otherwise output is 0
 		/*
@@ -233,7 +233,7 @@ func (s *Sound) Update_channel3() {
 		2      1        50%
 		3      2        25%
 		*/
-		if s.chan3_vol > 0 {
+		if s.chan3_enabled && s.chan3_vol > 0 {
 			shift_amt := s.chan3_vol -1
 			data >>= shift_amt
 		}else{
@@ -745,7 +745,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		if val & 0x80 == 0x80 { 
 			s.chan1_trigger()
 		}
-		//s.chan1_len_enable = uint8(val &0x40) >>6
+		s.chan1_len_enable = uint8(val &0x40) >>6
     //chan2
 	case 0xff16:
 		s.SND_MODE_2_LEN = val 
@@ -787,25 +787,25 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		
 	case 0xff1b:
 		s.SND_MODE_3_LEN = val
-		s.chan2_len = val
+		s.chan3_len = val
 	case 0xff1c:
 		s.SND_MODE_3_OUTPUT = (val &0x60) >> 5
 		s.chan3_vol = (val &0x60) >> 5
 	case 0xff1d:
 		s.SND_MODE_3_FREQ_LOW = val
 		s.chan3_lo_freq = uint16(val &0xfe)
-        s.chan3_freq =s.chan3_hi_freq+s.chan3_lo_freq
+        s.chan3_freq =s.chan3_hi_freq|s.chan3_lo_freq
 	case 0xff1e:
 		s.SND_MODE_3_FREQ_HI = val
 		hi_freq := uint16(val &0x7)
 		s.chan3_hi_freq = hi_freq <<8
 		s.chan3_len_enable = uint8(val &0x40) >>6
-        s.chan3_freq =s.chan3_hi_freq+s.chan3_lo_freq
+        s.chan3_freq =s.chan3_hi_freq|s.chan3_lo_freq
 		if val & 0x80 == 0x80 { 
 			s.chan3_trigger()
 		}
 
-		s.chan2_len_enable = uint8(val &0x40) >>6
+		s.chan3_len_enable = uint8(val &0x40) >>6
 
 	case 0xff20:
 		s.SND_MODE_4_LEN = val & 0x3f
@@ -858,9 +858,9 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 
 	default:
 		if addr >= 0xff30 &&  addr < 0xff40 {
-			baseaddr := (addr & 0x3f) >>2 
+			baseaddr := (addr & 0x3f) -0x30
 			s.Wram[baseaddr] = val
-			fmt.Println("wram")
+			fmt.Println("wram",baseaddr,s.Wram)
 		}else {
 			fmt.Println("SOUND: unhandled sound write", addr)
 
