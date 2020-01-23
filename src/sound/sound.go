@@ -33,6 +33,7 @@ type Sound struct {
 	SND_TERM_OUTPUT uint8 //0xff25
 	SND_MASTER_CTRL uint8 //0xff26
 	Wram            [0x10]uint8
+	
 	reg_list        component.RegList
 	clocks		uint64
 	chan1_curr_freq uint32;
@@ -146,7 +147,7 @@ const (
 	sample_rate = 48000
 	channels    = 2
 	samples     = 2048
-	sample_size=4096
+	sample_size=1024
 	frame_seq_clocks = 8192
 	chan1_global_enable = 1
 	chan2_global_enable = 1
@@ -180,7 +181,7 @@ func (s *Sound) Update_channel1() {
 
 		s.chan1_duty_pointer += 1
 		s.chan1_duty_pointer &= 7
-		//fmt.Println(s.clocks,"Current Timer",s.chan1_timer)
+		//fmt.Println(s.clocks,"Current Timer",s.chan1_timer) 
 		//fmt.Println(s.clocks,"Duty",s.chan1_duty_pointer,s.square_duty[s.chan1_duty][s.chan1_duty_pointer],s.sample_p)
 		s.chan1_timer = (2048 - s.chan1_freq)*4;
 
@@ -210,16 +211,15 @@ func (s *Sound) Update_channel3() {
 	s.chan3_timer-=1
 	if s.chan3_timer == 0 {
 		s.chan3_timer = (2048 - s.chan3_freq)*2;
-		s.chan3_pos += 1 
-		if s.chan3_pos == 32 {
-			s.chan3_pos =0
-		}
+		//fmt.Println("SND_MODE_3_TICK")
+
 		pos := s.chan3_pos /2
 		
 		data := s.Wram[pos]
 		//if pos is even then grab 2nd nibble else first
-		if s.chan3_pos %2 != 0 {
+		if s.chan3_pos %2 == 0 {
 			data = data >>4
+			//fmt.Println("WRAM UPPER nibble")
 		}
 		data &=0xf
 		//fmt.Printf("WRAM update %x %x %x %x\n",s.chan3_pos,pos,data,s.Wram[pos])
@@ -233,14 +233,23 @@ func (s *Sound) Update_channel3() {
 		2      1        50%
 		3      2        25%
 		*/
-		if s.chan3_enabled && s.chan3_vol > 0 {
-			shift_amt := s.chan3_vol -1
-			data >>= shift_amt
+		if s.dac_power && s.chan3_enabled && s.chan3_vol > 0 {
+			switch s.chan3_vol {
+
+				case 2:
+					data >>= 1 //50%
+				case 3:
+					data >>= 2 //25%
+			}
 		}else{
 			data = 0
 		}
 		s.chan3_vol_current = data
-
+		s.chan3_pos += 1 
+		if s.chan3_pos == 32 {
+			s.chan3_pos =0
+	
+		}
 	}
 	if ! s.chan3_enabled {
 		s.chan3_vol_current = 0
@@ -289,7 +298,7 @@ func (s *Sound) Sampler() {
 		chan1_vol :=s.square_duty[s.chan1_duty][s.chan1_duty_pointer]
 		chan2_vol :=s.square_duty[s.chan2_duty][s.chan2_duty_pointer]
 
-		if s.channel_enables[0][0] == 1  && s.dac_power {
+		if s.channel_enables[0][0] == 1 && s.chan1_vol_initial > 0  {
 			if chan1_vol == false {
 				s.csample[s.sample_p] += 0;
 			}else {
@@ -300,7 +309,7 @@ func (s *Sound) Sampler() {
 		}
 		
 
-		if s.channel_enables[1][0] == 1 && s.dac_power {
+		if s.channel_enables[1][0] == 1 && s.chan2_vol_initial > 0 {
 			if chan2_vol == false{
 				s.csample[s.sample_p] += 0;
 			}else {
@@ -313,14 +322,14 @@ func (s *Sound) Sampler() {
 
 		}
 
-		if s.channel_enables[3][0] == 1 && s.dac_power {
+		if s.channel_enables[3][0] == 1 && s.chan4_vol_initial > 0 {
 			s.csample[s.sample_p] += (uint8(int(s.chan4_vol_current)*30)/15);
 
 		}
 
 
 
-		if s.channel_enables[0][1] == 1  && s.dac_power {
+		if s.channel_enables[0][1] == 1 && s.chan1_vol_initial > 0  {
 			if chan1_vol == true{
 				s.csample[s.sample_p+1] += 0;
 			}else {
@@ -328,7 +337,7 @@ func (s *Sound) Sampler() {
 			}
 		}	
 
-		if s.channel_enables[1][1] == 1 && s.dac_power {
+		if s.channel_enables[1][1] == 1 && s.chan2_vol_initial > 0{
 			if chan2_vol == true{
 				s.csample[s.sample_p+1] += 0;
 			}else {
@@ -337,10 +346,11 @@ func (s *Sound) Sampler() {
 		}
 
 		if s.channel_enables[2][1] == 1 && s.dac_power {
+			fmt.Println("SND_MODE_3_SAMPLE",s.chan3_vol_current)
 			s.csample[s.sample_p+1] += (uint8(int(s.chan3_vol_current)*30)/15);
 		}
 
-		if s.channel_enables[3][1] == 1 && s.dac_power {
+		if s.channel_enables[3][1] == 1 && s.chan4_vol_initial>0 {
 			s.csample[s.sample_p+1] += (uint8(int(s.chan4_vol_current)*30)/15);
 		}
 
@@ -600,7 +610,7 @@ func (s *Sound) chan2_trigger()  {
 	s.chan2_vol =  s.chan2_vol_initial
 
 	s.chan2_timer = (2048 - s.chan2_freq)*4
-	fmt.Println("Trigger 2")
+	fmt.Println("SND_MODE_2 Trigger 2")
 
 }
 
@@ -612,7 +622,7 @@ func (s *Sound) chan3_trigger()  {
 		s.chan3_len =0xff
 	}
 	s.chan3_timer = (2048 - s.chan3_freq)*2
-	fmt.Println("Trigger 3")
+	fmt.Println("SND_MODE_3 Trigger 3")
 
 }
 
@@ -627,7 +637,7 @@ func (s *Sound) chan4_trigger()  {
 		s.chan4_len =64
 	}
 	s.chan4_timer = uint16(s.chan4_divisor_code[s.chan4_divisor]) << uint16(s.chan4_clk_shift)
-	fmt.Println("Trigger 4",s.chan4_timer)
+	fmt.Println("SND_MODE_4 Trigger 4",s.chan4_timer)
 	s.chan4_lfsr = 0x7FFF
 
 }
@@ -791,16 +801,21 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 	case 0xff1c:
 		s.SND_MODE_3_OUTPUT = (val &0x60) >> 5
 		s.chan3_vol = (val &0x60) >> 5
+		fmt.Println("SND_3_VOL",s.chan3_vol)
+
 	case 0xff1d:
 		s.SND_MODE_3_FREQ_LOW = val
 		s.chan3_lo_freq = uint16(val &0xfe)
-        s.chan3_freq =s.chan3_hi_freq|s.chan3_lo_freq
+		s.chan3_freq =s.chan3_hi_freq|s.chan3_lo_freq
+		
 	case 0xff1e:
 		s.SND_MODE_3_FREQ_HI = val
 		hi_freq := uint16(val &0x7)
 		s.chan3_hi_freq = hi_freq <<8
 		s.chan3_len_enable = uint8(val &0x40) >>6
-        s.chan3_freq =s.chan3_hi_freq|s.chan3_lo_freq
+		s.chan3_freq =s.chan3_hi_freq|s.chan3_lo_freq
+		fmt.Println("SND_3_FREQ",s.chan3_freq)
+		//s.chan3_timer = (2048 - s.chan3_freq)*2;
 		if val & 0x80 == 0x80 { 
 			s.chan3_trigger()
 		}
@@ -858,6 +873,9 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 
 	default:
 		if addr >= 0xff30 &&  addr < 0xff40 {
+			if s.dac_power {
+				//panic("Accessing RAM while channel is enabled")
+			} 
 			baseaddr := (addr & 0x3f) -0x30
 			s.Wram[baseaddr] = val
 			fmt.Println("wram",baseaddr,s.Wram)

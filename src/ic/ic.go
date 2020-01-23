@@ -23,8 +23,8 @@ func (ic *IC) Get_reg_list() component.RegList {
 func NewIC() *IC {
 	ic := new(IC)
 	ic.reg_list = component.RegList{
-		{Name: "ie", Addr: MMIO_IE},
-		{Name: "if", Addr: MMIO_IF},
+		{Name: "IE", Addr: MMIO_IE},
+		{Name: "IF", Addr: MMIO_IF},
 	}
 	ic.Reset()
 	return ic
@@ -48,7 +48,7 @@ func (i *IC) Read_mmio(addr uint16) uint8 {
 	var val uint8
 	switch addr {
 	case 0xff0f:
-		val = i.IF
+		val = i.IF|0xe0
 	case 0xffff:
 		val = i.IE
 	default:
@@ -79,16 +79,19 @@ func (i *IC) Handle() uint16 {
 	case (i.IF&constants.V_BLANK == constants.V_BLANK) && (i.IE&constants.V_BLANK == constants.V_BLANK):
 		i.Disassert(constants.V_BLANK)
 		//          fmt.Println("X")
+		fmt.Println("VBLANK")
 
 		return (0x40)
 	case (i.IF&constants.LCDC == constants.LCDC) && (i.IE&constants.LCDC == constants.LCDC):
 		i.Disassert(constants.LCDC)
+		fmt.Println("LCDC")
+
 		// fmt.Println("INT","constants.LCDC")
 		return (0x48)
 
 	case (i.IF&constants.TIMER == constants.TIMER) && (i.IE&constants.TIMER == constants.TIMER):
 		i.Disassert(constants.TIMER)
-
+		fmt.Println("TIMER")
 		return (0x50)
 
 	case (i.IF&constants.GAME == constants.GAME) && (i.IE&constants.GAME == constants.GAME):

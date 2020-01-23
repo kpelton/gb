@@ -63,6 +63,7 @@ func (m *DMAC) exec_dma(addr uint8) {
 	real_addr = uint16(addr) * 0x100
 	for i = 0; i < OAM_SIZE; i++ {
 		m.mmu.Write(OAM_START+i,m.mmu.Read(real_addr + i))
+		
 	}
 	m.oam_dma_active=false
 
@@ -82,7 +83,7 @@ func (m* DMAC) Update() uint16 {
 	var cycles uint16
 	if m.oam_dma_active {
 		m.exec_dma(m.oam_dma_addr)
-		cycles=60
+		cycles=4
 	}
 	if m.hdma_complete_cycles > 0 {
 		cycles+=m.hdma_complete_cycles

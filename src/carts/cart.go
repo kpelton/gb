@@ -13,6 +13,7 @@ type Cart interface {
 	Read(uint16) uint8
 	Write(uint16, uint8)
 	Get_range_list() component.RangeList
+	Dump()
 	Reset()
 }
 
@@ -22,6 +23,9 @@ const (
 )
 
 func (c *GenCart) Reset() {
+
+}
+func (c *GenCart) Dump() {
 
 }
 func (c *GenCart) Get_range_list() component.RangeList {
@@ -34,7 +38,7 @@ func (c *GenCart) Get_range_list() component.RangeList {
 const (
 	REG_CART_TYPE       = 0x147
 	REG_CART_SIZE       = 0x148
-	REG_RAM_SIZE        = 0x148
+	REG_RAM_SIZE        = 0x149
 	REG_CART_NAME       = 0x134
 	REG_CART_NAME_SIZE  = 16
 	C_ROM_ONLY          = 0

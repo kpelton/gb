@@ -20,12 +20,14 @@ type ROM_MBC5 struct {
 	has_battery bool
 	dirty       bool
 	count       uint32
+	max_low_bank uint8
 	GenCart
 }
 
 func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *ROM_MBC5 {
 	m := new(ROM_MBC5)
-	fmt.Println(size)
+	fmt.Println("\nBanks",size/0x4000)
+	m.max_low_bank = uint8((size/0x4000) &0xff)
 	copy(m.cart[:], cart_data)
 	m.name = name
 	m.has_battery = has_battery
@@ -34,6 +36,9 @@ func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *RO
 	}
     m.ram_enabled=true
 	m.bank = 1
+	for i:=0; i<0x20000; i++ {
+		m.ram[i]=(uint8(i)+1) 
+	}
 	return m
 
 }
@@ -70,17 +75,18 @@ func (m *ROM_MBC5) Read(addr uint16) uint8 {
 	} else if addr < 0x8000 {
 		//fmt.Printf("%x\n",uint32(addr)+(uint32(m.bank-1)*0x4000))
 		if m.bank >0 {
-			retval = m.cart[uint32(addr)+(uint32(m.bank-1)*0x4000)]
+			retval = m.cart[uint32(addr-0x4000)+(uint32(m.bank)*0x4000)]
 		}else {
-			retval = m.cart[uint32(0x4000-addr)]
+			retval = m.cart[uint32(addr-0x4000)]
 		}
 	} else {
 		if m.ram_enabled {
 			bank_offset := uint16(uint32(m.ram_bank) * 0x2000)
 			fixed_addr := uint16(addr-0xa000) + bank_offset
+			retval = m.ram[fixed_addr]
+
 			fmt.Printf("RAM  BANK READ:%v  %04X->%04X:%x\n", m.ram_bank, addr, fixed_addr, retval)
 
-			retval = m.ram[fixed_addr]
 		} else {
 			retval = 0
 			fmt.Println("Tried to read from ram that wasn't enabled!")
@@ -108,16 +114,19 @@ func (m *ROM_MBC5) Write(addr uint16, val uint8) {
 		}
 
 	} else if addr < 0x3000 {
-		fmt.Println("ROM Bank from",m.bank,val-1)
-
-		m.bank_lo = val
+		
+		m.bank_lo = val & (m.max_low_bank-1)
 		m.bank = uint16(m.bank_hi)<<8 | uint16(m.bank_lo)
+		fmt.Println("ROM Bank from",m.bank,val)
+		//m.bank &=16
+
 		//fmt.Println("ROM Bank ",m.bank)
 	} else if addr < 0x4000 {
 
 		m.bank_hi = val & 1
 		m.bank = uint16(m.bank_hi)<<8 | uint16(m.bank_lo)
 		fmt.Println("ROM Bank ", m.bank)
+		//m.bank &=16
 
 	} else if addr < 0x6000 {
 

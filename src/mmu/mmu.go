@@ -32,11 +32,14 @@ type MMU struct {
 	debug_mode int
 	pc	uint16
 	ly	uint8
+	cycles uint64
 }
 
 
 
-
+func (m *MMU) Dump() {
+	m.cart.Dump()
+}
 func NewMMU(debug int) *MMU {
 	m := new(MMU)
 	m.debug_mode = debug
@@ -46,9 +49,10 @@ func NewMMU(debug int) *MMU {
 func (m *MMU) Reset () {
 
 }
-func (m *MMU) Update (pc uint16,ly uint8) {
+func (m *MMU) Update (pc uint16,ly uint8,cycles uint64) {
 	m.pc = pc
 	m.ly = ly
+	m.cycles = cycles
 }
 func (m *MMU) Create_new_cart(filename string) {
 	m.cart = carts.Load_cart(filename)
@@ -92,10 +96,13 @@ func (m *MMU) write_mmio(addr uint16, val uint8) {
 	if con != nil {
 		con.comp.Write_mmio(addr,val)
 		if m.debug_mode >=constants.DEBUG_LEVEL_1 {
-			fmt.Printf("PC:0x%04x:Writing %s %x\n",m.pc,con.name,val) 
+			fmt.Printf("%d:PC:0x%04x:Writing %s %x\n",m.cycles,m.pc,con.name,val) 
 		}
+
 		return
 	}
+	fmt.Printf("unhandled write:%04x 0x%4x\n", addr,val)
+
 
 }
 
@@ -107,12 +114,12 @@ func (m *MMU) read_mmio(addr uint16) uint8 {
 		val :=con.comp.Read_mmio(addr)
 
 		if m.debug_mode >=constants.DEBUG_LEVEL_1 {
-			fmt.Printf("PC:0x%04x:Reading %s %x \n",m.pc,con.name,val) 
+			fmt.Printf("%d:PC:0x%04x:Reading %s %x \n",m.cycles,m.pc,con.name,val) 
 		}
 	//	m.cpu.Dump()
 		return val
 	}
-	//fmt.Printf("unhandled read:%04x\n", addr)
+	fmt.Printf("unhandled read:%04x\n", addr)
 	return val
 }
 
@@ -182,7 +189,11 @@ func (m *MMU) Read (addr uint16) uint8 {
 	return m.Read_b(addr)
 }
 func (m *MMU) Write (addr uint16,val uint8) {
+	if addr == 0x57e8 {
+		panic("test")
+	}
 	m.Write_b(addr,val)
+
 }
 func (m *MMU) Write_w(addr uint16, val uint16) {
 

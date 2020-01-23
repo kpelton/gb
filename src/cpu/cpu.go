@@ -91,6 +91,9 @@ type CPU struct {
 	clk_mul    uint16
 	reg_list   component.RegList
 	clock      *clock.Clock
+	bt_debug_buffer   [1000]uint16
+	bt_count int
+	ei_wait_instr bool
 }
 
 func (c *CPU) Ready_sswitch() {
@@ -231,6 +234,10 @@ func (c *CPU) handleInterrupts() {
 	}
 
 	if c.reg8[EI] == 1 {
+		if c.ei_wait_instr == true {
+			c.ei_wait_instr = false
+			return
+		}
 		vector := c.ic.Handle()
 		//Handle will Dissassert interrupt
 		if vector > 0 {
@@ -247,7 +254,7 @@ func (c *CPU) handleInterrupts() {
 	}
 }
 func (c *CPU) Dump() {
-	fmt.Printf("PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x LY:%02x  STAT:%x \n", c.reg16[PC], c.reg16[SP], c.reg8[A], c.reg8[B], c.reg8[C], c.reg8[D], c.reg8[E], c.reg8[H], c.reg8[L], c.reg8[FL_Z], c.reg8[FL_C], c.reg8[FL_H], c.gpu.LY, c.gpu.STAT) //,c.reg8[FL_N]);
+	fmt.Printf("Cnt:%d PC:%04x SP:%04x A:%02x B:%02x C:%02x D:%02x E:%02x H:%02x L:%02x FL_Z:%01x FL_C:%01x FL_H:%01x LY:%02x  STAT:%x \n",c.clock.Cycles, c.reg16[PC], c.reg16[SP], c.reg8[A], c.reg8[B], c.reg8[C], c.reg8[D], c.reg8[E], c.reg8[H], c.reg8[L], c.reg8[FL_Z], c.reg8[FL_C], c.reg8[FL_H], c.gpu.LY, c.gpu.STAT) //,c.reg8[FL_N]);
 }
 func (c *CPU) Exec() {
 
@@ -261,13 +268,6 @@ func (c *CPU) Exec() {
 	//	last_update := time.Now()
 	count := uint(0)
 	for {
-
-		//c.last_instr = 4
-		if c.ic.IF > 0 {
-			c.handleInterrupts()
-		}
-		c.sound.Update(c.last_instr/c.clk_mul)
-		//gameboy color executes oam dma in 76 cycles not 80
 		dma_clocks := c.dmac.Update()
 
 		c.last_instr +=dma_clocks
@@ -275,12 +275,21 @@ func (c *CPU) Exec() {
 		if dma_clocks > 0 {
 			in_oam = true
 		}
+		//c.last_instr = 4
+		if c.ic.IF > 0 {
+			c.handleInterrupts()
+		}
+		c.sound.Update(c.last_instr/c.clk_mul)
+		//gameboy color executes oam dma in 76 cycles not 80
+
 		//run op
 		for i:=0; i<int(c.last_instr/c.clk_mul); i++ {
 		//	c.gpu.Update(c.last_instr/c.clk_mul,in_oam)
 			c.gpu.Update(1,in_oam)
+			
 		}
-		c.mmu.Update(c.reg16[PC],c.gpu.LY)
+
+		c.mmu.Update(c.reg16[PC],c.gpu.LY,c.clock.Cycles)
 		if !c.is_halted {
 
 			op = uint16(c.mmu.Read_w(c.reg16[PC]))
@@ -293,7 +302,19 @@ func (c *CPU) Exec() {
 				op = 0xcb00 | ((op & 0xff00) >> 8)
 			}
 //			c.Dump()
-			c.ops[op](c)
+			action := c.ops[op]
+			if action == nil {
+				fmt.Printf("Undefined opcode %x \n",op)
+				fmt.Println("MMU  State")
+				c.mmu.Dump()
+				fmt.Println("CPU State")
+				c.Dump()
+				fmt.Println(c.bt_debug_buffer)
+				fmt.Println(c.bt_count)
+				panic("Intruction would fail quitting...")
+			
+			}
+			action(c)
 			//c.last_instr /=2
 			count++
 
@@ -383,6 +404,11 @@ func (c *CPU) do_instr(desc string, ticks uint16, args uint16) {
 	//	}
 	c.last_instr = ticks
 	c.reg16[PC] += args
+	c.bt_debug_buffer[c.bt_count] = c.reg16[PC]
+	c.bt_count +=1
+	if c.bt_count == 1000 {
+		c.bt_count = 0
+	}
 
 }
 
@@ -1184,6 +1210,7 @@ func gen_ret(left string, skip_flag uint8, mask uint8, check uint8, ticks uint16
 			c.reg16[SP] += 2
 			if left == "RETI" {
 				c.reg8[EI] = 1
+				c.Dump()
 			}
 			c.do_instr(left, ticks_taken, 0)
 		} else {
@@ -2054,11 +2081,11 @@ func createOps(c *CPU) {
 
 	f_reti := gen_ret("RETI", 1, 0, 0, 16, 16)
 	//enable EI and return
-	c.ops[0xD9] = func(c *CPU) { c.reg8[EI] = 1; f_reti(c); c.do_instr("RST", 16, 0) }
+	c.ops[0xD9] = func(c *CPU) { fmt.Println("EI"); c.Dump();  c.reg8[EI] = 1; f_reti(c); c.do_instr("RST", 16, 0) }
 
 	c.ops[0x0] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
 	c.ops[0x10] = func(c *CPU) { c.set_sswitch(); c.do_instr("STOP", 4, 1) }
-	c.ops[0xFB] = func(c *CPU) { ; c.reg8[EI] = 1; c.do_instr("EI", 4, 1) }
+	c.ops[0xFB] = func(c *CPU) {c.ei_wait_instr=true; c.reg8[EI] = 1; c.do_instr("EI", 4, 1) }
 
 	c.ops[0xF3] = func(c *CPU) { c.reg8[EI] = 0; c.do_instr("DI", 4, 1) }
 
