@@ -279,15 +279,16 @@ func (c *CPU) Exec() {
 		if c.ic.IF > 0 {
 			c.handleInterrupts()
 		}
-		c.sound.Update(c.last_instr/c.clk_mul)
 		//gameboy color executes oam dma in 76 cycles not 80
-
 		//run op
-		for i:=0; i<int(c.last_instr/c.clk_mul); i++ {
+		//c.last_instr/c.clk_mul
+		cycles := c.last_instr >> (c.clk_mul-1)
+		c.sound.Update(cycles)
+		//for i:=uint16(0); i<cycles; i++ {
 		//	c.gpu.Update(c.last_instr/c.clk_mul,in_oam)
-			c.gpu.Update(1,in_oam)
+		c.gpu.Update(cycles,in_oam)
 			
-		}
+		//}
 
 		c.mmu.Update(c.reg16[PC],c.gpu.LY,c.clock.Cycles)
 		if !c.is_halted {
@@ -332,7 +333,7 @@ func (c *CPU) Exec() {
 				//c.ic.Assert(raise_int)
 			}
 		}
-		c.serial.Update(c.last_instr / c.clk_mul)
+		c.serial.Update(cycles)
 
 		//for i:=0; i< int(c.last_instr); i++ {
 		//	}
@@ -346,7 +347,7 @@ func (c *CPU) Exec() {
 		//	pprof.StopCPUProfile()
 		//	 fmt.Println("STOPPED")
 		//	}
-		c.clock.Cycles += uint64(c.last_instr / 4)
+		c.clock.Cycles += uint64(c.last_instr >>2)
 
 	}
 }
