@@ -303,8 +303,7 @@ func (s *Sound) Sampler() {
 				s.csample[s.sample_p] += 0;
 			}else {
 				
-				s.csample[s.sample_p] +=(uint8(int(s.chan1_vol)*30)/15);
-
+				s.csample[s.sample_p] +=(uint8(s.chan1_vol))
 			}
 		}
 		
@@ -313,17 +312,17 @@ func (s *Sound) Sampler() {
 			if chan2_vol == false{
 				s.csample[s.sample_p] += 0;
 			}else {
-				s.csample[s.sample_p] +=(uint8(int(s.chan2_vol)*30)/15);
+				s.csample[s.sample_p] +=(uint8(s.chan2_vol));
 			}
 		}
 
 		if s.channel_enables[2][0] == 1 && s.dac_power {
-			s.csample[s.sample_p] += (uint8(int(s.chan3_vol_current)*30)/15);
+			s.csample[s.sample_p] += (uint8(s.chan3_vol_current));
 
 		}
 
 		if s.channel_enables[3][0] == 1 && s.chan4_vol_initial > 0 {
-			s.csample[s.sample_p] += (uint8(int(s.chan4_vol_current)*30)/15);
+			s.csample[s.sample_p] += (uint8(s.chan4_vol_current));
 
 		}
 
@@ -333,7 +332,7 @@ func (s *Sound) Sampler() {
 			if chan1_vol == true{
 				s.csample[s.sample_p+1] += 0;
 			}else {
-				s.csample[s.sample_p+1] +=(uint8(int(s.chan1_vol)*30)/15)
+				s.csample[s.sample_p+1] +=(uint8(s.chan1_vol))
 			}
 		}	
 
@@ -341,18 +340,16 @@ func (s *Sound) Sampler() {
 			if chan2_vol == true{
 				s.csample[s.sample_p+1] += 0;
 			}else {
-				s.csample[s.sample_p+1] += uint8((int(s.chan2_vol)*30)/15);
+				s.csample[s.sample_p+1] += uint8((s.chan2_vol));
 			}
 		}
 
 		if s.channel_enables[2][1] == 1 && s.dac_power {
-			fmt.Println("SND_MODE_3_SAMPLE",s.chan3_vol_current)
-			s.csample[s.sample_p+1] += (uint8(int(s.chan3_vol_current)*30)/15);
-		}
-
+			//fmt.Println("SND_MODE_3_SAMPLE",s.chan3_vol_current)
 		if s.channel_enables[3][1] == 1 && s.chan4_vol_initial>0 {
-			s.csample[s.sample_p+1] += (uint8(int(s.chan4_vol_current)*30)/15);
+			s.csample[s.sample_p+1] += (uint8(s.chan4_vol_current))
 		}
+	}
 
 
 		if s.sample_p+2 >= sample_size-1 {
