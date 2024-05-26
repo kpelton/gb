@@ -271,6 +271,7 @@ func (c *CPU) Exec() {
 		dma_clocks := c.dmac.Update()
 
 		c.last_instr +=dma_clocks
+        cycles := c.last_instr>>(c.clk_mul-1)
 		in_oam := false
 		if dma_clocks > 0 {
 			in_oam = true
@@ -279,6 +280,7 @@ func (c *CPU) Exec() {
 		if c.ic.IF > 0 {
 			c.handleInterrupts()
 		}
+		c.sound.Update(cycles)
 		//gameboy color executes oam dma in 76 cycles not 80
 		//run op
 		//c.last_instr/c.clk_mul
