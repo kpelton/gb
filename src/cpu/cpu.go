@@ -284,7 +284,6 @@ func (c *CPU) Exec() {
 		//gameboy color executes oam dma in 76 cycles not 80
 		//run op
 		//c.last_instr/c.clk_mul
-		cycles := c.last_instr >> (c.clk_mul-1)
 		c.sound.Update(cycles)
 		//for i:=uint16(0); i<cycles; i++ {
 		//	c.gpu.Update(c.last_instr/c.clk_mul,in_oam)
