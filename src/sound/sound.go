@@ -161,8 +161,8 @@ func (g *Sound) Get_reg_list() component.RegList {
 
 func (s *Sound) Setup_SDL() {
 	var desired sdl.AudioSpec
-	desired.Freq = sample_rate
-	desired.Format =sdl.AUDIO_U8
+	desired.Freq = sample_rate/2
+	desired.Format =sdl.AUDIO_U16
 	desired.Channels=2
 	desired.Silence = 0
 	desired.Samples = sample_size
