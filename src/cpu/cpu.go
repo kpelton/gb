@@ -281,19 +281,9 @@ func (c *CPU) Exec() {
 			c.handleInterrupts()
 		}
 		c.sound.Update(cycles)
-		//gameboy color executes oam dma in 76 cycles not 80
-		//run op
-		//c.last_instr/c.clk_mul
-		c.sound.Update(cycles)
-		//for i:=uint16(0); i<cycles; i++ {
-		//	c.gpu.Update(c.last_instr/c.clk_mul,in_oam)
 		c.gpu.Update(cycles,in_oam)
-			
-		//}
-
 		c.mmu.Update(c.reg16[PC],c.gpu.LY,c.clock.Cycles)
 		if !c.is_halted {
-
 			op = uint16(c.mmu.Read_w(c.reg16[PC]))
 			//c.Dump()
 			//fmt.Println(c.gpu.LY)
@@ -314,16 +304,12 @@ func (c *CPU) Exec() {
 				fmt.Println(c.bt_debug_buffer)
 				fmt.Println(c.bt_count)
 				panic("Intruction would fail quitting...")
-			
 			}
 			action(c)
-			//c.last_instr /=2
 			count++
 
 		}
 
-		//fmt.Println(count)
-		//Update gamepad/buttons
 		if count >= 2000 {
 			raise_int := c.gp.Update()
 			count = 0
@@ -335,21 +321,12 @@ func (c *CPU) Exec() {
 			}
 		}
 		c.serial.Update(cycles)
-
-		//for i:=0; i< int(c.last_instr); i++ {
-		//	}
 		raise_int := c.timer.Update(uint64(c.last_instr))
 		if raise_int > 0 {
 			c.ic.Assert(raise_int)
 		}
 		c.DIV++
-		//	 if time.Since(last_update) > 20 *time.Second {
-
-		//	pprof.StopCPUProfile()
-		//	 fmt.Println("STOPPED")
-		//	}
 		c.clock.Cycles += uint64(c.last_instr >>2)
-
 	}
 }
 
