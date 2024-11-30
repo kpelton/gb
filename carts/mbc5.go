@@ -8,36 +8,36 @@ import (
 ////MBC5///////
 
 type ROM_MBC5 struct {
-	cart        [0x800000]uint8
-	bank        uint16
-	bank_lo     uint8
-	bank_hi     uint8
-	ram_enabled bool
-	ram_bank    uint8
-	ram         [0x20000]uint8
-	file        os.File
-	name        string
-	has_battery bool
-	dirty       bool
-	count       uint32
+	cart         [0x800000]uint8
+	bank         uint16
+	bank_lo      uint8
+	bank_hi      uint8
+	ram_enabled  bool
+	ram_bank     uint8
+	ram          [0x20000]uint8
+	file         os.File
+	name         string
+	has_battery  bool
+	dirty        bool
+	count        uint32
 	max_low_bank uint8
 	GenCart
 }
 
 func NewROM_MBC5(name string, cart_data []uint8, size int, has_battery bool) *ROM_MBC5 {
 	m := new(ROM_MBC5)
-	fmt.Println("\nBanks",size/0x4000)
-	m.max_low_bank = uint8((size/0x4000) &0xff)
+	fmt.Println("\nBanks", size/0x4000)
+	m.max_low_bank = uint8((size / 0x4000) & 0xff)
 	copy(m.cart[:], cart_data)
 	m.name = name
 	m.has_battery = has_battery
 	if has_battery == true {
 		m.Load_ram()
 	}
-    m.ram_enabled=true
+	m.ram_enabled = true
 	m.bank = 1
-	for i:=0; i<0x20000; i++ {
-		m.ram[i]=(uint8(i)+1) 
+	for i := 0; i < 0x20000; i++ {
+		m.ram[i] = (uint8(i) + 1)
 	}
 	return m
 
@@ -65,7 +65,6 @@ func (m *ROM_MBC5) Save_ram() {
 	}
 }
 func (m *ROM_MBC5) Dump() {
-	fmt.Println("BANK", m.bank)
 }
 func (m *ROM_MBC5) Read(addr uint16) uint8 {
 	var retval uint8
@@ -74,9 +73,9 @@ func (m *ROM_MBC5) Read(addr uint16) uint8 {
 		retval = m.cart[addr]
 	} else if addr < 0x8000 {
 		//fmt.Printf("%x\n",uint32(addr)+(uint32(m.bank-1)*0x4000))
-		if m.bank >0 {
+		if m.bank > 0 {
 			retval = m.cart[uint32(addr-0x4000)+(uint32(m.bank)*0x4000)]
-		}else {
+		} else {
 			retval = m.cart[uint32(addr-0x4000)]
 		}
 	} else {
@@ -95,7 +94,6 @@ func (m *ROM_MBC5) Read(addr uint16) uint8 {
 	m.count++
 	if m.count >= 10000000 && m.has_battery && m.dirty {
 		m.Save_ram()
-		fmt.Println("Saving Ram")
 		m.count = 0
 	}
 	return retval
@@ -105,19 +103,15 @@ func (m *ROM_MBC5) Write(addr uint16, val uint8) {
 	if addr < 0x2000 {
 		if val == 0x0A {
 			m.ram_enabled = true
-			fmt.Println("RAM enabled", val)
-
 		} else if val == 0x0 {
-			fmt.Println("RAM Disabled", val)
 			m.ram_enabled = false
 
 		}
 
 	} else if addr < 0x3000 {
-		
-		m.bank_lo = val & (m.max_low_bank-1)
+
+		m.bank_lo = val & (m.max_low_bank - 1)
 		m.bank = uint16(m.bank_hi)<<8 | uint16(m.bank_lo)
-		fmt.Println("ROM Bank from",m.bank,val)
 		//m.bank &=16
 
 		//fmt.Println("ROM Bank ",m.bank)
@@ -125,12 +119,9 @@ func (m *ROM_MBC5) Write(addr uint16, val uint8) {
 
 		m.bank_hi = val & 1
 		m.bank = uint16(m.bank_hi)<<8 | uint16(m.bank_lo)
-		fmt.Println("ROM Bank ", m.bank)
 		//m.bank &=16
 
 	} else if addr < 0x6000 {
-
-		fmt.Println("RAM bank", "from", m.ram_bank, "to", val&0xf)
 		m.ram_bank = (val & 0xf)
 	} else if addr >= 0xA000 && addr < 0xc000 {
 		if m.ram_enabled == true {

@@ -352,7 +352,7 @@ func (s *Sound) channel1_len_clock() {
 	if s.chan1_len_enable == 1 {
 		s.chan1_len -= 1
 		if s.chan1_len == 0 {
-			fmt.Println(" SWP Disabled due to timer")
+			//fmt.Println(" SWP Disabled due to timer")
 			s.chan1_enabled = false
 			s.chan1_len_enable = 0
 		}
@@ -363,7 +363,7 @@ func (s *Sound) channel2_len_clock() {
 	if s.chan2_len_enable == 1 {
 		s.chan2_len -= 1
 		if s.chan2_len == 0 {
-			fmt.Println("Disabled 2 due to timer")
+			//fmt.Println("Disabled 2 due to timer")
 			s.chan2_enabled = false
 			s.chan2_len_enable = 0
 		}
@@ -374,7 +374,7 @@ func (s *Sound) channel3_len_clock() {
 	if s.chan3_len_enable == 1 {
 		s.chan3_len -= 1
 		if s.chan3_len == 0 {
-			fmt.Println("Disabled 3 due to timer")
+			//fmt.Println("Disabled 3 due to timer")
 			s.chan3_enabled = false
 			s.chan3_len_enable = 0
 		}
@@ -384,7 +384,7 @@ func (s *Sound) channel4_len_clock() {
 	if s.chan4_len_enable == 1 {
 		s.chan4_len -= 1
 		if s.chan4_len == 0 {
-			fmt.Println("LEN4 Disabled 2 due to timer")
+			//fmt.Println("LEN4 Disabled 2 due to timer")
 			s.chan4_enabled = false
 			s.chan4_len_enable = 0
 		}
@@ -436,7 +436,7 @@ func (s *Sound) channel4_vol_clock() {
 				s.chan4_vol -= 1
 			}
 			s.chan4_vol_period = s.chan4_vol_period_load
-			fmt.Println("KYLEtest chan4", s.chan4_vol, s.chan4_vol_period)
+			//fmt.Println("KYLEtest chan4", s.chan4_vol, s.chan4_vol_period)
 
 		}
 	}
@@ -448,17 +448,17 @@ func (s *Sound) channel1_swp_calc() uint16 {
 
 	if s.chan1_swp_negate == 1 {
 		curr_val -= val
-		fmt.Println("SWP negate calc", curr_val, s.chan1_swp_shift, val)
+		//fmt.Println("SWP negate calc", curr_val, s.chan1_swp_shift, val)
 
 	} else {
 		curr_val += val
-		fmt.Println("SWP add calc", curr_val, s.chan1_swp_shift, val)
+		//fmt.Println("SWP add calc", curr_val, s.chan1_swp_shift, val)
 
 	}
 	if curr_val > 2047 {
 		s.chan1_enabled = false
 		s.chan1_swp_enable = 0
-		fmt.Println("SWP Disabled channel 1 due to freq overflow")
+		//fmt.Println("SWP Disabled channel 1 due to freq overflow")
 	}
 	return curr_val
 
@@ -472,7 +472,7 @@ func (s *Sound) channel1_swp_clock() {
 			new_calc := s.channel1_swp_calc()
 			if s.chan1_swp_shift > 0 && new_calc < 2047 {
 				if s.chan1_enabled {
-					fmt.Println("SWP New freq", new_calc, s.chan1_freq)
+					//fmt.Println("SWP New freq", new_calc, s.chan1_freq)
 					s.chan1_freq = new_calc
 					s.chan1_swp_shadow = new_calc
 				}
@@ -563,7 +563,7 @@ func (s *Sound) chan1_trigger() {
 		s.chan1_len = 64
 	}
 	s.chan1_timer = (2048 - s.chan1_freq) * 4
-	fmt.Println("SND_MODE_1 Trigger 1")
+	//fmt.Println("SND_MODE_1 Trigger 1")
 
 }
 
@@ -577,7 +577,7 @@ func (s *Sound) chan2_trigger() {
 	s.chan2_vol = s.chan2_vol_initial
 
 	s.chan2_timer = (2048 - s.chan2_freq) * 4
-	fmt.Println("SND_MODE_2 Trigger 2")
+	//fmt.Println("SND_MODE_2 Trigger 2")
 
 }
 
@@ -589,7 +589,7 @@ func (s *Sound) chan3_trigger() {
 		s.chan3_len = 0xff
 	}
 	s.chan3_timer = (2048 - s.chan3_freq) * 2
-	fmt.Println("SND_MODE_3 Trigger 3")
+	//fmt.Println("SND_MODE_3 Trigger 3")
 
 }
 
@@ -688,9 +688,9 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		s.chan1_swp_period_load = s.chan1_swp_period
 		s.chan1_swp_negate = (val & 0x8) >> 3
 		s.chan1_swp_shift = val & 0x7
-		fmt.Println("SWP negate", s.chan1_swp_negate)
-		fmt.Println("SWP shift", s.chan1_swp_shift)
-		fmt.Println("SWP period", s.chan1_swp_period)
+		//fmt.Println("SWP negate", s.chan1_swp_negate)
+		//fmt.Println("SWP shift", s.chan1_swp_shift)
+		//fmt.Println("SWP period", s.chan1_swp_period)
 
 	case 0xff11:
 		s.SND_MODE_1_LEN = val

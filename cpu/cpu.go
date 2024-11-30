@@ -1186,7 +1186,7 @@ func gen_ret(left string, skip_flag uint8, mask uint8, check uint8, ticks uint16
 			c.reg16[SP] += 2
 			if left == "RETI" {
 				c.reg8[EI] = 1
-				c.Dump()
+				//c.Dump()
 			}
 			c.do_instr(left, ticks_taken, 0)
 		} else {
@@ -2057,7 +2057,7 @@ func createOps(c *CPU) {
 
 	f_reti := gen_ret("RETI", 1, 0, 0, 16, 16)
 	//enable EI and return
-	c.ops[0xD9] = func(c *CPU) { fmt.Println("EI"); c.Dump(); c.reg8[EI] = 1; f_reti(c); c.do_instr("RST", 16, 0) }
+	c.ops[0xD9] = func(c *CPU) { c.reg8[EI] = 1; f_reti(c); c.do_instr("RST", 16, 0) }
 
 	c.ops[0x0] = func(c *CPU) { c.do_instr("NOP", 4, 1) }
 	c.ops[0x10] = func(c *CPU) { c.set_sswitch(); c.do_instr("STOP", 4, 1) }
