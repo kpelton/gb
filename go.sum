@@ -1,0 +1,4 @@
+github.com/tarm/goserial v0.0.0-20151007205400-b3440c3c6355 h1:Kp3kg8YL2dc75mckomrHZQTfzNyFGnaqFhJeQw4ozGc=
+github.com/tarm/goserial v0.0.0-20151007205400-b3440c3c6355/go.mod h1:jcMo2Odv5FpDA6rp8bnczbUolcICW6t54K3s9gOlgII=
+github.com/veandco/go-sdl2 v0.4.40 h1:fZv6wC3zz1Xt167P09gazawnpa0KY5LM7JAvKpX9d/U=
+github.com/veandco/go-sdl2 v0.4.40/go.mod h1:OROqMhHD43nT4/i9crJukyVecjPNYYuCofep6SNiAjY=
