@@ -1,8 +1,8 @@
 package timer
 
 import (
-    "fmt"
-	"component"
+	"fmt"
+	"gb/component"
 )
 
 type Timer struct {
@@ -10,7 +10,7 @@ type Timer struct {
 	TMA         uint8 // Timer Modulo (R/W)
 	TIMA        uint8 // Timer counter (R/W)
 	last_update int   // in clock cycles
-	reg_list component.RegList
+	reg_list    component.RegList
 }
 
 const (
@@ -24,25 +24,24 @@ const (
 	HZ_65_536_t  = 64
 	HZ_16_384_t  = 256
 
-	MMIO_TAC = 0xff07
-	MMIO_TMA = 0xff06
+	MMIO_TAC  = 0xff07
+	MMIO_TMA  = 0xff06
 	MMIO_TIMA = 0xff05
-
 )
 
 func NewTimer() *Timer {
 	timer := new(Timer)
 	timer.Reset()
 	timer.reg_list = component.RegList{
-		{Name:"TAC" , Addr:MMIO_TAC},
-		{Name:"TMA" , Addr:MMIO_TMA},
-		{Name:"TIMA", Addr:MMIO_TIMA},
+		{Name: "TAC", Addr: MMIO_TAC},
+		{Name: "TMA", Addr: MMIO_TMA},
+		{Name: "TIMA", Addr: MMIO_TIMA},
 	}
 	return timer
 }
 func (timer *Timer) Get_reg_list() component.RegList {
 	return timer.reg_list
-	
+
 }
 func (timer *Timer) Reset() {
 	timer.last_update = 0
@@ -51,9 +50,8 @@ func (timer *Timer) Reset() {
 	timer.TMA = 0
 }
 
-
 func (timer *Timer) Write_mmio(addr uint16, val uint8) {
-	fmt.Printf("TIMER:%x %x\n",addr,val)
+	fmt.Printf("TIMER:%x %x\n", addr, val)
 	switch addr {
 	case 0xff05:
 		timer.TIMA = val
@@ -68,44 +66,44 @@ func (timer *Timer) Write_mmio(addr uint16, val uint8) {
 
 func (timer *Timer) Read_mmio(addr uint16) uint8 {
 	var val uint8
-				fmt.Printf("TIMER READ:%x \n",addr)
+	fmt.Printf("TIMER READ:%x \n", addr)
 
 	switch addr {
 
 	case 0xff05:
-		val =timer.TIMA
+		val = timer.TIMA
 	case 0xff06:
-		val = timer.TMA 
+		val = timer.TMA
 	case 0xff07:
-		val = timer.TAC 
+		val = timer.TAC
 	default:
 		panic("TIMER:unhandled timer mmio read")
 	}
 	return val
 }
 
-func (timer *Timer) update_regs() (bool){
+func (timer *Timer) update_regs() bool {
 	timer.TIMA += 1
 	if timer.TIMA == 0 {
 		timer.TIMA = timer.TMA
-	    return true
-    }
-    return false
-}
-func (timer *Timer) check_cycles(t_type int,cycles uint64) (uint8) {
-    var raised_int uint8 = 0x0
-    timer.last_update -= int(cycles)
-	for int(timer.last_update) < 1 {
-        if timer.update_regs() {
-            raised_int = 0x4
-        }
-		timer.last_update += t_type
-        
+		return true
 	}
-    return raised_int
+	return false
+}
+func (timer *Timer) check_cycles(t_type int, cycles uint64) uint8 {
+	var raised_int uint8 = 0x0
+	timer.last_update -= int(cycles)
+	for int(timer.last_update) < 1 {
+		if timer.update_regs() {
+			raised_int = 0x4
+		}
+		timer.last_update += t_type
+
+	}
+	return raised_int
 }
 
-func (timer *Timer) Update( cycles uint64) (uint8) {
+func (timer *Timer) Update(cycles uint64) uint8 {
 
 	//   fmt.Printf("TIMA:%x,%v\n",timer.TIMA,int(timer.last_update))
 
@@ -125,9 +123,9 @@ func (timer *Timer) Update( cycles uint64) (uint8) {
 		default:
 			panic("Unsupported timer frequency!\n")
 		}
-        return timer.check_cycles(t_type,cycles)
+		return timer.check_cycles(t_type, cycles)
 	} else {
 		timer.last_update = 0
 	}
-    return 0
+	return 0
 }

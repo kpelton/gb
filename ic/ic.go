@@ -1,9 +1,9 @@
 package ic
 
 import (
-	"component"
-	"constants"
 	"fmt"
+	"gb/component"
+	"gb/constants"
 )
 
 type IC struct {
@@ -48,7 +48,7 @@ func (i *IC) Read_mmio(addr uint16) uint8 {
 	var val uint8
 	switch addr {
 	case 0xff0f:
-		val = i.IF|0xe0
+		val = i.IF | 0xe0
 	case 0xffff:
 		val = i.IE
 	default:

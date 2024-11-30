@@ -2,7 +2,8 @@ package gp
 
 import (
 	"fmt"
-	"component"
+	"gb/component"
+
 	"github.com/veandco/go-sdl2/sdl"
 )
 

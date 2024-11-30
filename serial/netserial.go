@@ -1,12 +1,12 @@
 package serial
 
 import (
-	"constants"
 	"fmt"
-	"ic"
+	"gb/component"
+	"gb/constants"
+	"gb/ic"
 	"net"
 	"time"
-	"component"
 )
 
 const (
@@ -25,10 +25,10 @@ type NetSerial struct {
 	bytes_sent bool
 	sock       net.Conn
 	count      uint16
-	reg_list    component.RegList
-
+	reg_list   component.RegList
 }
-func (g* NetSerial) Get_reg_list() component.RegList{
+
+func (g *NetSerial) Get_reg_list() component.RegList {
 	return g.reg_list
 }
 
@@ -60,8 +60,8 @@ func NewNetSerial(ic *ic.IC, listen bool, addr string) *NetSerial {
 	serial := new(NetSerial)
 	serial.ic = ic
 	serial.reg_list = component.RegList{
-		{Name:"SC" , Addr:0xff01},
-		{Name:"SB" , Addr:0xff02},
+		{Name: "SC", Addr: 0xff01},
+		{Name: "SB", Addr: 0xff02},
 	}
 	if listen == true {
 		serial.listen()
@@ -74,11 +74,10 @@ func NewNetSerial(ic *ic.IC, listen bool, addr string) *NetSerial {
 	}
 	return serial
 }
-func (s *NetSerial) Reset() { 
-   s.SC = 0
-   s.SB =0
+func (s *NetSerial) Reset() {
+	s.SC = 0
+	s.SB = 0
 }
-
 
 func (s *NetSerial) sendBytes(cmd uint8, value uint8) {
 	var msg [2]byte

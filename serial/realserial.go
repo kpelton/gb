@@ -1,12 +1,13 @@
 package serial
 
 import (
-	"constants"
 	"fmt"
-	"github.com/tarm/goserial"
-	"ic"
+	"gb/component"
+	"gb/constants"
+	"gb/ic"
 	"io"
-	"component"
+
+	serial "github.com/tarm/goserial"
 )
 
 type RealSerial struct {
@@ -17,18 +18,17 @@ type RealSerial struct {
 	started     bool
 	port        io.ReadWriteCloser
 	reg_list    component.RegList
-
 }
-func (g* RealSerial) Get_reg_list() component.RegList{
+
+func (g *RealSerial) Get_reg_list() component.RegList {
 	return g.reg_list
 }
-
 
 func NewRealSerial(ic *ic.IC, port string) *RealSerial {
 	nserial := new(RealSerial)
 	nserial.reg_list = component.RegList{
-		{Name:"SC" , Addr:0xff01},
-		{Name:"SB" , Addr:0xff02},
+		{Name: "SC", Addr: 0xff01},
+		{Name: "SB", Addr: 0xff02},
 	}
 	nserial.ic = ic
 	c := &serial.Config{Name: "/dev/ttyUSB0", Baud: 115200}
@@ -44,11 +44,10 @@ func NewRealSerial(ic *ic.IC, port string) *RealSerial {
 	return nserial
 
 }
-func (g* RealSerial) Reset() {
-    g.SC = 0
-    g.SB = 0
+func (g *RealSerial) Reset() {
+	g.SC = 0
+	g.SB = 0
 }
-
 
 func (s *RealSerial) Update(cycles uint16) uint8 {
 	var buf [1]uint8

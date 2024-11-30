@@ -1,10 +1,9 @@
 package serial
 
 import (
-	"constants"
-//	"fmt"
-	"ic"
-	"component"
+	"gb/component"
+	"gb/constants"
+	"gb/ic"
 )
 
 type FakeSerial struct {
@@ -14,16 +13,16 @@ type FakeSerial struct {
 	cycle_count uint16
 	started     bool
 	reg_list    component.RegList
-
 }
-func (g* FakeSerial) Get_reg_list() component.RegList{
+
+func (g *FakeSerial) Get_reg_list() component.RegList {
 	return g.reg_list
 }
 func NewFakeSerial(ic *ic.IC) *FakeSerial {
 	serial := new(FakeSerial)
 	serial.reg_list = component.RegList{
-		{Name:"SC" , Addr:0xff01},
-		{Name:"SB" , Addr:0xff02},
+		{Name: "SC", Addr: 0xff01},
+		{Name: "SB", Addr: 0xff02},
 	}
 
 	serial.ic = ic
@@ -58,8 +57,8 @@ func (s *FakeSerial) Read_mmio(addr uint16) uint8 {
 }
 
 func (s *FakeSerial) Reset() {
-    s.SB=0
-    s.SC=0
+	s.SB = 0
+	s.SC = 0
 }
 
 func (s *FakeSerial) Write_mmio(addr uint16, val uint8) {
