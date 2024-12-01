@@ -42,8 +42,8 @@ type Sound struct {
 	chan3_curr_freq uint32
 	chan2_real_freq uint32
 	chan3_real_freq uint32
-
-	dac_power bool
+	doNothing       bool
+	dac_power       bool
 
 	chan1_duty       uint8
 	chan1_hi_freq    uint16
@@ -528,8 +528,10 @@ func (s *Sound) Freq_sampler() {
 
 }
 func (s *Sound) Update(clocks uint16) {
+	if s.doNothing {
+		return
+	}
 	for i := 1; i <= int(clocks); i++ {
-
 		s.Update_channel1()
 		s.Update_channel2()
 		s.Update_channel3()
@@ -608,8 +610,9 @@ func (s *Sound) chan4_trigger() {
 
 }
 
-func NewSound() *Sound {
+func NewSound(doNothing bool) *Sound {
 	s := new(Sound)
+	s.doNothing = doNothing
 	s.Setup_SDL()
 	/*	Duty   Waveform    Ratio
 		-------------------------

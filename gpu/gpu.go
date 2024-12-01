@@ -127,7 +127,6 @@ type GPU struct {
 	dmac             *dmac.DMAC
 	Pal_mem          [0x40]uint8
 	Pal_oc_mem       [0x40]uint8
-	fullspeed        bool
 	ticks            int
 	linecache        Linecache
 	last_hdma_cycles uint16
@@ -363,9 +362,8 @@ func (g *GPU) Get_reg_list() component.RegList {
 func (g *GPU) Get_range_list() component.RangeList {
 	return g.range_list
 }
-func NewGPU(ic *ic.IC, dmac *dmac.DMAC, scale int16, maxfps bool) *GPU {
+func NewGPU(ic *ic.IC, dmac *dmac.DMAC, scale int16) *GPU {
 	g := new(GPU)
-	g.fullspeed = maxfps
 	g.reg_list = component.RegList{
 		{Name: "LCDC", Addr: 0xff40},
 		{Name: "STAT", Addr: 0xff41},
