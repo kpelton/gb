@@ -3,7 +3,8 @@ package sound
 import (
 	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
-	"component"
+	"gb/component"
+
 )
 
 type Sound struct {
@@ -714,7 +715,7 @@ func (s *Sound) chan4_trigger()  {
 
 }
 
-func NewSound() *Sound {
+func NewSound(doNothing bool) *Sound {
 	s := new(Sound)
 	s.Setup_SDL()
 /*	Duty   Waveform    Ratio
