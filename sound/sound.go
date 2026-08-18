@@ -352,6 +352,16 @@ func (s *Sound) Sampler() {
 	 */
 	if s.dac_power && s.chan3_enabled && s.chan3_vol > 0 {
 		v := int32(s.chan3_vol_current)*2 - 15
+		switch s.chan3_vol {
+		case 1: // 100%
+			v = int32(s.chan3_vol_current)*2 - 15
+
+		case 2: // 50%, current sample is 0..7
+			v = int32(s.chan3_vol_current)*2 - 7
+
+		case 3: // 25%, current sample is 0..3
+			v = int32(s.chan3_vol_current)*2 - 3
+		}
 
 		if s.channel_enables[2][1] == 1 {
 			left += v
@@ -380,14 +390,18 @@ func (s *Sound) Sampler() {
 			right += v
 		}
 	}
+	rightVol := int32((s.SND_CHN_CTRL & 0x07) + 1)
+	leftVol  := int32(((s.SND_CHN_CTRL >> 4) & 0x07) + 1)
 
+	left = left * leftVol / 8
+	right = right * rightVol / 8
 		// Q8 fixed-point low-pass.
 	// >> 3 = 1/8 smoothing strength.
-	s.filter_left += ((left << 8) - s.filter_left) >> 3
-	s.filter_right += ((right << 8) - s.filter_right) >> 3
+//	s.filter_left += ((left << 8) - s.filter_left) >> 3
+//	s.filter_right += ((right << 8) - s.filter_right) >> 3
 
-	left = s.filter_left >> 8
-	right = s.filter_right >> 8
+//	left = s.filter_left >> 8
+//	right = s.filter_right >> 8
 		/*
 	 * Four channels can total roughly +/-60.
 	 * Double it for useful U8 volume while leaving
@@ -565,27 +579,31 @@ func (s *Sound) channel1_swp_calc () uint16 {
 
 }
 func (s *Sound) channel1_swp_clock() {
+    if s.chan1_swp_enable == 0 {
+        return
+    }
 
-	s.chan1_swp_period -=1 
-	if s.chan1_swp_enable == 1 &&  s.chan1_swp_period_load >0 {
-		if s.chan1_swp_period == 0 {
-			s.chan1_swp_period = s.chan1_swp_period_load
-			new_calc := s.channel1_swp_calc()
-			if s.chan1_swp_shift >0 && new_calc < 2047 {
-				if s.chan1_enabled {
-					fmt.Println("SWP New freq",new_calc,s.chan1_freq)
-					s.chan1_freq = new_calc
-					s.chan1_swp_shadow = new_calc
-				}
-			}
-			s.channel1_swp_calc()
-				
+    if s.chan1_swp_period > 0 {
+        s.chan1_swp_period--
+    }
 
-		}
-	}
+    if s.chan1_swp_period == 0 {
+        period := s.chan1_swp_period_load
+        if period == 0 {
+            period = 8
+        }
+
+        s.chan1_swp_period = period
+
+        newFreq := s.channel1_swp_calc()
+
+        if s.chan1_swp_shift > 0 && newFreq <= 2047 {
+            s.chan1_freq = newFreq
+            s.chan1_swp_shadow = newFreq
+            s.channel1_swp_calc()
+        }
+    }
 }
-
-
 
 func (s *Sound) Freq_sampler() {
 	s.frame_seq_counter -= 1
