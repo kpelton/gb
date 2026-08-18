@@ -313,11 +313,11 @@ func (s *Sound) Sampler() {
 			v = -v
 		}
 
-		if s.channel_enables[0][0] == 1 {
+		if s.channel_enables[0][1] == 1 {
 			left += v
 		}
 
-		if s.channel_enables[0][1] == 1 {
+		if s.channel_enables[0][0] == 1 {
 			right += v
 		}
 	}
@@ -332,11 +332,11 @@ func (s *Sound) Sampler() {
 			v = -v
 		}
 
-		if s.channel_enables[1][0] == 1 {
+		if s.channel_enables[1][1] == 1 {
 			left += v
 		}
 
-		if s.channel_enables[1][1] == 1 {
+		if s.channel_enables[1][0] == 1 {
 			right += v
 		}
 	}
@@ -350,14 +350,14 @@ func (s *Sound) Sampler() {
 	 *     0  -> -15
 	 *     15 -> +15
 	 */
-	if s.dac_power {
+	if s.dac_power && s.chan3_enabled && s.chan3_vol > 0 {
 		v := int32(s.chan3_vol_current)*2 - 15
 
-		if s.channel_enables[2][0] == 1 {
+		if s.channel_enables[2][1] == 1 {
 			left += v
 		}
 
-		if s.channel_enables[2][1] == 1 {
+		if s.channel_enables[2][0] == 1 {
 			right += v
 		}
 	}
@@ -368,15 +368,15 @@ func (s *Sound) Sampler() {
 	 * chan4_vol_current appears to alternate between
 	 * zero and the current envelope volume.
 	 */
-	if s.chan4_vol_initial > 0 {
+	if s.chan4_enabled && s.chan4_vol_initial > 0 {
 		v := int32(s.chan4_vol_current)*2 -
 			int32(s.chan4_vol)
 
-		if s.channel_enables[3][0] == 1 {
+		if s.channel_enables[3][1] == 1 {
 			left += v
 		}
 
-		if s.channel_enables[3][1] == 1 {
+		if s.channel_enables[3][0] == 1 {
 			right += v
 		}
 	}
@@ -804,7 +804,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 
 	case 0xff11:
 		s.SND_MODE_1_LEN = val
-		s.chan1_len = val &0x1f
+		s.chan1_len = 64 - (val & 0x3f)
 		s.chan1_duty = val >> 6 
 	case 0xff12:
 		s.SND_MODE_1_ENVP = val
@@ -814,7 +814,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		s.chan1_vol_op = (val >>3) &1
 	case 0xff13:
 		s.SND_MODE_1_FREQ_LOW = val
-		s.chan1_lo_freq = uint16(val &0xfe)
+		s.chan1_lo_freq = uint16(val)
 		s.chan1_freq =s.chan1_hi_freq+s.chan1_lo_freq
 		
 	case 0xff14:
@@ -832,7 +832,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
     //chan2
 	case 0xff16:
 		s.SND_MODE_2_LEN = val 
-		s.chan2_len = s.SND_MODE_2_LEN &0x1f
+		s.chan2_len = 64 - (val & 0x3f)
 		s.chan2_duty = val >> 6 
 
 	case 0xff17:
@@ -843,7 +843,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		s.chan2_vol_op = (val >>3) &1
 	case 0xff18:
 		s.SND_MODE_2_FREQ_LOW = val
-		s.chan2_lo_freq = uint16(val &0xfe)
+		s.chan2_lo_freq = uint16(val)
         s.chan2_freq =s.chan2_hi_freq+s.chan2_lo_freq
 
 	case 0xff19:
@@ -878,7 +878,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 
 	case 0xff1d:
 		s.SND_MODE_3_FREQ_LOW = val
-		s.chan3_lo_freq = uint16(val &0xfe)
+		s.chan3_lo_freq = uint16(val)
 		s.chan3_freq =s.chan3_hi_freq|s.chan3_lo_freq
 		
 	case 0xff1e:
