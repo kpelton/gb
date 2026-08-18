@@ -1035,10 +1035,8 @@ func (g *GPU) hblank(clocks uint16) {
 				g.print_sprites(&cline, &palline)
 			}
 		}
-		if g.linecache[g.LY] != cline {
-			g.display_line_gbc(int16(g.LY), &cline)
-			g.linecache[g.LY] = cline
-		}
+		g.display_line_gbc(int16(g.LY), &cline)
+		g.linecache[g.LY] = cline
 	}
 
 	g.line_done = 1

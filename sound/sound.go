@@ -42,7 +42,7 @@ type Sound struct {
 	chan3_curr_freq uint32;
 	chan2_real_freq uint32;
 	chan3_real_freq uint32;
-
+	sample_phase uint32
 
 	dac_power bool
 
@@ -101,6 +101,9 @@ type Sound struct {
 
 	chan3_vol uint8;
 	chan3_vol_current uint8;
+	// Internal byte fetched from wave RAM.
+	// Do NOT clear this on a normal CH3 trigger.
+	chan3_sample_buffer uint8
 
 
 
@@ -126,7 +129,6 @@ type Sound struct {
 
 
 	sample_p uint32;
-	sample_timer uint32;
 	csample[sample_size] byte;
 
 	square_duty[4][8] bool;
@@ -138,7 +140,8 @@ type Sound struct {
 
 	filter_left  int32
 	filter_right int32
-
+	hp_left  float64
+	hp_right float64
 }
 
 const (
@@ -206,52 +209,53 @@ func (s *Sound) Update_channel2() {
 }
 
 func (s *Sound) Update_channel3() {
-	s.chan3_timer-=1
-	if s.chan3_timer == 0 {
-		s.chan3_timer = (2048 - s.chan3_freq)*2;
-		//fmt.Println("SND_MODE_3_TICK")
+    s.chan3_timer--
 
-		pos := s.chan3_pos /2
-		
-		data := s.Wram[pos]
-		//if pos is even then grab 2nd nibble else first
-		if s.chan3_pos %2 == 0 {
-			data = data >>4
-			//fmt.Println("WRAM UPPER nibble")
-		}
-		data &=0xf
-		//fmt.Printf("WRAM update %x %x %x %x\n",s.chan3_pos,pos,data,s.Wram[pos])
+    if s.chan3_timer == 0 {
+        s.chan3_timer = (2048 - s.chan3_freq) * 2
 
-		//if code != 0 do the shift otherwise output is 0
-		/*
-		Code   Shift   Volume
-		-----------------------
-		0      4         0% (silent)
-		1      0       100%
-		2      1        50%
-		3      2        25%
-		*/
-		if s.dac_power && s.chan3_enabled && s.chan3_vol > 0 {
-			switch s.chan3_vol {
+        /*
+         * Real CH3 advances the sample position FIRST,
+         * then fetches the byte containing that new sample.
+         */
+        s.chan3_pos++
+        s.chan3_pos &= 31
 
-				case 2:
-					data >>= 1 //50%
-				case 3:
-					data >>= 2 //25%
-			}
-		}else{
+        /*
+         * Wave RAM contains 16 bytes / 32 nibbles.
+         *
+         * pos 0,1   -> Wram[0]
+         * pos 2,3   -> Wram[1]
+         * ...
+         */
+        s.chan3_sample_buffer = s.Wram[s.chan3_pos>>1]
+
+        data := s.chan3_sample_buffer
+
+        /*
+         * Even sample = upper nibble.
+         * Odd sample  = lower nibble.
+         */
+        if s.chan3_pos&1 == 0 {
+            data >>= 4
+        } else {
+            data &= 0x0f
+        }
+		if !s.dac_power || !s.chan3_enabled {
 			data = 0
 		}
+
+		//
+		// Store the RAW 4-bit latched sample.
+		// NR32 must not be applied here.
+		//
 		s.chan3_vol_current = data
-		s.chan3_pos += 1 
-		if s.chan3_pos == 32 {
-			s.chan3_pos =0
-	
-		}
-	}
-	if ! s.chan3_enabled {
-		s.chan3_vol_current = 0
-	}
+
+			  }
+
+			if !s.chan3_enabled {
+				s.chan3_vol_current = 0
+			}
 }
 
 
@@ -286,14 +290,13 @@ func (s *Sound) Update_channel4() {
 
 
 func (s *Sound) Sampler() {
-	s.sample_timer--
+	s.sample_phase += sample_rate
 
-	if s.sample_timer != 0 {
-		return
+	if s.sample_phase < 4194304 {
+    	return
 	}
 
-	s.sample_timer = 4194304 / sample_rate
-
+	s.sample_phase -= 4194304
 	chan1_wave := s.square_duty[s.chan1_duty][s.chan1_duty_pointer]
 	chan2_wave := s.square_duty[s.chan2_duty][s.chan2_duty_pointer]
 
@@ -350,18 +353,21 @@ func (s *Sound) Sampler() {
 	 *     0  -> -15
 	 *     15 -> +15
 	 */
-	if s.dac_power && s.chan3_enabled && s.chan3_vol > 0 {
-		v := int32(s.chan3_vol_current)*2 - 15
+	if s.dac_power && s.chan3_enabled {
+		data := s.chan3_vol_current
+
 		switch s.chan3_vol {
-		case 1: // 100%
-			v = int32(s.chan3_vol_current)*2 - 15
-
-		case 2: // 50%, current sample is 0..7
-			v = int32(s.chan3_vol_current)*2 - 7
-
-		case 3: // 25%, current sample is 0..3
-			v = int32(s.chan3_vol_current)*2 - 3
+		case 0:
+			data = 0
+		case 1:
+			// 100%
+		case 2:
+			data >>= 1
+		case 3:
+			data >>= 2
 		}
+
+		v := int32(data)*2 - 15
 
 		if s.channel_enables[2][1] == 1 {
 			left += v
@@ -372,7 +378,8 @@ func (s *Sound) Sampler() {
 		}
 	}
 
-	/*
+
+     /*
 	 * Channel 4 - noise
 	 *
 	 * chan4_vol_current appears to alternate between
@@ -409,6 +416,19 @@ func (s *Sound) Sampler() {
 	 */
 	left *= 2
 	right *= 2
+	const hpFactor = 0.99634 // roughly DMG at 48 kHz
+
+lin := float64(left)
+rin := float64(right)
+
+lout := lin - s.hp_left
+rout := rin - s.hp_right
+
+s.hp_left = lin - lout*hpFactor
+s.hp_right = rin - rout*hpFactor
+
+left = int32(lout)
+right = int32(rout)
 
 	/*
 	 * U8 silence is 128.
@@ -705,16 +725,44 @@ func (s *Sound) chan2_trigger()  {
 
 }
 
-func (s *Sound) chan3_trigger()  {
-	s.chan3_enabled = true
-	s.chan3_len_enable = 0
-	s.chan3_pos =0
-	if s.chan3_len == 0 {
-		s.chan3_len = 256
-	}
-	s.chan3_timer = (2048 - s.chan3_freq)*2
-	fmt.Println("SND_MODE_3 Trigger 3")
+func (s *Sound) chan3_trigger() {
+    s.chan3_enabled = true
+    s.chan3_len_enable = 0
 
+    /*
+     * Position resets, but sample buffer does NOT.
+     */
+    s.chan3_pos = 0
+
+    if s.chan3_len == 0 {
+        s.chan3_len = 256
+    }
+
+    s.chan3_timer = (2048 - s.chan3_freq) * 2
+
+    /*
+     * First output after trigger is the HIGH nibble
+     * already sitting in the old sample buffer.
+     */
+    data := s.chan3_sample_buffer >> 4
+
+    if s.dac_power {
+        switch s.chan3_vol {
+        case 0:
+            data = 0
+        case 1:
+            // 100%
+        case 2:
+            data >>= 1
+        case 3:
+            data >>= 2
+        }
+    } else {
+        s.chan3_enabled = false
+        data = 0
+    }
+
+    s.chan3_vol_current = data
 }
 
 
@@ -751,7 +799,6 @@ func NewSound(doNothing bool) *Sound {
 	}
 	s.chan4_divisor_code = [8]uint8 {8,16,32,48,64,80,96,112}
 	s.sample_p = 0
-	s.sample_timer = 4194304 / sample_rate
 	s.frame_seq_counter  = frame_seq_clocks
 	s.chan1_enabled = true
 	s.chan2_enabled = true
