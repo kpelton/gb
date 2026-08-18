@@ -94,7 +94,7 @@ type Sound struct {
 	chan3_freq uint16;
 	chan3_timer uint16;
 	chan3_len_mode uint16;
-	chan3_len uint8;
+	chan3_len uint16;
 	chan3_len_enable uint8;
 	chan3_enabled bool
 	chan3_pos uint8
@@ -145,7 +145,7 @@ const (
 	sample_rate = 48000
 	channels    = 2
 	samples     = 2048
-	sample_size=1024
+	sample_size= 512
 	frame_seq_clocks = 8192
 	chan1_global_enable = 1
 	chan2_global_enable = 1
@@ -692,7 +692,7 @@ func (s *Sound) chan3_trigger()  {
 	s.chan3_len_enable = 0
 	s.chan3_pos =0
 	if s.chan3_len == 0 {
-		s.chan3_len =0xff
+		s.chan3_len = 256
 	}
 	s.chan3_timer = (2048 - s.chan3_freq)*2
 	fmt.Println("SND_MODE_3 Trigger 3")
@@ -862,7 +862,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 	case 0xff1a:
 		s.SND_MODE_3 = val
 		//if DAC is 0x80  bit is set
-		if s.SND_MODE_3 & 0xf8 != 0x00 {
+		if s.SND_MODE_3 & (val & 0x80) != 0 {
 			s.dac_power = true
 		}else{
 			s.dac_power = false
@@ -870,7 +870,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 		
 	case 0xff1b:
 		s.SND_MODE_3_LEN = val
-		s.chan3_len = val
+		s.chan3_len = 256 - uint16(val)
 	case 0xff1c:
 		s.SND_MODE_3_OUTPUT = (val &0x60) >> 5
 		s.chan3_vol = (val &0x60) >> 5
@@ -897,7 +897,7 @@ func (s *Sound) Write_mmio(addr uint16, val uint8) {
 
 	case 0xff20:
 		s.SND_MODE_4_LEN = val & 0x3f
-		s.chan4_len = s.SND_MODE_4_LEN
+		s.chan4_len = 64 - (val & 0x3f)
 
 	case 0xff21:
 		s.SND_MODE_4_ENVP = val
