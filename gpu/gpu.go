@@ -225,6 +225,7 @@ func (g *GPU) Read_mmio(addr uint16) uint8 {
 		val = g.LCDC
 	case 0xff41:
 		val = g.STAT
+
 		//fmt.Printf("<-STAT:%04X\n", val)
 	case 0xff42:
 		val = g.SCY
@@ -271,7 +272,11 @@ func (g *GPU) Write_mmio(addr uint16, val uint8) {
 	case 0xff40:
 		g.LCDC = val
 	case 0xff41:
-		g.STAT |= val & 0xf8
+		 /*
+     * Bits 0-2 belong to the PPU.
+     * Bits 3-6 are writable by software.
+     */
+    g.STAT = (g.STAT & 0x07) | (val & 0x78)
 	case 0xff42:
 		g.SCY = val
 	case 0xff43:
